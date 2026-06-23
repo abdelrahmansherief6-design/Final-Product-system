@@ -1,0 +1,6 @@
+{
+  "name": "El-Araby Refrigerator Quality Control System",
+  "description": "An integrated quality assurance (QA/QC) system for the refrigerator assembly line at El-Araby Group, featuring role-based workflows for technicians, line supervisors, and quality managers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
