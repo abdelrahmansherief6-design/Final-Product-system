@@ -319,9 +319,6 @@ export default function Login({ onLogin, users }: LoginProps) {
                   required
                 />
               </div>
-              <p className="text-[10px] text-zinc-400 leading-relaxed">
-                * أدخل رقم ساب المكون من 8 أرقام (مثال المالك: <strong className="text-blue-700 select-all font-mono">40016452</strong> أو المديرين: <strong className="text-blue-700 select-all font-mono">12345678</strong>).
-              </p>
             </div>
 
             {/* Error Message */}
