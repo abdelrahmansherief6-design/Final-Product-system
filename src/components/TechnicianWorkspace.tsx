@@ -1633,7 +1633,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                 className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-violet-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
               >
                 <div className="w-11 h-11 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-violet-600 group-hover:text-white">
-                  <ClipboardList className="w-5 h-5" />
+                  <History className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-xs font-black text-zinc-900">سجل فحوصاتي الأخيرة</h3>
@@ -1658,7 +1658,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                   <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">إنشاء ومتابعة التقارير الفنية للعيوب المتكررة لاتخاذ إجراءات وقائية عاجلة.</p>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-orange-600 font-bold pt-2 border-t border-zinc-100">
-                  <span>التقارير النشطة ({ncrs.filter(n => n.lineId === lineId).length})</span>
+                  <span>تقارير عدم المطابقة NCR</span>
                   <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
@@ -1672,11 +1672,11 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                   <Ban className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black text-zinc-900">إيقافات التحميل</h3>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">سجل قرارات إيقاف شحن وتوزيع دفعات ثلاجات معينة في حالة رصد عيب حرج بالخط.</p>
+                  <h3 className="text-xs font-black text-zinc-900">تسجيل التوقفات والأعطال</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">رصد فترات توقف الشحن ومشاكل النقل والتنزيل لتحسين كفاءة العمل.</p>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-rose-600 font-bold pt-2 border-t border-zinc-100">
-                  <span>الإيقافات الحالية ({loadingStops.filter(s => s.lineId === lineId).length})</span>
+                  <span>التوقفات المسجلة ({loadingStops.filter(s => s.lineId === lineId).length})</span>
                   <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
@@ -1687,14 +1687,14 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                 className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
               >
                 <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-emerald-600 group-hover:text-white">
-                  <Layers className="w-5 h-5" />
+                  <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black text-zinc-900">كمية الإنتاج</h3>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">تسجيل الإنتاجية المستهدفة والفعلية لخط تجميع الثلاجات الحالي ومتابعة نسب الإنجاز.</p>
+                  <h3 className="text-xs font-black text-zinc-900">كميات الإنتاج اليومية</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">تحديث وإدخال أعداد الثلاجات المنتجة ومطابقتها مع الأهداف اليومية للخط.</p>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-emerald-600 font-bold pt-2 border-t border-zinc-100">
-                  <span>حجم الإنتاجية والخطط</span>
+                  <span>كميات الإنتاج ({productionQuantities.filter(q => q.lineId === lineId).length})</span>
                   <ChevronLeft className="w-4 h-4" />
                 </div>
               </div>
@@ -1703,14 +1703,13 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           </div>
         ) : null}
 
-        {/* ========================================================================= */}
-        {/* SUB SECTION: DAILY_INSPECTION */}
-        {/* ========================================================================= */}
         {currentSection === 'DAILY_INSPECTION' ? (
           <div className="space-y-6 animate-fadeIn">
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
               <div className="flex items-center gap-2">
                 <button 
+                  type="button"
                   onClick={() => setCurrentSection('DASHBOARD')}
                   className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors"
                 >
@@ -1718,24 +1717,22 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                 </button>
                 <div>
                   <h2 className="text-sm font-black text-zinc-900">تسجيل الفحص اليومي للثلاجات</h2>
-                  <p className="text-[10px] text-zinc-400">إدخال بيانات الفحص الفني الروتيني لخط الإنتاج: {getLineName(lineId)}</p>
+                  <p className="text-[10px] text-zinc-400">إدخال بيانات الفحص الفني الروتيني لخط الإنتاج الحالي والتحقق من المطابقة والمظهر الخارجي</p>
                 </div>
               </div>
-              <button
-                onClick={handleResetForm}
-                className="text-xs text-red-600 font-bold px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
-              >
-                إعادة ضبط الاستمارة
-              </button>
             </div>
 
+            {/* Form */}
             <form onSubmit={handleSubmitDailyInspection} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
-              {/* Left Form Settings */}
-              <div className="space-y-6">
+              {/* Left Column: Basic Info (Model & Serial) */}
+              <div className="lg:col-span-1 space-y-6">
                 <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
                   <div className="border-b border-zinc-150 pb-2">
-                    <h3 className="text-xs font-black text-zinc-900">بيانات الوحدة والموديل</h3>
+                    <h3 className="text-xs font-black text-zinc-900 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-zinc-500" />
+                      معلومات الوحدة الأساسية
+                    </h3>
                   </div>
 
                   {/* Model */}
@@ -1744,9 +1741,9 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                     <select
                       value={modelId}
                       onChange={(e) => setModelId(e.target.value)}
-                      className="w-full bg-zinc-50 border border-zinc-200 focus:border-blue-500 focus:bg-white rounded-xl px-3 py-2.5 text-xs text-zinc-805 outline-none transition-all"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-xs text-zinc-800 outline-none focus:border-blue-500 focus:bg-white font-bold"
                     >
-                      {factoryModels.map(model => (
+                      {factoryModels.map((model) => (
                         <option key={model.id} value={model.id}>
                           {model.name}
                         </option>
@@ -1779,94 +1776,105 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                 </div>
               </div>
 
-              {/* Right Checklist and Defect logs */}
+              {/* Right Column: Checklist & Defects */}
               <div className="lg:col-span-2 space-y-6">
+                
+                {/* 1. Technical Checklist */}
                 <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
                   <div className="border-b border-zinc-150 pb-2">
-                    <h3 className="text-xs font-black text-zinc-900">بنود الفحص الفني الفصلي للثلاجة</h3>
+                    <h3 className="text-xs font-black text-zinc-900">بنود الفحص الفني والتحقق الروتيني</h3>
                   </div>
 
-                  <div className="space-y-2.5">
-                    {CHECKLIST_ITEMS.map((item, idx) => {
-                      const isItemPassed = checklist[item.id] !== false;
+                  <div className="space-y-2">
+                    {CHECKLIST_ITEMS.map((item) => {
+                      const passed = checklist[item.id] !== false;
                       return (
-                        <div 
-                          key={item.id}
-                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all ${
-                            isItemPassed ? 'bg-zinc-50/50 border-zinc-200' : 'bg-red-50/40 border-red-200'
-                          }`}
-                        >
-                          <div className="space-y-1">
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase bg-zinc-150 text-zinc-600 border border-zinc-200">
-                              {item.category === 'exterior' && 'مظهر خارجي'}
-                              {item.category === 'cooling' && 'دائرة التبريد'}
-                              {item.category === 'electrical' && 'توصيل كهربي'}
-                              {item.category === 'safety' && 'أمان عزل'}
-                              {item.category === 'accessories' && 'ملحقات وأرفف'}
-                            </span>
-                            <h4 className="text-xs font-bold text-zinc-805 mt-1">{item.label}</h4>
-                            <p className="text-[10px] text-zinc-400">{item.description}</p>
+                        <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 border border-zinc-150">
+                          <div>
+                            <span className="text-xs font-bold block text-zinc-800">{item.label}</span>
+                            <span className="text-[10px] text-zinc-400">{item.description}</span>
                           </div>
-
-                          <div className="flex items-center gap-1.5 self-end sm:self-center">
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => handleToggleChecklist(item.id, true)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                                isItemPassed ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-50 text-zinc-500'
+                              onClick={() => setChecklist(prev => ({ ...prev, [item.id]: true }))}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                                passed ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-200 text-zinc-500'
                               }`}
                             >
                               مطابق
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleToggleChecklist(item.id, false)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                                !isItemPassed ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-50 text-zinc-500'
+                              onClick={() => setChecklist(prev => ({ ...prev, [item.id]: false }))}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                                !passed ? 'bg-rose-100 text-rose-800' : 'bg-zinc-200 text-zinc-500'
                               }`}
                             >
-                              مرفوض
+                              غير مطابق
                             </button>
                           </div>
                         </div>
                       );
                     })}
                   </div>
+                </div>
 
-                  {/* Defects */}
-                  {selectedDefects.length > 0 && (
-                    <div className="bg-red-50/40 border border-red-200 rounded-xl p-4.5 space-y-4">
-                      <div className="flex items-center gap-2 text-red-700 border-b border-red-150 pb-2">
-                        <BadgeAlert className="w-4 h-4" />
-                        <span className="text-xs font-bold">تسجيل مبررات وأسباب عدم المطابقة</span>
-                      </div>
+                {/* 2. Defect Options Picker */}
+                <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
+                  <div className="border-b border-zinc-150 pb-2">
+                    <h3 className="text-xs font-black text-zinc-900">تسجيل عيوب إضافية في المظهر أو الأجزاء</h3>
+                  </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {DEFECT_OPTIONS.map((def) => {
-                          const isChosen = selectedDefects.includes(def.id);
-                          return (
-                            <div 
-                              key={def.id}
-                              className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                                isChosen ? 'bg-red-50 border-red-300 text-red-850' : 'bg-zinc-50'
-                              }`}
-                              onClick={() => handleToggleDefect(def.id)}
-                            >
-                              <div className="flex items-start gap-2">
-                                <input type="checkbox" checked={isChosen} onChange={() => {}} className="mt-0.5 rounded text-red-600 focus:ring-red-500" />
-                                <div>
-                                  <span className="text-xs font-bold block">{def.label}</span>
-                                  <span className="text-[10px] text-zinc-400 font-mono">Severity: {def.severity}</span>
-                                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {DEFECT_OPTIONS.map((def) => {
+                      const isChosen = selectedDefects.includes(def.id);
+                      return (
+                        <div 
+                          key={def.id}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                            isChosen ? 'bg-red-50 border-red-300 text-red-850 shadow-sm' : 'bg-zinc-50 border-zinc-150 hover:bg-zinc-100'
+                          }`}
+                          onClick={() => handleToggleDefect(def.id)}
+                        >
+                          <div className="flex items-start gap-2">
+                            <input 
+                              type="checkbox" 
+                              checked={isChosen} 
+                              onChange={() => {}} 
+                              className="mt-0.5 rounded text-red-600 focus:ring-red-500" 
+                            />
+                            <div className="flex-1">
+                              <span className="text-xs font-bold block">{def.label}</span>
+                              <div className="flex items-center justify-between mt-1 text-[9px] font-mono">
+                                <span className="text-zinc-400">Severity: {def.severity}</span>
+                                <span className={`px-1.5 py-0.5 rounded font-bold ${
+                                  def.severity === 'CRITICAL' ? 'bg-red-100 text-red-700' : 
+                                  def.severity === 'MAJOR' ? 'bg-orange-100 text-orange-700' : 'bg-zinc-100 text-zinc-650'
+                                }`}>
+                                  {def.category}
+                                </span>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
 
-                  <div className="pt-2 flex items-center justify-between gap-4">
+                              {isChosen && (
+                                <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                                  <textarea
+                                    placeholder="ملاحظات وتفاصيل العيب..."
+                                    value={defectNotes[def.id] || ''}
+                                    onChange={(e) => setDefectNotes(prev => ({ ...prev, [def.id]: e.target.value }))}
+                                    className="w-full text-xs p-1.5 border border-red-200 rounded bg-white outline-none focus:border-red-400"
+                                    rows={2}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-between gap-4 border-t border-zinc-100 mt-4">
                     <button
                       type="submit"
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl flex items-center gap-2"
@@ -1876,6 +1884,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                     </button>
                   </div>
                 </div>
+
               </div>
 
             </form>
@@ -1902,7 +1911,6 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                   <p className="text-[10px] text-zinc-400">مزامنة كاملة لجميع أقسام الفحص مع ملفات Google Sheet و AppSheet</p>
                 </div>
               </div>
-              
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowSyncConfig(!showSyncConfig)}
@@ -2003,48 +2011,117 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 {`function doPost(e) {
   var data = JSON.parse(e.postData.contents);
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetName = data.tabId === 'calib' ? 'معايرة ماكينة الشحن' : 'التجميع الابتدائي';
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
+  
+  // خريطة لربط الأقسام بكلمات مفتاحية في أسماء الصفحات
+  var prefixes = {
+    'calib': 'معايرة ماكينة الشحن',
+    'init_ass': 'التجمع الابتدائي',
+    'injection': 'الحقن',
+    'final_torque': 'عزوم التجميع النهائي',
+    'start_torque': 'عزوم بداية خط',
+    'inject_torque': 'عزوم الحقن',
+    'perf_test': 'اختبار الأداء'
+  };
+  
+  var targetPrefix = prefixes[data.tabId] || data.tabId;
+  var sheet = null;
+  
+  // البحث الذكي عن شيت يحتوي اسمه على الكلمة المفتاحية (لتفادي مشكلة لاحقة "- معمل 2" أو غيرها)
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    var name = sheets[i].getName();
+    if (name.indexOf(targetPrefix) !== -1) {
+      sheet = sheets[i];
+      break;
+    }
   }
   
+  // في حال لم يجد الشيت، ينشئه كنسخة احتياطية باسم القسم المذكور
+  if (!sheet) {
+    sheet = ss.insertSheet(targetPrefix);
+  }
+  
+  // إضافة السطر بناءً على نوع القسم
   if (data.tabId === 'calib') {
     sheet.appendRow([
-      data['التاريخ'], 
-      data['الوردية'], 
-      data['ماكينة الشحن'], 
-      data['الموديل'], 
-      data['الشحنة']
+      data['التاريخ'] || data['date'], 
+      data['الوردية'] || data['shift'], 
+      data['ماكينة الشحن'] || data['machine'], 
+      data['الموديل'] || data['modelName'], 
+      data['الشحنة'] || data['rawCharge']
     ]);
   } else if (data.tabId === 'init_ass') {
     sheet.appendRow([
-      data['التاريخ'], 
-      data['الوردية'], 
-      data['الموديل'], 
-      data['Y'], 
-      data['X'], 
-      data['N'], 
-      data['M'], 
-      data['L'], 
-      data['W'], 
-      data['P'], 
-      data['R'], 
-      data['S'],
-      data['التأكد من إستخدام الضبعه أثناء لصق المواسير مع الصاج'],
-      data['فحص الكابينه الصاج للتاكد من عدم وجود خدوش او خبطات او انبعاجات او تشوهات بها'],
-      data['التاكد من تطبيع لصق الألومنيوم تيب علي جانبى الكابينه الصاج موديلات شارب وتورنيدو.'],
-      data['التاكد من وجود Hot Pipe Support موديلات شارب وتورنيدو'],
-      data['التأكد من لصق العجينة بطريقة صحيحة فى تجميع الـ C . Partion والتأكد من المقاسات حسب تعليمات التشغيل بالقسم'],
-      data['التأكد من وجود فوم علي ظهر الكابينه البلاستيك ولصق الضفيرة جيدا حسب تعليمات التشغيل بالقسم لكل موديل .'],
-      data['التأكد من تثبيت الضفيرة بالكات بطريقة صحيحة علي الكابينة البلاستيك'],
-      data['التأكد من وضع الهوت سيلر بالاماكن المحدده بالزوايا'],
-      data['التأكد من مطابقة تاريخ الباركود لتاريخ اليوم .'],
-      data['التأكد من إجراء إختبار البوردة بطريقة صحيحة.'],
-      data['إختبار خرطوم الصرف بجهاز ضغط الهواء'],
-      data['التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج']
+      data['التاريخ'] || data['date'], 
+      data['الوردية'] || data['shift'], 
+      data['الموديل'] || data['modelCode'], 
+      data['Y'] || '0', 
+      data['X'] || '0', 
+      data['N'] || '0', 
+      data['M'] || '0', 
+      data['L'] || '0', 
+      data['W'] || '0', 
+      data['P'] || '0', 
+      data['R'] || '0', 
+      data['S'] || '0',
+      data['التأكد من إستخدام الضبعه أثناء لصق المواسير مع الصاج'] || 'OK',
+      data['فحص الكابينه الصاج للتاكد من عدم وجود خدوش او خبطات او انبعاجات او تشوهات بها'] || 'OK',
+      data['التاكد من تطبيع لصق الألومنيوم تيب علي جانبى الكابينه الصاج موديلات شارب وتورنيدو.'] || 'OK',
+      data['التاكد من وجود Hot Pipe Support موديلات شارب وتورنيدو'] || 'OK',
+      data['التأكد من لصق العجينة بطريقة صحيحة فى تجميع الـ C . Partion والتأكد من المقاسات حسب تعليمات التشغيل بالقسم'] || 'OK',
+      data['التأكد من وجود فوم علي ظهر الكابينه البلاستيك ولصق الضفيرة جيدا حسب تعليمات التشغيل بالقسم لكل موديل .'] || 'OK',
+      data['التأكد من تثبيت الضفيرة بالكات بطريقة صحيحة علي الكابينة البلاستيك'] || 'OK',
+      data['التأكد من وضع الهوت سيلر بالاماكن المحدده بالزوايا'] || 'OK',
+      data['التأكد من مطابقة تاريخ الباركود لتاريخ اليوم .'] || 'OK',
+      data['التأكد من إجراء إختبار البوردة بطريقة صحيحة.'] || 'OK',
+      data['إختبار خرطوم الصرف بجهاز ضغط الهواء'] || 'OK',
+      data['التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج'] || 'OK'
+    ]);
+  } else if (data.tabId === 'injection') {
+    sheet.appendRow([
+      data['التاريخ'] || data['date'],
+      data['الوردية'] || data['shift'],
+      data['الموديل'] || data['modelName'],
+      data['foamWeight'] || '',
+      data['foamPressure'] || '',
+      data['injectionStatus'] || 'PASS'
+    ]);
+  } else if (data.tabId === 'final_torque') {
+    sheet.appendRow([
+      data['التاريخ'] || data['date'],
+      data['الوردية'] || data['shift'],
+      data['الموديل'] || data['modelName'],
+      data['torqueValue'] || '',
+      data['torqueStandard'] || '',
+      data['torqueStatus'] || 'PASS'
+    ]);
+  } else if (data.tabId === 'start_torque') {
+    sheet.appendRow([
+      data['التاريخ'] || data['date'],
+      data['الوردية'] || data['shift'],
+      data['stationNum'] || '',
+      data['screwdriverTorque'] || '',
+      data['startTorqueStatus'] || 'PASS'
+    ]);
+  } else if (data.tabId === 'inject_torque') {
+    sheet.appendRow([
+      data['التاريخ'] || data['date'],
+      data['الوردية'] || data['shift'],
+      data['fixingBolt'] || '',
+      data['measuredTorque'] || '',
+      data['injectTorqueStatus'] || 'PASS'
+    ]);
+  } else if (data.tabId === 'perf_test') {
+    sheet.appendRow([
+      data['التاريخ'] || data['date'],
+      data['الوردية'] || data['shift'],
+      data['الموديل'] || data['modelName'],
+      (data['cabinetTemp'] || '0') + ' / ' + (data['freezerTemp'] || '0'),
+      data['currentAmp'] || '',
+      data['perfResult'] || 'PASS'
     ]);
   }
+  
   return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
 }`}
                   </pre>
