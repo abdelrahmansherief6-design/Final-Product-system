@@ -11,7 +11,7 @@ import {
   Play, Sparkles, Send, CheckCircle2, XCircle, AlertTriangle, ListChecks, History, 
   LogOut, Check, BadgeAlert, ClipboardCheck, BookOpen, Layers, Ban, ClipboardList, 
   Calendar, Search, ArrowRight, HelpCircle, Archive, Save, PlusCircle, ShieldAlert,
-  Gauge, Activity, FileText, ChevronLeft
+  Gauge, Activity, FileText, ChevronLeft, Settings, RefreshCw
 } from 'lucide-react';
 
 interface TechnicianWorkspaceProps {
@@ -25,20 +25,88 @@ interface TechnicianWorkspaceProps {
 interface CriticalLog {
   id: string;
   lineId: string;
+  tabId?: 'calib' | 'init_ass' | 'injection' | 'final_torque' | 'start_torque' | 'inject_torque' | 'perf_test';
   inspectorSap: string;
-  vacuumLevel: number; // mbar (Standard <= 0.1)
-  gasCharge: number; // grams (Standard 60g +/- 2g)
-  insulationRes: number; // MegaOhms (Standard >= 100)
-  heliumLeak: 'PASS' | 'FAIL';
+  vacuumLevel?: number; // mbar (Standard <= 0.1)
+  gasCharge?: number; // grams (Standard 60g +/- 2g)
+  insulationRes?: number; // MegaOhms (Standard >= 100)
+  heliumLeak?: 'PASS' | 'FAIL';
   timestamp: string;
-  // Extended for AppSheet synchronization:
+  
+  // Tab-specific fields stored as optional properties:
+  // 1. calib (معايرة ماكينة الشحن)
   date?: string;
   shift?: string;
   machine?: string;
   modelName?: string;
   source?: 'WEBSITE' | 'APPSHEET';
   rawCharge?: string | number;
+
+  // 2. init_ass (التجميع الابتدائي)
+  modelCode?: string;
+  inspectorName?: string;
+  assemblyStatus?: 'PASS' | 'FAIL';
+  notes?: string;
+
+  // 3. injection (الحقن)
+  foamWeight?: number;
+  foamPressure?: number;
+  injectionStatus?: 'PASS' | 'FAIL';
+
+  // 4. final_torque (عزوم التجميع النهائي)
+  torqueValue?: number;
+  torqueStandard?: string;
+  torqueStatus?: 'PASS' | 'FAIL';
+
+  // 5. start_torque (عزوم بداية خط)
+  stationNum?: string;
+  screwdriverTorque?: number;
+  startTorqueStatus?: 'PASS' | 'FAIL';
+
+  // 6. inject_torque (عزوم الحقن)
+  fixingBolt?: string;
+  measuredTorque?: number;
+  injectTorqueStatus?: 'PASS' | 'FAIL';
+
+  // 7. perf_test (اختبار الأداء)
+  cabinetTemp?: number;
+  freezerTemp?: number;
+  currentAmp?: number;
+  perfResult?: 'PASS' | 'FAIL';
 }
+
+const CRITICAL_TABS = [
+  { id: 'calib', name: 'معايرة ماكينة الشحن' },
+  { id: 'init_ass', name: 'التجميع الابتدائي' },
+  { id: 'injection', name: 'الحقن' },
+  { id: 'final_torque', name: 'عزوم التجميع النهائي' },
+  { id: 'start_torque', name: 'عزوم بداية خط' },
+  { id: 'inject_torque', name: 'عزوم الحقن' },
+  { id: 'perf_test', name: 'اختبار الأداء' }
+] as const;
+
+const getTabCsvUrl = (masterUrl: string, gid: string, customUrl?: string): string => {
+  if (customUrl) return customUrl;
+  if (!masterUrl) return '';
+
+  // Case 1: Published URL (contains 2PACX-)
+  if (masterUrl.includes('2PACX-')) {
+    const match = masterUrl.match(/\/d\/e\/([^\/]+)/);
+    if (match && match[1]) {
+      const key = match[1];
+      return `https://docs.google.com/spreadsheets/d/e/${key}/pub?gid=${gid || '0'}&single=true&output=csv`;
+    }
+  }
+
+  // Case 2: Standard spreadsheet URL (contains /d/)
+  const match = masterUrl.match(/\/d\/([^\/]+)/);
+  if (match && match[1]) {
+    const key = match[1];
+    return `https://docs.google.com/spreadsheets/d/${key}/export?gid=${gid || '0'}&format=csv`;
+  }
+
+  return masterUrl; // fallback
+};
 
 interface TrialRun {
   id: string;
@@ -189,21 +257,85 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       if (stored) return JSON.parse(stored);
     } catch {}
     return [
-      { id: 'CRIT-1', lineId: 'LINE_A', inspectorSap: '40016452', vacuumLevel: 0.08, gasCharge: 59.5, insulationRes: 120, heliumLeak: 'PASS', timestamp: new Date().toISOString(), source: 'WEBSITE' },
-      { id: 'CRIT-2', lineId: 'LINE_B', inspectorSap: '12345678', vacuumLevel: 0.09, gasCharge: 60.2, insulationRes: 105, heliumLeak: 'PASS', timestamp: new Date().toISOString(), source: 'WEBSITE' }
+      { id: 'CRIT-1', lineId: 'LINE_A', tabId: 'calib', inspectorSap: '40016452', vacuumLevel: 0.08, gasCharge: 59.5, insulationRes: 120, heliumLeak: 'PASS', timestamp: new Date().toISOString(), source: 'WEBSITE' },
+      { id: 'CRIT-2', lineId: 'LINE_B', tabId: 'calib', inspectorSap: '12345678', vacuumLevel: 0.09, gasCharge: 60.2, insulationRes: 105, heliumLeak: 'PASS', timestamp: new Date().toISOString(), source: 'WEBSITE' }
     ];
   });
 
   // AppSheet Google Sheet published CSV urls
-  const [sheetUrls, setSheetUrls] = useState<Record<string, string>>(() => {
+  const [sheetUrls, setSheetUrls] = useState<Record<string, any>>(() => {
     try {
       const stored = localStorage.getItem('elaraby_qa_sheet_urls');
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const normalized: Record<string, any> = {};
+        ['LINE_A', 'LINE_B', 'LINE_C'].forEach(lid => {
+          const val = parsed[lid];
+          if (typeof val === 'string') {
+            normalized[lid] = {
+              masterUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pubhtml',
+              calib_url: val,
+              calib_gid: '574817176',
+              init_ass_gid: '2026850401',
+              injection_gid: '1501712415',
+              final_torque_gid: '43924773',
+              start_torque_gid: '1668600810',
+              inject_torque_gid: '1853472018',
+              perf_test_gid: '54261763'
+            };
+          } else if (val && typeof val === 'object') {
+            normalized[lid] = val;
+          } else {
+            normalized[lid] = {
+              masterUrl: lid === 'LINE_B' ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pubhtml' : '',
+              calib_url: lid === 'LINE_B' ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pub?gid=574817176&single=true&output=csv' : '',
+              calib_gid: '574817176',
+              init_ass_gid: '2026850401',
+              injection_gid: '1501712415',
+              final_torque_gid: '43924773',
+              start_torque_gid: '1668600810',
+              inject_torque_gid: '1853472018',
+              perf_test_gid: '54261763'
+            };
+          }
+        });
+        return normalized;
+      }
     } catch {}
     return {
-      LINE_A: '',
-      LINE_B: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pub?output=csv',
-      LINE_C: ''
+      LINE_A: {
+        masterUrl: '',
+        calib_url: '',
+        calib_gid: '574817176',
+        init_ass_gid: '2026850401',
+        injection_gid: '1501712415',
+        final_torque_gid: '43924773',
+        start_torque_gid: '1668600810',
+        inject_torque_gid: '1853472018',
+        perf_test_gid: '54261763'
+      },
+      LINE_B: {
+        masterUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pubhtml',
+        calib_url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pub?gid=574817176&single=true&output=csv',
+        calib_gid: '574817176',
+        init_ass_gid: '2026850401',
+        injection_gid: '1501712415',
+        final_torque_gid: '43924773',
+        start_torque_gid: '1668600810',
+        inject_torque_gid: '1853472018',
+        perf_test_gid: '54261763'
+      },
+      LINE_C: {
+        masterUrl: '',
+        calib_url: '',
+        calib_gid: '574817176',
+        init_ass_gid: '2026850401',
+        injection_gid: '1501712415',
+        final_torque_gid: '43924773',
+        start_torque_gid: '1668600810',
+        inject_torque_gid: '1853472018',
+        perf_test_gid: '54261763'
+      }
     };
   });
 
@@ -232,6 +364,37 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const [manualModelName, setManualModelName] = useState('');
   const [manualCharge, setManualCharge] = useState('114');
 
+  // Tab Selection for Critical Ops
+  const [activeCritTab, setActiveCritTab] = useState<'calib' | 'init_ass' | 'injection' | 'final_torque' | 'start_torque' | 'inject_torque' | 'perf_test'>('calib');
+  const [showSyncConfig, setShowSyncConfig] = useState(false);
+
+  // Custom Form fields for separate tabs
+  const [manualModelCode, setManualModelCode] = useState('');
+  const [manualInspectorName, setManualInspectorName] = useState(user.name);
+  const [manualAssemblyStatus, setManualAssemblyStatus] = useState<'PASS' | 'FAIL'>('PASS');
+  const [manualNotes, setManualNotes] = useState('');
+
+  const [manualFoamWeight, setManualFoamWeight] = useState('');
+  const [manualFoamPressure, setManualFoamPressure] = useState('');
+  const [manualInjectionStatus, setManualInjectionStatus] = useState<'PASS' | 'FAIL'>('PASS');
+
+  const [manualTorqueValue, setManualTorqueValue] = useState('');
+  const [manualTorqueStandard, setManualTorqueStandard] = useState('1.2 - 1.5 N.m');
+  const [manualTorqueStatus, setManualTorqueStatus] = useState<'PASS' | 'FAIL'>('PASS');
+
+  const [manualStationNum, setManualStationNum] = useState('Station 1');
+  const [manualScrewdriverTorque, setManualScrewdriverTorque] = useState('');
+  const [manualStartTorqueStatus, setManualStartTorqueStatus] = useState<'PASS' | 'FAIL'>('PASS');
+
+  const [manualFixingBolt, setManualFixingBolt] = useState('M6 Joint');
+  const [manualMeasuredTorque, setManualMeasuredTorque] = useState('');
+  const [manualInjectTorqueStatus, setManualInjectTorqueStatus] = useState<'PASS' | 'FAIL'>('PASS');
+
+  const [manualCabinetTemp, setManualCabinetTemp] = useState('');
+  const [manualFreezerTemp, setManualFreezerTemp] = useState('');
+  const [manualCurrentAmp, setManualCurrentAmp] = useState('');
+  const [manualPerfResult, setManualPerfResult] = useState<'PASS' | 'FAIL'>('PASS');
+
   // Sync URLs and logs to localStorage on changes
   useEffect(() => {
     localStorage.setItem('elaraby_qa_sheet_urls', JSON.stringify(sheetUrls));
@@ -241,8 +404,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     localStorage.setItem('elaraby_qa_synced_critical_logs', JSON.stringify(syncedLogs));
   }, [syncedLogs]);
 
-  // Robust CSV parser
-  const parseCriticalSheetCSV = (csvText: string, targetLineId: ProductionLineId): CriticalLog[] => {
+  // Robust CSV parser supporting 7 tab IDs
+  const parseCriticalSheetCSV = (csvText: string, targetLineId: ProductionLineId, tabId: string): CriticalLog[] => {
     const lines = csvText.split('\n');
     if (lines.length <= 1) return [];
     
@@ -252,16 +415,29 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       const line = lines[i].trim();
       if (!line) continue;
       
-      const parts = line.split(',').map(p => p.trim());
-      if (parts.length < 5) continue;
+      let parts: string[] = [];
+      let currentPart = '';
+      let insideQuotes = false;
+      for (let charIndex = 0; charIndex < line.length; charIndex++) {
+        const char = line[charIndex];
+        if (char === '"') {
+          insideQuotes = !insideQuotes;
+        } else if (char === ',' && !insideQuotes) {
+          parts.push(currentPart.trim());
+          currentPart = '';
+        } else {
+          currentPart += char;
+        }
+      }
+      parts.push(currentPart.trim());
+      
+      if (parts.length < 2) continue;
       
       const dateStr = parts[0];
-      const shift = parts[1];
-      const machine = parts[2];
-      const model = parts[3];
-      const charge = parts[4];
+      const shift = parts[1] || 'الأولى';
       
-      if (dateStr === 'التاريخ' || dateStr === '2' || (!dateStr && !shift && !machine)) continue;
+      if (dateStr === 'التاريخ' || dateStr === '2' || (!dateStr && !shift)) continue;
+      if (dateStr.includes('التاريخ') || dateStr.includes('Date')) continue;
       
       let parsedTimestamp = new Date().toISOString();
       try {
@@ -270,7 +446,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           if (dParts.length === 3) {
             const day = parseInt(dParts[0]);
             const month = parseInt(dParts[1]) - 1;
-            const year = parseInt(dParts[2]);
+            let year = parseInt(dParts[2]);
+            if (year < 100) year += 2000;
             const dObj = new Date(year, month, day, 12, 0, 0);
             if (!isNaN(dObj.getTime())) {
               parsedTimestamp = dObj.toISOString();
@@ -286,35 +463,171 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         console.error(e);
       }
       
-      results.push({
-        id: `APPSHEET-${targetLineId}-${i}-${dateStr}-${machine}-${charge}`,
-        lineId: targetLineId,
-        inspectorSap: 'AppSheet',
-        vacuumLevel: 0.08,
-        gasCharge: parseFloat(charge) || 0,
-        insulationRes: 110,
-        heliumLeak: 'PASS',
-        timestamp: parsedTimestamp,
-        date: dateStr,
-        shift: shift,
-        machine: machine,
-        modelName: model,
-        source: 'APPSHEET',
-        rawCharge: charge
-      } as any);
+      const id = `APPSHEET-${targetLineId}-${tabId}-${i}-${dateStr}-${shift}`;
+      
+      if (tabId === 'calib') {
+        const machine = parts[2] || 'غير محدد';
+        const model = parts[3] || 'عام';
+        const charge = parts[4] || '';
+        results.push({
+          id,
+          lineId: targetLineId,
+          tabId: 'calib',
+          inspectorSap: 'AppSheet',
+          vacuumLevel: 0.08,
+          gasCharge: parseFloat(charge) || 0,
+          insulationRes: 110,
+          heliumLeak: 'PASS',
+          timestamp: parsedTimestamp,
+          date: dateStr,
+          shift,
+          machine,
+          modelName: model,
+          source: 'APPSHEET',
+          rawCharge: charge
+        });
+      } else if (tabId === 'init_ass') {
+        const modelCode = parts[2] || 'عام';
+        const inspectorName = parts[3] || 'مفتش أب شيت';
+        const statusVal = parts[4] || 'سليم';
+        const notes = parts[5] || '';
+        results.push({
+          id,
+          lineId: targetLineId,
+          tabId: 'init_ass',
+          inspectorSap: 'AppSheet',
+          timestamp: parsedTimestamp,
+          date: dateStr,
+          shift,
+          modelCode,
+          inspectorName,
+          assemblyStatus: (statusVal.includes('تالف') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          notes,
+          source: 'APPSHEET'
+        });
+      } else if (tabId === 'injection') {
+        const model = parts[2] || 'عام';
+        const weight = parseFloat(parts[3]) || 0;
+        const pressure = parseFloat(parts[4]) || 0;
+        const statusVal = parts[5] || 'سليم';
+        results.push({
+          id,
+          lineId: targetLineId,
+          tabId: 'injection',
+          inspectorSap: 'AppSheet',
+          timestamp: parsedTimestamp,
+          date: dateStr,
+          shift,
+          modelName: model,
+          foamWeight: weight,
+          foamPressure: pressure,
+          injectionStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          source: 'APPSHEET'
+        });
+      } else if (tabId === 'final_torque') {
+        const model = parts[2] || 'عام';
+        const value = parseFloat(parts[3]) || 0;
+        const std = parts[4] || '';
+        const statusVal = parts[5] || 'مطابق';
+        results.push({
+          id,
+          lineId: targetLineId,
+          tabId: 'final_torque',
+          inspectorSap: 'AppSheet',
+          timestamp: parsedTimestamp,
+          date: dateStr,
+          shift,
+          modelName: model,
+          torqueValue: value,
+          torqueStandard: std,
+          torqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          source: 'APPSHEET'
+        });
+      } else if (tabId === 'start_torque') {
+        const stationNum = parts[2] || '';
+        const value = parseFloat(parts[3]) || 0;
+        const statusVal = parts[4] || 'مطابق';
+        results.push({
+          id,
+          lineId: targetLineId,
+          tabId: 'start_torque',
+          inspectorSap: 'AppSheet',
+          timestamp: parsedTimestamp,
+          date: dateStr,
+          shift,
+          stationNum,
+          screwdriverTorque: value,
+          startTorqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          source: 'APPSHEET'
+        });
+      } else if (tabId === 'inject_torque') {
+        const fixingBolt = parts[2] || '';
+        const value = parseFloat(parts[3]) || 0;
+        const statusVal = parts[4] || 'مطابق';
+        results.push({
+          id,
+          lineId: targetLineId,
+          tabId: 'inject_torque',
+          inspectorSap: 'AppSheet',
+          timestamp: parsedTimestamp,
+          date: dateStr,
+          shift,
+          fixingBolt,
+          measuredTorque: value,
+          injectTorqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          source: 'APPSHEET'
+        });
+      } else if (tabId === 'perf_test') {
+        const model = parts[2] || 'عام';
+        const cabTemp = parseFloat(parts[3]) || 0;
+        const freezTemp = parseFloat(parts[4]) || 0;
+        const current = parseFloat(parts[5]) || 0;
+        const statusVal = parts[6] || 'PASS';
+        results.push({
+          id,
+          lineId: targetLineId,
+          tabId: 'perf_test',
+          inspectorSap: 'AppSheet',
+          timestamp: parsedTimestamp,
+          date: dateStr,
+          shift,
+          modelName: model,
+          cabinetTemp: cabTemp,
+          freezerTemp: freezTemp,
+          currentAmp: current,
+          perfResult: (statusVal.includes('FAIL') || statusVal.toUpperCase().includes('NG') || statusVal.includes('راسب')) ? 'FAIL' : 'PASS',
+          source: 'APPSHEET'
+        });
+      }
     }
     
     return results;
   };
 
-  // Sync function
-  const handleSyncSheet = async (targetLineId: ProductionLineId) => {
-    const url = sheetUrls[targetLineId];
-    if (!url) {
-      setSyncError('لم يتم إدخال رابط جدول بيانات جوجل (Google Sheet) لهذا الخط بعد.');
+  // Sync a specific tab of Google Sheets
+  const handleSyncTab = async (targetLineId: ProductionLineId, tabKey: string) => {
+    const lineConfig = sheetUrls[targetLineId];
+    if (!lineConfig) {
+      setSyncError('لم يتم تهيئة إعدادات هذا الخط بعد.');
       return;
     }
+
+    let gid = '0';
+    let customUrl = '';
     
+    if (tabKey === 'calib') { gid = lineConfig.calib_gid || '574817176'; customUrl = lineConfig.calib_url; }
+    else if (tabKey === 'init_ass') gid = lineConfig.init_ass_gid || '2026850401';
+    else if (tabKey === 'injection') gid = lineConfig.injection_gid || '1501712415';
+    else if (tabKey === 'final_torque') gid = lineConfig.final_torque_gid || '43924773';
+    else if (tabKey === 'start_torque') gid = lineConfig.start_torque_gid || '1668600810';
+    else if (tabKey === 'inject_torque') gid = lineConfig.inject_torque_gid || '1853472018';
+    else if (tabKey === 'perf_test') gid = lineConfig.perf_test_gid || '54261763';
+
+    const url = getTabCsvUrl(lineConfig.masterUrl, gid, customUrl);
+    if (!url) {
+      return; // Quiet return on automatic sync if URL isn't configured
+    }
+
     setIsSyncing(true);
     setSyncError('');
     try {
@@ -323,43 +636,102 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         throw new Error(`خطأ في جلب البيانات: ${response.statusText}`);
       }
       const csvText = await response.text();
-      const parsed = parseCriticalSheetCSV(csvText, targetLineId);
+      const parsed = parseCriticalSheetCSV(csvText, targetLineId, tabKey);
       
       setSyncedLogs(prev => {
-        const rest = prev.filter(log => log.lineId !== targetLineId);
+        const rest = prev.filter(log => !(log.lineId === targetLineId && (log as any).tabId === tabKey));
         return [...parsed, ...rest];
       });
       
-      setCritSuccessMsg('تم مزامنة وتحديث بيانات AppSheet بنجاح!');
+      setCritSuccessMsg(`تمت مزامنة بيانات (${CRITICAL_TABS.find(t => t.id === tabKey)?.name}) بنجاح!`);
       setTimeout(() => setCritSuccessMsg(''), 4000);
     } catch (err: any) {
       console.error(err);
-      setSyncError(`فشل الاتصال بجدول البيانات المرفوع. تأكد من نشر الملف كـ CSV ومن صحة الرابط. تفاصيل الخطأ: ${err.message || err}`);
+      setSyncError(`فشل الاتصال بجدول البيانات للقسم ${CRITICAL_TABS.find(t => t.id === tabKey)?.name}. تأكد من صحة الـ GID أو رابط النشر. تفاصيل الخطأ: ${err.message || err}`);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // Auto sync on mount/active line change
-  useEffect(() => {
-    if (sheetUrls[lineId]) {
-      handleSyncSheet(lineId);
+  // Sync all tabs for a given line at once
+  const handleSyncAllTabs = async (targetLineId: ProductionLineId) => {
+    const lineConfig = sheetUrls[targetLineId];
+    if (!lineConfig || !lineConfig.masterUrl) {
+      setSyncError('يرجى إدخال رابط المستند الرئيسي أولاً في الإعدادات.');
+      return;
     }
-  }, [lineId, sheetUrls[lineId]]);
 
-  // Memoized unified critical logs list for display
+    setIsSyncing(true);
+    setSyncError('');
+    let successCount = 0;
+    let errors: string[] = [];
+
+    for (const tab of CRITICAL_TABS) {
+      let gid = '0';
+      let customUrl = '';
+      
+      if (tab.id === 'calib') { gid = lineConfig.calib_gid || '574817176'; customUrl = lineConfig.calib_url; }
+      else if (tab.id === 'init_ass') gid = lineConfig.init_ass_gid || '2026850401';
+      else if (tab.id === 'injection') gid = lineConfig.injection_gid || '1501712415';
+      else if (tab.id === 'final_torque') gid = lineConfig.final_torque_gid || '43924773';
+      else if (tab.id === 'start_torque') gid = lineConfig.start_torque_gid || '1668600810';
+      else if (tab.id === 'inject_torque') gid = lineConfig.inject_torque_gid || '1853472018';
+      else if (tab.id === 'perf_test') gid = lineConfig.perf_test_gid || '54261763';
+
+      const url = getTabCsvUrl(lineConfig.masterUrl, gid, customUrl);
+      if (!url) continue;
+
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const csvText = await response.text();
+          const parsed = parseCriticalSheetCSV(csvText, targetLineId, tab.id);
+          
+          setSyncedLogs(prev => {
+            const rest = prev.filter(log => !(log.lineId === targetLineId && (log as any).tabId === tab.id));
+            return [...parsed, ...rest];
+          });
+          successCount++;
+        } else {
+          errors.push(tab.name);
+        }
+      } catch (e) {
+        errors.push(tab.name);
+      }
+    }
+
+    setIsSyncing(false);
+    if (errors.length > 0) {
+      setSyncError(`تمت مزامنة ${successCount} أقسام بنجاح. فشل مزامنة الأقسام: ${errors.join('، ')}.`);
+    } else {
+      setCritSuccessMsg('تمت مزامنة جميع أقسام جدول البيانات بنجاح!');
+      setTimeout(() => setCritSuccessMsg(''), 4000);
+    }
+  };
+
+  // Auto sync active tab on line or tab change
+  useEffect(() => {
+    const lineConfig = sheetUrls[lineId];
+    if (lineConfig && (lineConfig.masterUrl || lineConfig.calib_url)) {
+      handleSyncTab(lineId, activeCritTab);
+    }
+  }, [lineId, activeCritTab]);
+
+  // Memoized unified critical logs list filtered by line and active tab
   const allCriticalLogs = React.useMemo(() => {
-    const localLineLogs = (criticalLogs || []).filter(l => l && l.lineId === lineId).map(log => ({
-      ...log,
-      source: log.source || 'WEBSITE' as const,
-      shift: (log as any).shift || 'الأولى',
-      machine: (log as any).machine || 'موقع الويب',
-      modelName: (log as any).modelName || getModelName(log.modelName || modelId) || 'عام',
-      rawCharge: (log as any).rawCharge || log.gasCharge,
-      date: (log as any).date || safeDateString(log.timestamp)
-    }));
+    const localLineLogs = (criticalLogs || [])
+      .filter(l => l && l.lineId === lineId && (l.tabId || 'calib') === activeCritTab)
+      .map(log => ({
+        ...log,
+        source: log.source || 'WEBSITE' as const,
+        shift: (log as any).shift || 'الأولى',
+        machine: (log as any).machine || 'خط التجميع',
+        modelName: (log as any).modelName || getModelName(log.modelName || modelId) || 'عام',
+        rawCharge: (log as any).rawCharge || log.gasCharge,
+        date: (log as any).date || safeDateString(log.timestamp)
+      }));
     
-    const syncedLineLogs = (syncedLogs || []).filter(l => l && l.lineId === lineId);
+    const syncedLineLogs = (syncedLogs || []).filter(l => l && l.lineId === lineId && (l.tabId || 'calib') === activeCritTab);
     
     return [...localLineLogs, ...syncedLineLogs].sort((a, b) => {
       const tA = new Date(a.timestamp).getTime();
@@ -368,7 +740,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       const timeB = isNaN(tB) ? 0 : tB;
       return timeB - timeA;
     });
-  }, [criticalLogs, syncedLogs, lineId, modelId, models]);
+  }, [criticalLogs, syncedLogs, lineId, activeCritTab, modelId, models]);
 
   // Trial Runs State
   const [trialRuns, setTrialRuns] = useState<TrialRun[]>(() => {
@@ -566,46 +938,140 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const handleSubmitCriticalLog = (e: React.FormEvent) => {
     e.preventDefault();
     let newLog: CriticalLog;
+    const formattedDate = manualDate.split('-').reverse().join('/'); // "DD/MM/YYYY"
+    const timestampVal = new Date(manualDate + 'T12:00:00').toISOString();
 
-    if (entryType === 'APPSHEET_ALIGN') {
-      const formattedDate = manualDate.split('-').reverse().join('/'); // "DD/MM/YYYY"
+    if (activeCritTab === 'calib') {
+      if (entryType === 'APPSHEET_ALIGN') {
+        newLog = {
+          id: `CRIT-CALIB-${Date.now()}`,
+          lineId,
+          tabId: 'calib',
+          inspectorSap: user.sapNumber || 'UNKNOWN',
+          vacuumLevel: 0.08,
+          gasCharge: isNaN(parseFloat(manualCharge)) ? 0 : parseFloat(manualCharge),
+          insulationRes: 110,
+          heliumLeak: 'PASS',
+          timestamp: timestampVal,
+          date: formattedDate,
+          shift: manualShift,
+          machine: manualMachine,
+          modelName: manualModelName || getModelName(modelId),
+          source: 'WEBSITE',
+          rawCharge: manualCharge
+        };
+      } else {
+        newLog = {
+          id: `CRIT-CALIB-${Date.now()}`,
+          lineId,
+          tabId: 'calib',
+          inspectorSap: user.sapNumber || 'UNKNOWN',
+          vacuumLevel: parseFloat(vacuumInput) || 0.07,
+          gasCharge: parseFloat(gasInput) || 60,
+          insulationRes: parseFloat(insulationInput) || 110,
+          heliumLeak: heliumLeakInput,
+          timestamp: new Date().toISOString(),
+          date: new Date().toLocaleDateString('ar-EG'),
+          shift: 'الأولى',
+          machine: 'موقع الويب',
+          modelName: getModelName(modelId),
+          source: 'WEBSITE',
+          rawCharge: gasInput
+        };
+      }
+    } else if (activeCritTab === 'init_ass') {
       newLog = {
-        id: `CRIT-${Date.now()}`,
+        id: `CRIT-INIT-${Date.now()}`,
         lineId,
+        tabId: 'init_ass',
         inspectorSap: user.sapNumber || 'UNKNOWN',
-        vacuumLevel: 0.08, // standard ok
-        gasCharge: isNaN(parseFloat(manualCharge)) ? 0 : parseFloat(manualCharge),
-        insulationRes: 110, // standard ok
-        heliumLeak: 'PASS',
-        timestamp: new Date(manualDate + 'T12:00:00').toISOString(),
+        timestamp: timestampVal,
         date: formattedDate,
         shift: manualShift,
-        machine: manualMachine,
-        modelName: manualModelName || getModelName(modelId),
-        source: 'WEBSITE',
-        rawCharge: manualCharge
-      } as any;
-    } else {
+        modelCode: manualModelCode || 'عام',
+        inspectorName: manualInspectorName,
+        assemblyStatus: manualAssemblyStatus,
+        notes: manualNotes,
+        source: 'WEBSITE'
+      };
+    } else if (activeCritTab === 'injection') {
       newLog = {
-        id: `CRIT-${Date.now()}`,
+        id: `CRIT-INJECT-${Date.now()}`,
         lineId,
+        tabId: 'injection',
         inspectorSap: user.sapNumber || 'UNKNOWN',
-        vacuumLevel: parseFloat(vacuumInput) || 0,
-        gasCharge: parseFloat(gasInput) || 0,
-        insulationRes: parseFloat(insulationInput) || 0,
-        heliumLeak: heliumLeakInput,
-        timestamp: new Date().toISOString(),
-        date: new Date().toLocaleDateString('ar-EG'),
-        shift: 'الأولى',
-        machine: 'موقع الويب',
-        modelName: getModelName(modelId),
-        source: 'WEBSITE',
-        rawCharge: gasInput
+        timestamp: timestampVal,
+        date: formattedDate,
+        shift: manualShift,
+        modelName: manualModelName || getModelName(modelId),
+        foamWeight: parseFloat(manualFoamWeight) || 0,
+        foamPressure: parseFloat(manualFoamPressure) || 0,
+        injectionStatus: manualInjectionStatus,
+        source: 'WEBSITE'
+      };
+    } else if (activeCritTab === 'final_torque') {
+      newLog = {
+        id: `CRIT-FINAL-TORQ-${Date.now()}`,
+        lineId,
+        tabId: 'final_torque',
+        inspectorSap: user.sapNumber || 'UNKNOWN',
+        timestamp: timestampVal,
+        date: formattedDate,
+        shift: manualShift,
+        modelName: manualModelName || getModelName(modelId),
+        torqueValue: parseFloat(manualTorqueValue) || 0,
+        torqueStandard: manualTorqueStandard,
+        torqueStatus: manualTorqueStatus,
+        source: 'WEBSITE'
+      };
+    } else if (activeCritTab === 'start_torque') {
+      newLog = {
+        id: `CRIT-START-TORQ-${Date.now()}`,
+        lineId,
+        tabId: 'start_torque',
+        inspectorSap: user.sapNumber || 'UNKNOWN',
+        timestamp: timestampVal,
+        date: formattedDate,
+        shift: manualShift,
+        stationNum: manualStationNum,
+        screwdriverTorque: parseFloat(manualScrewdriverTorque) || 0,
+        startTorqueStatus: manualStartTorqueStatus,
+        source: 'WEBSITE'
+      };
+    } else if (activeCritTab === 'inject_torque') {
+      newLog = {
+        id: `CRIT-INJECT-TORQ-${Date.now()}`,
+        lineId,
+        tabId: 'inject_torque',
+        inspectorSap: user.sapNumber || 'UNKNOWN',
+        timestamp: timestampVal,
+        date: formattedDate,
+        shift: manualShift,
+        fixingBolt: manualFixingBolt,
+        measuredTorque: parseFloat(manualMeasuredTorque) || 0,
+        injectTorqueStatus: manualInjectTorqueStatus,
+        source: 'WEBSITE'
+      };
+    } else { // perf_test
+      newLog = {
+        id: `CRIT-PERF-${Date.now()}`,
+        lineId,
+        tabId: 'perf_test',
+        inspectorSap: user.sapNumber || 'UNKNOWN',
+        timestamp: timestampVal,
+        date: formattedDate,
+        shift: manualShift,
+        modelName: manualModelName || getModelName(modelId),
+        cabinetTemp: parseFloat(manualCabinetTemp) || 0,
+        freezerTemp: parseFloat(manualFreezerTemp) || 0,
+        currentAmp: parseFloat(manualCurrentAmp) || 0,
+        perfResult: manualPerfResult,
+        source: 'WEBSITE'
       };
     }
 
     setCriticalLogs(prev => [newLog, ...prev]);
-    setCritSuccessMsg('تم تسجيل عملية الجودة الحرجة وتحديث السجل بنجاح!');
+    setCritSuccessMsg('تم تسجيل وتوثيق بيانات العملية الحرجة وتحديث السجل بنجاح!');
     setTimeout(() => setCritSuccessMsg(''), 4000);
   };
 
@@ -1247,16 +1713,36 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <div>
-                  <h2 className="text-sm font-black text-zinc-900">العمليات الحرجة وتفريغ الهواء وشحن الغاز</h2>
-                  <p className="text-[10px] text-zinc-400">مزامنة تلقائية مع AppSheet وجدول بيانات جوجل لمصنع: {getLineName(lineId)}</p>
+                  <h2 className="text-sm font-black text-zinc-900">العمليات الحرجة وفحوصات الجودة بمصنع {getLineName(lineId)}</h2>
+                  <p className="text-[10px] text-zinc-400">مزامنة كاملة لجميع أقسام الفحص مع ملفات Google Sheet و AppSheet</p>
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 ${sheetUrls[lineId] ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${sheetUrls[lineId] ? 'bg-emerald-500' : 'bg-amber-500'} ${sheetUrls[lineId] ? 'animate-ping' : ''}`}></span>
-                  {sheetUrls[lineId] ? 'مربوط بـ AppSheet' : 'غير مربوط'}
-                </span>
+                <button
+                  onClick={() => setShowSyncConfig(!showSyncConfig)}
+                  className="bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  إعدادات الربط والـ GID
+                </button>
+                <button
+                  onClick={() => handleSyncAllTabs(lineId)}
+                  disabled={isSyncing}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors"
+                >
+                  {isSyncing ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      جاري المزامنة...
+                    </>
+                  ) : (
+                    <>
+                      <Activity className="w-3.5 h-3.5 animate-pulse" />
+                      مزامنة جميع الأقسام
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -1273,48 +1759,103 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
               </div>
             )}
 
-            {/* AppSheet / Google Sheets Link Configuration Card */}
-            <div className="bg-gradient-to-l from-zinc-50 to-white border border-zinc-200 rounded-2xl p-4 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Google Sheets Link & GID Configuration Card */}
+            {showSyncConfig && (
+              <div className="bg-gradient-to-l from-zinc-50 to-white border border-zinc-200 rounded-2xl p-4 shadow-sm space-y-3 animate-fadeIn">
                 <div className="space-y-1">
                   <h3 className="text-xs font-bold text-zinc-950 flex items-center gap-1.5">
                     <Layers className="w-4 h-4 text-blue-500" />
-                    رابط جدول بيانات جوجل (Google Sheet / AppSheet CSV)
+                    تهيئة روابط وتكامل جدول بيانات جوجل (Google Sheets GID Mapping)
                   </h3>
-                  <p className="text-[10px] text-zinc-400">تأكد من نشر الجدول كملف CSV عام ليقوم الموقع بجلب بيانات الفحص تلقائيًا.</p>
+                  <p className="text-[10px] text-zinc-400">تعتمد مزامنة كل تبويب على المعرف الفريد (gid) الخاص بالصفحة في الشيت الرئيسي.</p>
                 </div>
                 
-                <div className="flex-1 max-w-xl flex items-center gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="ضع رابط الـ CSV هنا..."
-                    value={sheetUrls[lineId] || ''}
-                    onChange={(e) => {
-                      const newUrl = e.target.value;
-                      setSheetUrls(prev => ({ ...prev, [lineId]: newUrl }));
-                    }}
-                    className="flex-1 bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-blue-500 font-mono"
-                  />
-                  
-                  <button 
-                    onClick={() => handleSyncSheet(lineId)}
-                    disabled={isSyncing}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors"
-                  >
-                    {isSyncing ? (
-                      <>
-                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                        مزامنة...
-                      </>
-                    ) : (
-                      <>
-                        <Activity className="w-3.5 h-3.5" />
-                        تحديث ومزامنة
-                      </>
-                    )}
-                  </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-zinc-700">رابط مستند ويب الرئيسي (Google Sheet HTML/Pubhtml)</label>
+                    <input 
+                      type="text" 
+                      placeholder="ضع رابط الـ pubhtml أو رابط الجدول هنا..."
+                      value={sheetUrls[lineId]?.masterUrl || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSheetUrls(prev => ({
+                          ...prev,
+                          [lineId]: { ...(prev[lineId] || {}), masterUrl: val }
+                        }));
+                      }}
+                      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-mono outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-zinc-700">رابط الـ CSV الخاص بـ (معايرة ماكينة الشحن) - اختياري</label>
+                    <input 
+                      type="text" 
+                      placeholder="رابط CSV مخصص للمعايرة..."
+                      value={sheetUrls[lineId]?.calib_url || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSheetUrls(prev => ({
+                          ...prev,
+                          [lineId]: { ...(prev[lineId] || {}), calib_url: val }
+                        }));
+                      }}
+                      className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-mono outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 pt-2 border-t border-zinc-150">
+                  {CRITICAL_TABS.map(tab => {
+                    const key = `${tab.id}_gid`;
+                    return (
+                      <div key={tab.id} className="space-y-1">
+                        <label className="block text-[9px] font-bold text-zinc-500 truncate" title={tab.name}>{tab.name}</label>
+                        <input
+                          type="text"
+                          placeholder="GID ID"
+                          value={sheetUrls[lineId]?.[key] || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSheetUrls(prev => ({
+                              ...prev,
+                              [lineId]: { ...(prev[lineId] || {}), [key]: val }
+                            }));
+                          }}
+                          className="w-full bg-white border border-zinc-200 rounded-md px-2 py-1 text-[10px] text-center font-mono outline-none"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            )}
+
+            {/* Department / Sections (Tabs) Slider */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+              {CRITICAL_TABS.map(tab => {
+                const isActive = activeCritTab === tab.id;
+                const tabLogs = (syncedLogs || []).filter(l => l && l.lineId === lineId && (l.tabId || 'calib') === tab.id);
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveCritTab(tab.id as any)}
+                    className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 border ${
+                      isActive 
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
+                        : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <span>{tab.name}</span>
+                    {tabLogs.length > 0 && (
+                      <span className={`px-1.5 py-0.5 text-[9px] rounded-full font-black ${isActive ? 'bg-blue-500 text-white' : 'bg-zinc-100 text-zinc-600'}`}>
+                        {tabLogs.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1322,168 +1863,473 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
               {/* Entry Form Column */}
               <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
                 
-                {/* Form Tab Selector */}
-                <div className="flex bg-zinc-100 p-1 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setEntryType('APPSHEET_ALIGN')}
-                    className={`flex-1 py-1.5 text-center text-xs font-bold rounded-lg transition-all ${entryType === 'APPSHEET_ALIGN' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-550 hover:text-zinc-900'}`}
-                  >
-                    شحن فريون (أب شيت)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEntryType('LAB_TEST')}
-                    className={`flex-1 py-1.5 text-center text-xs font-bold rounded-lg transition-all ${entryType === 'LAB_TEST' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-550 hover:text-zinc-900'}`}
-                  >
-                    فحص معملي كامل
-                  </button>
-                </div>
-
-                {entryType === 'APPSHEET_ALIGN' ? (
-                  // AppSheet Aligned Form
-                  <form onSubmit={handleSubmitCriticalLog} className="space-y-4 text-xs">
-                    <h4 className="font-bold text-zinc-900 pb-1 border-b border-zinc-100 flex items-center gap-1">
+                {/* Custom forms per active tab */}
+                <form onSubmit={handleSubmitCriticalLog} className="space-y-4 text-xs">
+                  <div className="flex items-center justify-between pb-1 border-b border-zinc-100">
+                    <h4 className="font-black text-zinc-900 flex items-center gap-1">
                       <PlusCircle className="w-4 h-4 text-blue-500" />
-                      إدخال مباشر لعملية شحن غاز
+                      تسجيل يدوي: {CRITICAL_TABS.find(t => t.id === activeCritTab)?.name}
                     </h4>
-                    
+                  </div>
+
+                  {/* Standard Fields for all tabs */}
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-zinc-700 font-bold mb-1">تاريخ العملية</label>
+                      <label className="block text-zinc-700 font-bold mb-1">تاريخ الفحص</label>
                       <input 
                         type="date" 
                         value={manualDate} 
                         onChange={e => setManualDate(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none" 
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none" 
                         required 
                       />
                     </div>
-
                     <div>
                       <label className="block text-zinc-700 font-bold mb-1">الوردية</label>
                       <select 
                         value={manualShift} 
                         onChange={e => setManualShift(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1.5 text-xs outline-none font-bold"
                       >
                         <option value="الأولى">الأولى</option>
                         <option value="الثانية">الثانية</option>
                         <option value="الثالثة">الثالثة</option>
                       </select>
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-zinc-700 font-bold mb-1">ماكينة الشحن</label>
-                      <select 
-                        value={manualMachine} 
-                        onChange={e => setManualMachine(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none mb-2"
-                      >
-                        <option value="اجرامكو 1">اجرامكو 1</option>
-                        <option value="R600">ماكينة R600</option>
-                        <option value="اجرامكو 2">اجرامكو 2</option>
-                        <option value="custom">كتابة يدوية...</option>
-                      </select>
-                      {manualMachine === 'custom' && (
-                        <input 
-                          type="text" 
-                          placeholder="اكتب اسم الماكينة هنا..."
-                          value={manualMachine === 'custom' ? '' : manualMachine}
-                          onChange={e => setManualMachine(e.target.value)}
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none"
-                          required
-                        />
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
-                      <select 
-                        value={manualModelName} 
-                        onChange={e => setManualModelName(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
-                      >
-                        <option value="">-- اختر موديل --</option>
-                        {factoryModels.map(m => (
-                          <option key={m.id} value={m.name}>{m.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-zinc-700 font-bold mb-1">وزن الشحنة الفعلية</label>
-                      <input 
-                        type="text" 
-                        placeholder="مثال: 114 أو OK" 
-                        value={manualCharge} 
-                        onChange={e => setManualCharge(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none text-left" 
-                        required 
-                      />
-                    </div>
-
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-2 rounded-xl text-xs transition-colors">
-                      تسجيل وحفظ شحنة الغاز
-                    </button>
-                  </form>
-                ) : (
-                  // Full Lab Test Form
-                  <form onSubmit={handleSubmitCriticalLog} className="space-y-4">
-                    <h4 className="font-bold text-zinc-900 pb-1 border-b border-zinc-100 flex items-center gap-1">
-                      <PlusCircle className="w-4 h-4 text-red-500" />
-                      تسجيل فحص معملي كامل للوحدة
-                    </h4>
-
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1">مستوى تفريغ الهواء (Vacuum Level - mbar)</label>
-                      <input 
-                        type="number" step="0.001" value={vacuumInput} onChange={e => setVacuumInput(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none" required 
-                      />
-                      <span className="text-[10px] text-zinc-400 block mt-1">* المعيار القياسي: أقل من أو يساوي 0.1 mbar</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1">وزن شحنة الفريون (Gas Charge - Grams)</label>
-                      <input 
-                        type="number" step="0.1" value={gasInput} onChange={e => setGasInput(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none" required 
-                      />
-                      <span className="text-[10px] text-zinc-400 block mt-1">* المعيار القياسي: 60 جرام (+/- 2 جرام)</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1">مقاومة عزل الكهرباء (Insulation - MΩ)</label>
-                      <input 
-                        type="number" step="1" value={insulationInput} onChange={e => setInsulationInput(e.target.value)} 
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none" required 
-                      />
-                      <span className="text-[10px] text-zinc-400 block mt-1">* المعيار القياسي: أكثر من أو يساوي 100 MegaOhm</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1">كاشف تسريب غاز الهيليوم (Helium Leak Test)</label>
-                      <div className="flex gap-2">
-                        <button 
-                          type="button" onClick={() => setHeliumLeakInput('PASS')} 
-                          className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${heliumLeakInput === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                  {/* Tab Specific Input Fields */}
+                  {activeCritTab === 'calib' && (
+                    <div className="space-y-3 pt-2">
+                      <div className="flex bg-zinc-100 p-0.5 rounded-lg mb-2">
+                        <button
+                          type="button"
+                          onClick={() => setEntryType('APPSHEET_ALIGN')}
+                          className={`flex-1 py-1 text-center text-[10px] font-bold rounded transition-all ${entryType === 'APPSHEET_ALIGN' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-550'}`}
                         >
-                          سليم (Pass)
+                          شحن فريون
                         </button>
-                        <button 
-                          type="button" onClick={() => setHeliumLeakInput('FAIL')} 
-                          className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${heliumLeakInput === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                        <button
+                          type="button"
+                          onClick={() => setEntryType('LAB_TEST')}
+                          className={`flex-1 py-1 text-center text-[10px] font-bold rounded transition-all ${entryType === 'LAB_TEST' ? 'bg-white text-zinc-900 shadow-xs' : 'text-zinc-550'}`}
                         >
-                          تسريب (Fail)
+                          فحص معملي كامل
                         </button>
                       </div>
-                    </div>
 
-                    <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      حفظ وتوثيق قيم المعمل للوحدة
-                    </button>
-                  </form>
-                )}
+                      {entryType === 'APPSHEET_ALIGN' ? (
+                        <>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">ماكينة الشحن</label>
+                            <input 
+                              type="text" 
+                              placeholder="مثال: اجرامكو 1"
+                              value={manualMachine} 
+                              onChange={e => setManualMachine(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none"
+                              required 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                            <select 
+                              value={manualModelName} 
+                              onChange={e => setManualModelName(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
+                            >
+                              <option value="">-- اختر موديل --</option>
+                              {factoryModels.map(m => (
+                                <option key={m.id} value={m.name}>{m.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">وزن الشحنة الفعلية</label>
+                            <input 
+                              type="text" 
+                              placeholder="مثال: 114" 
+                              value={manualCharge} 
+                              onChange={e => setManualCharge(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none text-left" 
+                              required 
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">مستوى تفريغ الهواء (Vacuum - mbar)</label>
+                            <input 
+                              type="number" step="0.001" value={vacuumInput} onChange={e => setVacuumInput(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" required 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">شحنة الفريون (Gas Charge - Grams)</label>
+                            <input 
+                              type="number" step="0.1" value={gasInput} onChange={e => setGasInput(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" required 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">مقاومة عزل الكهرباء (Insulation - MΩ)</label>
+                            <input 
+                              type="number" step="1" value={insulationInput} onChange={e => setInsulationInput(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" required 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">كاشف تسريب غاز الهيليوم</label>
+                            <div className="flex gap-2">
+                              <button 
+                                type="button" onClick={() => setHeliumLeakInput('PASS')} 
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${heliumLeakInput === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                              >
+                                PASS
+                              </button>
+                              <button 
+                                type="button" onClick={() => setHeliumLeakInput('FAIL')} 
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${heliumLeakInput === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                              >
+                                FAIL
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {activeCritTab === 'init_ass' && (
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">كود الموديل</label>
+                        <input 
+                          type="text" 
+                          placeholder="مثال: GR-EF31" 
+                          value={manualModelCode} 
+                          onChange={e => setManualModelCode(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">اسم المفتش</label>
+                        <input 
+                          type="text" 
+                          value={manualInspectorName} 
+                          onChange={e => setManualInspectorName(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">حالة التجميع</label>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button" onClick={() => setManualAssemblyStatus('PASS')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualAssemblyStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            سليم (Pass)
+                          </button>
+                          <button 
+                            type="button" onClick={() => setManualAssemblyStatus('FAIL')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualAssemblyStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            تالف (Fail)
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">ملاحظات الفحص</label>
+                        <textarea 
+                          rows={2}
+                          value={manualNotes} 
+                          onChange={e => setManualNotes(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs outline-none resize-none"
+                          placeholder="أي ملحوظة جودة..."
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {activeCritTab === 'injection' && (
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                        <select 
+                          value={manualModelName} 
+                          onChange={e => setManualModelName(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
+                        >
+                          <option value="">-- اختر موديل --</option>
+                          {factoryModels.map(m => (
+                            <option key={m.id} value={m.name}>{m.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">وزن الفوم الفعلي (جرام)</label>
+                        <input 
+                          type="number" 
+                          placeholder="مثال: 5400" 
+                          value={manualFoamWeight} 
+                          onChange={e => setManualFoamWeight(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">ضغط ماكينة الحقن (بار)</label>
+                        <input 
+                          type="number" 
+                          placeholder="مثال: 150" 
+                          value={manualFoamPressure} 
+                          onChange={e => setManualFoamPressure(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">حالة الحقن</label>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button" onClick={() => setManualInjectionStatus('PASS')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectionStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            سليم (Pass)
+                          </button>
+                          <button 
+                            type="button" onClick={() => setManualInjectionStatus('FAIL')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectionStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            عيب حقن (Fail)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeCritTab === 'final_torque' && (
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                        <select 
+                          value={manualModelName} 
+                          onChange={e => setManualModelName(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
+                        >
+                          <option value="">-- اختر موديل --</option>
+                          {factoryModels.map(m => (
+                            <option key={m.id} value={m.name}>{m.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">قيمة العزم المقاسة (N.m)</label>
+                        <input 
+                          type="number" step="0.01"
+                          placeholder="مثال: 1.35" 
+                          value={manualTorqueValue} 
+                          onChange={e => setManualTorqueValue(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">العزم القياسي المطلق</label>
+                        <input 
+                          type="text" 
+                          value={manualTorqueStandard} 
+                          onChange={e => setManualTorqueStandard(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">حالة العزم</label>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button" onClick={() => setManualTorqueStatus('PASS')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualTorqueStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            مطابق (Pass)
+                          </button>
+                          <button 
+                            type="button" onClick={() => setManualTorqueStatus('FAIL')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualTorqueStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            غير مطابق (Fail)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeCritTab === 'start_torque' && (
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">رقم المحطة</label>
+                        <input 
+                          type="text" 
+                          placeholder="مثال: Station 4" 
+                          value={manualStationNum} 
+                          onChange={e => setManualStationNum(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">عزم مفك الربط (N.m)</label>
+                        <input 
+                          type="number" step="0.01"
+                          placeholder="مثال: 1.45" 
+                          value={manualScrewdriverTorque} 
+                          onChange={e => setManualScrewdriverTorque(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">النتيجة</label>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button" onClick={() => setManualStartTorqueStatus('PASS')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualStartTorqueStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            مطابق (Pass)
+                          </button>
+                          <button 
+                            type="button" onClick={() => setManualStartTorqueStatus('FAIL')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualStartTorqueStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            غير مطابق (Fail)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeCritTab === 'inject_torque' && (
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">مسمار التثبيت المربوط</label>
+                        <input 
+                          type="text" 
+                          placeholder="مثال: Fixing Bolt M6" 
+                          value={manualFixingBolt} 
+                          onChange={e => setManualFixingBolt(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">العزم الفعلي المقاس (N.m)</label>
+                        <input 
+                          type="number" step="0.01"
+                          placeholder="مثال: 2.10" 
+                          value={manualMeasuredTorque} 
+                          onChange={e => setManualMeasuredTorque(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">حالة العزم</label>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button" onClick={() => setManualInjectTorqueStatus('PASS')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectTorqueStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            مطابق (Pass)
+                          </button>
+                          <button 
+                            type="button" onClick={() => setManualInjectTorqueStatus('FAIL')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectTorqueStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            غير مطابق (Fail)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeCritTab === 'perf_test' && (
+                    <div className="space-y-3 pt-2">
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                        <select 
+                          value={manualModelName} 
+                          onChange={e => setManualModelName(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
+                        >
+                          <option value="">-- اختر موديل --</option>
+                          {factoryModels.map(m => (
+                            <option key={m.id} value={m.name}>{m.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-zinc-700 font-bold mb-1">حرارة الكابينة (°C)</label>
+                          <input 
+                            type="number" step="0.1"
+                            placeholder="مثال: 5" 
+                            value={manualCabinetTemp} 
+                            onChange={e => setManualCabinetTemp(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none text-left" 
+                            required 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-700 font-bold mb-1">حرارة الفريزر (°C)</label>
+                          <input 
+                            type="number" step="0.1"
+                            placeholder="مثال: -18" 
+                            value={manualFreezerTemp} 
+                            onChange={e => setManualFreezerTemp(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none text-left" 
+                            required 
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">الأمبير الفعلي المستهلك</label>
+                        <input 
+                          type="number" step="0.01"
+                          placeholder="مثال: 0.85" 
+                          value={manualCurrentAmp} 
+                          onChange={e => setManualCurrentAmp(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
+                          required 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">نتيجة اختبار الأداء</label>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button" onClick={() => setManualPerfResult('PASS')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualPerfResult === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            مقبول (Pass)
+                          </button>
+                          <button 
+                            type="button" onClick={() => setManualPerfResult('FAIL')} 
+                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualPerfResult === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                          >
+                            مرفوض (Fail)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <button type="submit" className="w-full bg-zinc-900 hover:bg-zinc-950 text-white font-black py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5">
+                    <Save className="w-4 h-4" />
+                    حفظ وتوثيق قيم الجودة
+                  </button>
+                </form>
               </div>
 
               {/* Logs Archive List Table Column */}
@@ -1491,51 +2337,109 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                 
                 {/* Section Title and Filters */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-150 pb-3">
-                  <h3 className="text-xs font-bold text-zinc-900">سجل قياسات الجودة الحرجة وشحن الغاز المدمج</h3>
+                  <h3 className="text-xs font-black text-zinc-900">سجل: {CRITICAL_TABS.find(t => t.id === activeCritTab)?.name}</h3>
                   
-                  <div className="text-[10px] text-zinc-500 font-medium">
-                    إجمالي الفحوصات: <strong className="text-zinc-950 font-extrabold">{allCriticalLogs.length}</strong> عينة
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleSyncTab(lineId, activeCritTab)}
+                      disabled={isSyncing}
+                      className="bg-zinc-150 hover:bg-zinc-200 text-zinc-750 font-bold px-2.5 py-1 rounded text-[10px] transition-colors flex items-center gap-1"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                      تحديث هذا القسم
+                    </button>
+                    <div className="text-[10px] text-zinc-500 font-bold">
+                      إجمالي العينات: <strong className="text-zinc-950 font-extrabold">{allCriticalLogs.length}</strong>
+                    </div>
                   </div>
                 </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full text-right text-xs">
                     <thead>
-                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
-                        <th className="p-2.5">المصدر</th>
-                        <th className="p-2.5">التاريخ / الوقت</th>
-                        <th className="p-2.5">الوردية</th>
-                        <th className="p-2.5">ماكينة الشحن</th>
-                        <th className="p-2.5">الموديل</th>
-                        <th className="p-2.5 text-center">شحنة الغاز</th>
-                        <th className="p-2.5 text-center">تفريغ / عزل</th>
-                        <th className="p-2.5 text-center">كاشف الهيليوم</th>
-                      </tr>
+                      {activeCritTab === 'calib' && (
+                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                          <th className="p-2.5">المصدر</th>
+                          <th className="p-2.5">التاريخ والوردية</th>
+                          <th className="p-2.5">ماكينة الشحن</th>
+                          <th className="p-2.5">الموديل</th>
+                          <th className="p-2.5 text-center">شحنة الغاز</th>
+                          <th className="p-2.5 text-center">التفريغ والعزل</th>
+                          <th className="p-2.5 text-center">كاشف الهيليوم</th>
+                        </tr>
+                      )}
+                      {activeCritTab === 'init_ass' && (
+                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                          <th className="p-2.5">المصدر</th>
+                          <th className="p-2.5">التاريخ والوردية</th>
+                          <th className="p-2.5">كود الموديل</th>
+                          <th className="p-2.5">المفتش المسؤول</th>
+                          <th className="p-2.5 text-center">حالة التجميع</th>
+                          <th className="p-2.5">ملاحظات</th>
+                        </tr>
+                      )}
+                      {activeCritTab === 'injection' && (
+                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                          <th className="p-2.5">المصدر</th>
+                          <th className="p-2.5">التاريخ والوردية</th>
+                          <th className="p-2.5">الموديل</th>
+                          <th className="p-2.5 text-center">وزن الفوم (جرام)</th>
+                          <th className="p-2.5 text-center">ضغط الماكينة (بار)</th>
+                          <th className="p-2.5 text-center">حالة الحقن</th>
+                        </tr>
+                      )}
+                      {activeCritTab === 'final_torque' && (
+                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                          <th className="p-2.5">المصدر</th>
+                          <th className="p-2.5">التاريخ والوردية</th>
+                          <th className="p-2.5">الموديل</th>
+                          <th className="p-2.5 text-center">العزم المقاس</th>
+                          <th className="p-2.5 text-center">المعيار القياسي</th>
+                          <th className="p-2.5 text-center">حالة العزم</th>
+                        </tr>
+                      )}
+                      {activeCritTab === 'start_torque' && (
+                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                          <th className="p-2.5">المصدر</th>
+                          <th className="p-2.5">التاريخ والوردية</th>
+                          <th className="p-2.5">رقم المحطة</th>
+                          <th className="p-2.5 text-center">عزم المفك (N.m)</th>
+                          <th className="p-2.5 text-center">حالة الربط</th>
+                        </tr>
+                      )}
+                      {activeCritTab === 'inject_torque' && (
+                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                          <th className="p-2.5">المصدر</th>
+                          <th className="p-2.5">التاريخ والوردية</th>
+                          <th className="p-2.5">مسمار التثبيت</th>
+                          <th className="p-2.5 text-center">العزم الفعلي (N.m)</th>
+                          <th className="p-2.5 text-center">الحالة</th>
+                        </tr>
+                      )}
+                      {activeCritTab === 'perf_test' && (
+                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                          <th className="p-2.5">المصدر</th>
+                          <th className="p-2.5">التاريخ والوردية</th>
+                          <th className="p-2.5">الموديل</th>
+                          <th className="p-2.5 text-center">حرارة الكابينة / الفريزر</th>
+                          <th className="p-2.5 text-center">الأمبير (A)</th>
+                          <th className="p-2.5 text-center">نتيجة الأداء</th>
+                        </tr>
+                      )}
                     </thead>
                     <tbody className="divide-y divide-zinc-150">
                       {allCriticalLogs.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="p-8 text-center text-zinc-400 font-medium">
-                            لا توجد قراءات مسجلة حالياً للخط. قم بتسجيل قراءة أو مزامنة بيانات AppSheet.
+                          <td colSpan={7} className="p-8 text-center text-zinc-400 font-medium">
+                            لا توجد قراءات مسجلة حالياً لهذا القسم. قم بتسجيل قراءة أو مزامنة بيانات AppSheet.
                           </td>
                         </tr>
                       ) : (
                         allCriticalLogs.map((log) => {
                           const isAppSheet = log.source === 'APPSHEET';
+                          const statusColor = (status: 'PASS' | 'FAIL' | undefined) => 
+                            status === 'FAIL' ? 'text-red-600 bg-red-50 font-bold' : 'text-emerald-600 bg-emerald-50 font-bold';
                           
-                          // Parse gas charge status or color
-                          let isGasErr = false;
-                          if (typeof log.gasCharge === 'number') {
-                            if (log.gasCharge > 0) {
-                              if (log.gasCharge >= 50 && log.gasCharge <= 70) {
-                                isGasErr = log.gasCharge < 58 || log.gasCharge > 62;
-                              }
-                            }
-                          } else if (typeof log.rawCharge === 'string') {
-                            const rawUpper = log.rawCharge.toUpperCase();
-                            isGasErr = rawUpper === 'FAIL' || rawUpper === 'NG';
-                          }
-
                           return (
                             <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
                               <td className="p-2.5">
@@ -1552,38 +2456,106 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                               
                               <td className="p-2.5 text-zinc-600 font-mono">
                                 {log.date || safeDateString(log.timestamp)}
-                                <span className="text-[10px] text-zinc-400 block font-normal">
-                                  {safeTimeString(log.timestamp)}
+                                <span className="text-[10px] text-zinc-400 block font-bold">
+                                  وردية {log.shift}
                                 </span>
                               </td>
-                              
-                              <td className="p-2.5 font-bold text-zinc-800">{log.shift}</td>
-                              <td className="p-2.5 font-bold text-zinc-700">{log.machine}</td>
-                              <td className="p-2.5 text-zinc-650 max-w-[140px] truncate" title={log.modelName}>{log.modelName}</td>
-                              
-                              <td className={`p-2.5 font-mono font-black text-center ${isGasErr ? 'text-red-600 bg-red-50' : 'text-zinc-800'}`}>
-                                {log.rawCharge || log.gasCharge}
-                              </td>
-                              
-                              <td className="p-2.5 text-center text-zinc-400 font-mono text-[10px]">
-                                {isAppSheet ? (
-                                  <span className="text-zinc-400 font-normal">-</span>
-                                ) : (
-                                  <span className="font-bold text-zinc-700">
-                                    {log.vacuumLevel} mbar / {log.insulationRes} MΩ
-                                  </span>
-                                )}
-                              </td>
-                              
-                              <td className="p-2.5 text-center">
-                                {isAppSheet ? (
-                                  <span className="text-emerald-600 font-bold">✓ تلقائي</span>
-                                ) : (
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${log.heliumLeak === 'FAIL' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                    {log.heliumLeak}
-                                  </span>
-                                )}
-                              </td>
+
+                              {/* Tab specific cells */}
+                              {activeCritTab === 'calib' && (
+                                <>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.machine}</td>
+                                  <td className="p-2.5 text-zinc-650 truncate max-w-[130px]">{log.modelName}</td>
+                                  <td className="p-2.5 font-mono font-black text-center text-zinc-950">{log.rawCharge || log.gasCharge}</td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-500">
+                                    {isAppSheet ? '-' : `${log.vacuumLevel} mbar / ${log.insulationRes} MΩ`}
+                                  </td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.heliumLeak)}`}>
+                                      {log.heliumLeak || 'PASS'}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+
+                              {activeCritTab === 'init_ass' && (
+                                <>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelCode}</td>
+                                  <td className="p-2.5 text-zinc-650">{log.inspectorName}</td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.assemblyStatus)}`}>
+                                      {log.assemblyStatus || 'PASS'}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 text-zinc-500 font-normal">{log.notes || '-'}</td>
+                                </>
+                              )}
+
+                              {activeCritTab === 'injection' && (
+                                <>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelName}</td>
+                                  <td className="p-2.5 text-center font-mono">{log.foamWeight} ج</td>
+                                  <td className="p-2.5 text-center font-mono">{log.foamPressure} بار</td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.injectionStatus)}`}>
+                                      {log.injectionStatus || 'PASS'}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+
+                              {activeCritTab === 'final_torque' && (
+                                <>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelName}</td>
+                                  <td className="p-2.5 text-center font-mono">{log.torqueValue} N.m</td>
+                                  <td className="p-2.5 text-center text-zinc-500">{log.torqueStandard}</td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.torqueStatus)}`}>
+                                      {log.torqueStatus || 'PASS'}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+
+                              {activeCritTab === 'start_torque' && (
+                                <>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.stationNum}</td>
+                                  <td className="p-2.5 text-center font-mono">{log.screwdriverTorque} N.m</td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.startTorqueStatus)}`}>
+                                      {log.startTorqueStatus || 'PASS'}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+
+                              {activeCritTab === 'inject_torque' && (
+                                <>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.fixingBolt}</td>
+                                  <td className="p-2.5 text-center font-mono">{log.measuredTorque} N.m</td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.injectTorqueStatus)}`}>
+                                      {log.injectTorqueStatus || 'PASS'}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+
+                              {activeCritTab === 'perf_test' && (
+                                <>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelName}</td>
+                                  <td className="p-2.5 text-center font-mono text-zinc-800">
+                                    {log.cabinetTemp}°C / {log.freezerTemp}°C
+                                  </td>
+                                  <td className="p-2.5 text-center font-mono">{log.currentAmp} A</td>
+                                  <td className="p-2.5 text-center">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.perfResult)}`}>
+                                      {log.perfResult || 'PASS'}
+                                    </span>
+                                  </td>
+                                </>
+                              )}
+
                             </tr>
                           );
                         })
