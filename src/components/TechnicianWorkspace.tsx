@@ -305,10 +305,14 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
               final_torque_gid: '43924773',
               start_torque_gid: '1668600810',
               inject_torque_gid: '1853472018',
-              perf_test_gid: '54261763'
+              perf_test_gid: '54261763',
+              submission_url: lid === 'LINE_B' ? 'https://script.google.com/macros/s/AKfycbw1RQn0Xw7hSbocbb5oEULtIOjbLzqmCPnNpF0kssZzLNJD9M29isaSM2bd_2IHD7I/exec' : ''
             };
           } else if (val && typeof val === 'object') {
-            normalized[lid] = val;
+            normalized[lid] = {
+              ...val,
+              submission_url: val.submission_url || (lid === 'LINE_B' ? 'https://script.google.com/macros/s/AKfycbw1RQn0Xw7hSbocbb5oEULtIOjbLzqmCPnNpF0kssZzLNJD9M29isaSM2bd_2IHD7I/exec' : '')
+            };
           } else {
             normalized[lid] = {
               masterUrl: lid === 'LINE_B' ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pubhtml' : '',
@@ -319,7 +323,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
               final_torque_gid: '43924773',
               start_torque_gid: '1668600810',
               inject_torque_gid: '1853472018',
-              perf_test_gid: '54261763'
+              perf_test_gid: '54261763',
+              submission_url: lid === 'LINE_B' ? 'https://script.google.com/macros/s/AKfycbw1RQn0Xw7hSbocbb5oEULtIOjbLzqmCPnNpF0kssZzLNJD9M29isaSM2bd_2IHD7I/exec' : ''
             };
           }
         });
@@ -347,7 +352,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         final_torque_gid: '43924773',
         start_torque_gid: '1668600810',
         inject_torque_gid: '1853472018',
-        perf_test_gid: '54261763'
+        perf_test_gid: '54261763',
+        submission_url: 'https://script.google.com/macros/s/AKfycbw1RQn0Xw7hSbocbb5oEULtIOjbLzqmCPnNpF0kssZzLNJD9M29isaSM2bd_2IHD7I/exec'
       },
       LINE_C: {
         masterUrl: '',
@@ -1993,7 +1999,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                     <br />
                     2. الصق الكود البرمجي التالي داخل المحرر البرمجي واحفظ الملف:
                   </p>
-                  <pre className="p-2.5 bg-zinc-900 text-zinc-100 rounded-lg text-[10px] font-mono overflow-x-auto text-left whitespace-pre direction-ltr">
+                  <pre dir="ltr" className="p-2.5 bg-zinc-900 text-zinc-100 rounded-lg text-[10px] font-mono overflow-x-auto text-left whitespace-pre">
 {`function doPost(e) {
   var data = JSON.parse(e.postData.contents);
   var ss = SpreadsheetApp.getActiveSpreadsheet();
