@@ -48,6 +48,30 @@ interface CriticalLog {
   assemblyStatus?: 'PASS' | 'FAIL';
   notes?: string;
 
+  // Factory B Tameej Al-Ibtedai specific fields
+  Y?: number | string;
+  X?: number | string;
+  N?: number | string;
+  M?: number | string;
+  L?: number | string;
+  W?: number | string;
+  P?: number | string;
+  R?: number | string;
+  S?: number | string;
+
+  check_dabsha?: 'OK' | 'NG';
+  check_scratch?: 'OK' | 'NG';
+  check_aluminum_tape?: 'OK' | 'NG';
+  check_hot_pipe?: 'OK' | 'NG';
+  check_paste?: 'OK' | 'NG';
+  check_foam_back?: 'OK' | 'NG';
+  check_wiring_clip?: 'OK' | 'NG';
+  check_hot_sealer?: 'OK' | 'NG';
+  check_barcode_date?: 'OK' | 'NG';
+  check_pcb_test?: 'OK' | 'NG';
+  check_drain_hose?: 'OK' | 'NG';
+  check_door_fixtures?: 'OK' | 'NG';
+
   // 3. injection (الحقن)
   foamWeight?: number;
   foamPressure?: number;
@@ -373,6 +397,31 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const [manualInspectorName, setManualInspectorName] = useState(user.name);
   const [manualAssemblyStatus, setManualAssemblyStatus] = useState<'PASS' | 'FAIL'>('PASS');
   const [manualNotes, setManualNotes] = useState('');
+
+  // Factory B Tameej Al-Ibtedai dimensions
+  const [manualY, setManualY] = useState('');
+  const [manualX, setManualX] = useState('');
+  const [manualN, setManualN] = useState('');
+  const [manualM, setManualM] = useState('');
+  const [manualL, setManualL] = useState('');
+  const [manualW, setManualW] = useState('');
+  const [manualP, setManualP] = useState('');
+  const [manualR, setManualR] = useState('');
+  const [manualS, setManualS] = useState('');
+
+  // Factory B Tameej Al-Ibtedai 12 checks
+  const [checkDabsha, setCheckDabsha] = useState<'OK' | 'NG'>('OK');
+  const [checkScratch, setCheckScratch] = useState<'OK' | 'NG'>('OK');
+  const [checkAluminumTape, setCheckAluminumTape] = useState<'OK' | 'NG'>('OK');
+  const [checkHotPipe, setCheckHotPipe] = useState<'OK' | 'NG'>('OK');
+  const [checkPaste, setCheckPaste] = useState<'OK' | 'NG'>('OK');
+  const [checkFoamBack, setCheckFoamBack] = useState<'OK' | 'NG'>('OK');
+  const [checkWiringClip, setCheckWiringClip] = useState<'OK' | 'NG'>('OK');
+  const [checkHotSealer, setCheckHotSealer] = useState<'OK' | 'NG'>('OK');
+  const [checkBarcodeDate, setCheckBarcodeDate] = useState<'OK' | 'NG'>('OK');
+  const [checkPcbTest, setCheckPcbTest] = useState<'OK' | 'NG'>('OK');
+  const [checkDrainHose, setCheckDrainHose] = useState<'OK' | 'NG'>('OK');
+  const [checkDoorFixtures, setCheckDoorFixtures] = useState<'OK' | 'NG'>('OK');
 
   const [manualFoamWeight, setManualFoamWeight] = useState('');
   const [manualFoamPressure, setManualFoamPressure] = useState('');
@@ -935,6 +984,69 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const [heliumLeakInput, setHeliumLeakInput] = useState<'PASS' | 'FAIL'>('PASS');
   const [critSuccessMsg, setCritSuccessMsg] = useState('');
 
+  const sendToGoogleSheet = async (log: CriticalLog) => {
+    const lineConfig = sheetUrls[log.lineId];
+    if (!lineConfig || !lineConfig.submission_url) return;
+
+    try {
+      let payload: Record<string, any> = {};
+      if (log.tabId === 'calib') {
+        payload = {
+          tabId: 'calib',
+          'التاريخ': log.date,
+          'الوردية': log.shift,
+          'ماكينة الشحن': log.machine,
+          'الموديل': log.modelName,
+          'الشحنة': log.rawCharge || log.gasCharge
+        };
+      } else if (log.tabId === 'init_ass') {
+        payload = {
+          tabId: 'init_ass',
+          'التاريخ': log.date,
+          'الوردية': log.shift,
+          'الموديل': log.modelCode,
+          'Y': log.Y,
+          'X': log.X,
+          'N': log.N,
+          'M': log.M,
+          'L': log.L,
+          'W': log.W,
+          'P': log.P,
+          'R': log.R,
+          'S': log.S,
+          'التأكد من إستخدام الضبعه أثناء لصق المواسير مع الصاج': log.check_dabsha || 'OK',
+          'فحص الكابينه الصاج للتاكد من عدم وجود خدوش او خبطات او انبعاجات او تشوهات بها': log.check_scratch || 'OK',
+          'التاكد من تطبيع لصق الألومنيوم تيب علي جانبى الكابينه الصاج موديلات شارب وتورنيدو.': log.check_aluminum_tape || 'OK',
+          'التاكد من وجود Hot Pipe Support موديلات شارب وتورنيدو': log.check_hot_pipe || 'OK',
+          'التأكد من لصق العجينة بطريقة صحيحة فى تجميع الـ C . Partion والتأكد من المقاسات حسب تعليمات التشغيل بالقسم': log.check_paste || 'OK',
+          'التأكد من وجود فوم علي ظهر الكابينه البلاستيك ولصق الضفيرة جيدا حسب تعليمات التشغيل بالقسم لكل موديل .': log.check_foam_back || 'OK',
+          'التأكد من تثبيت الضفيرة بالكات بطريقة صحيحة علي الكابينة البلاستيك': log.check_wiring_clip || 'OK',
+          'التأكد من وضع الهوت سيلر بالاماكن المحدده بالزوايا': log.check_hot_sealer || 'OK',
+          'التأكد من مطابقة تاريخ الباركود لتاريخ اليوم .': log.check_barcode_date || 'OK',
+          'التأكد من إجراء إختبار البوردة بطريقة صحيحة.': log.check_pcb_test || 'OK',
+          'إختبار خرطوم الصرف بجهاز ضغط الهواء': log.check_drain_hose || 'OK',
+          'التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج': log.check_door_fixtures || 'OK'
+        };
+      } else {
+        payload = {
+          tabId: log.tabId,
+          ...log
+        };
+      }
+
+      await fetch(lineConfig.submission_url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.error("Failed to submit directly to Google Sheet script:", err);
+    }
+  };
+
   const handleSubmitCriticalLog = (e: React.FormEvent) => {
     e.preventDefault();
     let newLog: CriticalLog;
@@ -956,7 +1068,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           date: formattedDate,
           shift: manualShift,
           machine: manualMachine,
-          modelName: manualModelName || getModelName(modelId),
+          modelName: manualModelName || (lineId === 'LINE_B' ? '48 (R134a)' : getModelName(modelId)),
           source: 'WEBSITE',
           rawCharge: manualCharge
         };
@@ -980,20 +1092,62 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         };
       }
     } else if (activeCritTab === 'init_ass') {
-      newLog = {
-        id: `CRIT-INIT-${Date.now()}`,
-        lineId,
-        tabId: 'init_ass',
-        inspectorSap: user.sapNumber || 'UNKNOWN',
-        timestamp: timestampVal,
-        date: formattedDate,
-        shift: manualShift,
-        modelCode: manualModelCode || 'عام',
-        inspectorName: manualInspectorName,
-        assemblyStatus: manualAssemblyStatus,
-        notes: manualNotes,
-        source: 'WEBSITE'
-      };
+      if (lineId === 'LINE_B') {
+        const overallPass = [
+          checkDabsha, checkScratch, checkAluminumTape, checkHotPipe, checkPaste,
+          checkFoamBack, checkWiringClip, checkHotSealer, checkBarcodeDate,
+          checkPcbTest, checkDrainHose, checkDoorFixtures
+        ].every(st => st === 'OK');
+
+        newLog = {
+          id: `CRIT-INIT-${Date.now()}`,
+          lineId,
+          tabId: 'init_ass',
+          inspectorSap: user.sapNumber || 'UNKNOWN',
+          timestamp: timestampVal,
+          date: formattedDate,
+          shift: manualShift,
+          modelCode: manualModelCode || '48',
+          Y: manualY || '0',
+          X: manualX || '0',
+          N: manualN || '0',
+          M: manualM || '0',
+          L: manualL || '0',
+          W: manualW || '0',
+          P: manualP || '0',
+          R: manualR || '0',
+          S: manualS || '0',
+          check_dabsha: checkDabsha,
+          check_scratch: checkScratch,
+          check_aluminum_tape: checkAluminumTape,
+          check_hot_pipe: checkHotPipe,
+          check_paste: checkPaste,
+          check_foam_back: checkFoamBack,
+          check_wiring_clip: checkWiringClip,
+          check_hot_sealer: checkHotSealer,
+          check_barcode_date: checkBarcodeDate,
+          check_pcb_test: checkPcbTest,
+          check_drain_hose: checkDrainHose,
+          check_door_fixtures: checkDoorFixtures,
+          assemblyStatus: overallPass ? 'PASS' : 'FAIL',
+          source: 'WEBSITE'
+        };
+      } else {
+        newLog = {
+          id: `CRIT-INIT-${Date.now()}`,
+          lineId,
+          tabId: 'init_ass',
+          inspectorSap: user.sapNumber || 'UNKNOWN',
+          timestamp: timestampVal,
+          date: formattedDate,
+          shift: manualShift,
+          modelCode: manualModelCode || 'عام',
+          inspectorName: manualInspectorName,
+          assemblyStatus: manualAssemblyStatus,
+          notes: manualNotes,
+          source: 'WEBSITE'
+        };
+      }
     } else if (activeCritTab === 'injection') {
       newLog = {
         id: `CRIT-INJECT-${Date.now()}`,
@@ -1071,7 +1225,32 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     }
 
     setCriticalLogs(prev => [newLog, ...prev]);
-    setCritSuccessMsg('تم تسجيل وتوثيق بيانات العملية الحرجة وتحديث السجل بنجاح!');
+    sendToGoogleSheet(newLog);
+    
+    // Reset Factory B custom input states
+    setManualY('');
+    setManualX('');
+    setManualN('');
+    setManualM('');
+    setManualL('');
+    setManualW('');
+    setManualP('');
+    setManualR('');
+    setManualS('');
+    setCheckDabsha('OK');
+    setCheckScratch('OK');
+    setCheckAluminumTape('OK');
+    setCheckHotPipe('OK');
+    setCheckPaste('OK');
+    setCheckFoamBack('OK');
+    setCheckWiringClip('OK');
+    setCheckHotSealer('OK');
+    setCheckBarcodeDate('OK');
+    setCheckPcbTest('OK');
+    setCheckDrainHose('OK');
+    setCheckDoorFixtures('OK');
+
+    setCritSuccessMsg('تم تسجيل وتوثيق العملية الحرجة وتحديث السجل وإرسالها لجدول جوجل بنجاح!');
     setTimeout(() => setCritSuccessMsg(''), 4000);
   };
 
@@ -1789,21 +1968,89 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-zinc-700">رابط الـ CSV الخاص بـ (معايرة ماكينة الشحن) - اختياري</label>
+                    <label className="block text-[10px] font-bold text-zinc-700">رابط الـ Google Apps Script لإرسال البيانات الجديدة تلقائياً (Web App URL)</label>
                     <input 
                       type="text" 
-                      placeholder="رابط CSV مخصص للمعايرة..."
-                      value={sheetUrls[lineId]?.calib_url || ''}
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                      value={sheetUrls[lineId]?.submission_url || ''}
                       onChange={(e) => {
                         const val = e.target.value;
                         setSheetUrls(prev => ({
                           ...prev,
-                          [lineId]: { ...(prev[lineId] || {}), calib_url: val }
+                          [lineId]: { ...(prev[lineId] || {}), submission_url: val }
                         }));
                       }}
                       className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-mono outline-none focus:border-blue-500"
                     />
                   </div>
+                </div>
+
+                {/* Interactive Google Apps Script copy-paste setup guide */}
+                <div className="bg-blue-50/50 border border-blue-150 rounded-xl p-3 text-xs space-y-2">
+                  <span className="font-extrabold text-blue-800 block">💡 طريقة ربط الإرسال المباشر بـ Google Sheets تلقائياً:</span>
+                  <p className="text-[11px] text-zinc-600 leading-relaxed">
+                    1. افتح ملف الـ Google Sheet الخاص بك ➜ من القائمة العلوية اختر <strong>Extensions</strong> ثم <strong>Apps Script</strong>.
+                    <br />
+                    2. الصق الكود البرمجي التالي داخل المحرر البرمجي واحفظ الملف:
+                  </p>
+                  <pre className="p-2.5 bg-zinc-900 text-zinc-100 rounded-lg text-[10px] font-mono overflow-x-auto text-left whitespace-pre direction-ltr">
+{`function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetName = data.tabId === 'calib' ? 'معايرة ماكينة الشحن' : 'التجميع الابتدائي';
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+  
+  if (data.tabId === 'calib') {
+    sheet.appendRow([
+      data['التاريخ'], 
+      data['الوردية'], 
+      data['ماكينة الشحن'], 
+      data['الموديل'], 
+      data['الشحنة']
+    ]);
+  } else if (data.tabId === 'init_ass') {
+    sheet.appendRow([
+      data['التاريخ'], 
+      data['الوردية'], 
+      data['الموديل'], 
+      data['Y'], 
+      data['X'], 
+      data['N'], 
+      data['M'], 
+      data['L'], 
+      data['W'], 
+      data['P'], 
+      data['R'], 
+      data['S'],
+      data['التأكد من إستخدام الضبعه أثناء لصق المواسير مع الصاج'],
+      data['فحص الكابينه الصاج للتاكد من عدم وجود خدوش او خبطات او انبعاجات او تشوهات بها'],
+      data['التاكد من تطبيع لصق الألومنيوم تيب علي جانبى الكابينه الصاج موديلات شارب وتورنيدو.'],
+      data['التاكد من وجود Hot Pipe Support موديلات شارب وتورنيدو'],
+      data['التأكد من لصق العجينة بطريقة صحيحة فى تجميع الـ C . Partion والتأكد من المقاسات حسب تعليمات التشغيل بالقسم'],
+      data['التأكد من وجود فوم علي ظهر الكابينه البلاستيك ولصق الضفيرة جيدا حسب تعليمات التشغيل بالقسم لكل موديل .'],
+      data['التأكد من تثبيت الضفيرة بالكات بطريقة صحيحة علي الكابينة البلاستيك'],
+      data['التأكد من وضع الهوت سيلر بالاماكن المحدده بالزوايا'],
+      data['التأكد من مطابقة تاريخ الباركود لتاريخ اليوم .'],
+      data['التأكد من إجراء إختبار البوردة بطريقة صحيحة.'],
+      data['إختبار خرطوم الصرف بجهاز ضغط الهواء'],
+      data['التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج']
+    ]);
+  }
+  return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
+}`}
+                  </pre>
+                  <p className="text-[11px] text-zinc-600 leading-relaxed">
+                    3. اضغط على <strong>Deploy</strong> ➜ ثم <strong>New Deployment</strong>.
+                    <br />
+                    4. اختر نوع الـ Deployment ليكون <strong>Web App</strong>.
+                    <br />
+                    5. اجعل خيار (Execute as) هو <strong>Me</strong>، وخيار (Who has access) هو <strong>Anyone</strong>.
+                    <br />
+                    6. اضغط Deploy وانسخ الرابط (Web App URL) والصقه في خانة الإدخال أعلاه.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 pt-2 border-t border-zinc-150">
@@ -1922,27 +2169,57 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                         <>
                           <div>
                             <label className="block text-zinc-700 font-bold mb-1">ماكينة الشحن</label>
-                            <input 
-                              type="text" 
-                              placeholder="مثال: اجرامكو 1"
-                              value={manualMachine} 
-                              onChange={e => setManualMachine(e.target.value)} 
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none"
-                              required 
-                            />
+                            {lineId === 'LINE_B' ? (
+                              <select
+                                value={manualMachine}
+                                onChange={e => setManualMachine(e.target.value)}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none"
+                              >
+                                <option value="اجرامكو 1">اجرامكو 1</option>
+                                <option value="اجرامكو 2">اجرامكو 2</option>
+                                <option value="توشيبا">توشيبا</option>
+                                <option value="R600">R600</option>
+                              </select>
+                            ) : (
+                              <input 
+                                type="text" 
+                                placeholder="مثال: اجرامكو 1"
+                                value={manualMachine} 
+                                onChange={e => setManualMachine(e.target.value)} 
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none"
+                                required 
+                              />
+                            )}
                           </div>
                           <div>
                             <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
-                            <select 
-                              value={manualModelName} 
-                              onChange={e => setManualModelName(e.target.value)} 
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
-                            >
-                              <option value="">-- اختر موديل --</option>
-                              {factoryModels.map(m => (
-                                <option key={m.id} value={m.name}>{m.name}</option>
-                              ))}
-                            </select>
+                            {lineId === 'LINE_B' ? (
+                              <select
+                                value={manualModelName}
+                                onChange={e => setManualModelName(e.target.value)}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs font-bold outline-none"
+                                required
+                              >
+                                <option value="">-- اختر موديل مصنع B --</option>
+                                <option value="48 (R134a)">48 (R134a)</option>
+                                <option value="58 (R134a)">58 (R134a)</option>
+                                <option value="PV-GV48 (R600a)">PV-GV48 (R600a)</option>
+                                <option value="46 (R600a)">46 (R600a)</option>
+                                <option value="51 (R600a)">51 (R600a)</option>
+                                <option value="480TV-480ATV (R600a)">480TV-480ATV (R600a)</option>
+                              </select>
+                            ) : (
+                              <select 
+                                value={manualModelName} 
+                                onChange={e => setManualModelName(e.target.value)} 
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
+                              >
+                                <option value="">-- اختر موديل --</option>
+                                {factoryModels.map(m => (
+                                  <option key={m.id} value={m.name}>{m.name}</option>
+                                ))}
+                              </select>
+                            )}
                           </div>
                           <div>
                             <label className="block text-zinc-700 font-bold mb-1">وزن الشحنة الفعلية</label>
@@ -2003,54 +2280,143 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
                   {activeCritTab === 'init_ass' && (
                     <div className="space-y-3 pt-2">
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">كود الموديل</label>
-                        <input 
-                          type="text" 
-                          placeholder="مثال: GR-EF31" 
-                          value={manualModelCode} 
-                          onChange={e => setManualModelCode(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">اسم المفتش</label>
-                        <input 
-                          type="text" 
-                          value={manualInspectorName} 
-                          onChange={e => setManualInspectorName(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">حالة التجميع</label>
-                        <div className="flex gap-2">
-                          <button 
-                            type="button" onClick={() => setManualAssemblyStatus('PASS')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualAssemblyStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            سليم (Pass)
-                          </button>
-                          <button 
-                            type="button" onClick={() => setManualAssemblyStatus('FAIL')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualAssemblyStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            تالف (Fail)
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">ملاحظات الفحص</label>
-                        <textarea 
-                          rows={2}
-                          value={manualNotes} 
-                          onChange={e => setManualNotes(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs outline-none resize-none"
-                          placeholder="أي ملحوظة جودة..."
-                        />
-                      </div>
+                      {lineId === 'LINE_B' ? (
+                        <>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                            <select
+                              value={manualModelCode}
+                              onChange={e => setManualModelCode(e.target.value)}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none"
+                              required
+                            >
+                              <option value="48">48</option>
+                              <option value="58">58</option>
+                              <option value="46&51">46&51</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1.5">القيم الرقمية للأبعاد</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {[
+                                { key: 'Y', label: 'Y', val: manualY, set: setManualY },
+                                { key: 'X', label: 'X', val: manualX, set: setManualX },
+                                { key: 'N', label: 'N', val: manualN, set: setManualN },
+                                { key: 'M', label: 'M', val: manualM, set: setManualM },
+                                { key: 'L', label: 'L', val: manualL, set: setManualL },
+                                { key: 'W', label: 'W', val: manualW, set: setManualW },
+                                { key: 'P', label: 'P', val: manualP, set: setManualP },
+                                { key: 'R', label: 'R', val: manualR, set: setManualR },
+                                { key: 'S', label: 'S', val: manualS, set: setManualS }
+                              ].map(f => (
+                                <div key={f.key} className="space-y-1">
+                                  <span className="text-[10px] font-bold text-zinc-500 block">{f.label}</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={f.val}
+                                    onChange={e => f.set(e.target.value)}
+                                    className="w-full bg-zinc-50 border border-zinc-200 rounded-md px-2 py-1 text-xs text-center font-mono outline-none"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2.5 pt-2 border-t border-zinc-150">
+                            <span className="block text-[11px] font-black text-zinc-700">بنود فحص مطابقة الجودة بالتجميع الابتدائي</span>
+                            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1 scrollbar-thin">
+                              {[
+                                { key: 'dabsha', label: 'التأكد من إستخدام الضبعه أثناء لصق المواسير مع الصاج', val: checkDabsha, setter: setCheckDabsha },
+                                { key: 'scratch', label: 'فحص الكابينه الصاج للتاكد من عدم وجود خدوش او خبطات او انبعاجات او تشوهات بها', val: checkScratch, setter: setCheckScratch },
+                                { key: 'aluminumTape', label: 'التاكد من تطبيع لصق الألومنيوم تيب علي جانبى الكابينه الصاج موديلات شارب وتورنيدو.', val: checkAluminumTape, setter: setCheckAluminumTape },
+                                { key: 'hotPipe', label: 'التاكد من وجود Hot Pipe Support موديلات شارب وتورنيدو', val: checkHotPipe, setter: setCheckHotPipe },
+                                { key: 'paste', label: 'التأكد من لصق العجينة بطريقة صحيحة فى تجميع الـ C . Partion والتأكد من المقاسات حسب تعليمات التشغيل بالقسم', val: checkPaste, setter: setCheckPaste },
+                                { key: 'foamBack', label: 'التأكد من وجود فوم علي ظهر الكابينه البلاستيك ولصق الضفيرة جيدا حسب تعليمات التشغيل بالقسم لكل موديل .', val: checkFoamBack, setter: setCheckFoamBack },
+                                { key: 'wiringClip', label: 'التأكد من تثبيت الضفيرة بالكات بطريقة صحيحة علي الكابينة البلاستيك', val: checkWiringClip, setter: setCheckWiringClip },
+                                { key: 'hotSealer', label: 'التأكد من وضع الهوت سيلر بالاماكن المحدده بالزوايا', val: checkHotSealer, setter: setCheckHotSealer },
+                                { key: 'barcodeDate', label: 'التأكد من مطابقة تاريخ الباركود لتاريخ اليوم .', val: checkBarcodeDate, setter: setCheckBarcodeDate },
+                                { key: 'pcbTest', label: 'التأكد من إجراء إختبار البوردة بطريقة صحيحة.', val: checkPcbTest, setter: setCheckPcbTest },
+                                { key: 'drainHose', label: 'إختبار خرطوم الصرف بجهاز ضغط الهواء', val: checkDrainHose, setter: setCheckDrainHose },
+                                { key: 'doorFixtures', label: 'التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج', val: checkDoorFixtures, setter: setCheckDoorFixtures }
+                              ].map((item) => (
+                                <div key={item.key} className="flex flex-col gap-1.5 p-2 rounded-lg bg-zinc-50 border border-zinc-150">
+                                  <span className="text-[10px] font-bold text-zinc-800 leading-relaxed">{item.label}</span>
+                                  <div className="flex bg-zinc-200 p-0.5 rounded-md self-end w-32">
+                                    <button
+                                      type="button"
+                                      onClick={() => item.setter('OK')}
+                                      className={`flex-1 text-center py-0.5 text-[10px] font-black rounded transition-all ${item.val === 'OK' ? 'bg-emerald-500 text-white shadow-xs' : 'text-zinc-600'}`}
+                                    >
+                                      OK
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => item.setter('NG')}
+                                      className={`flex-1 text-center py-0.5 text-[10px] font-black rounded transition-all ${item.val === 'NG' ? 'bg-red-500 text-white shadow-xs' : 'text-zinc-600'}`}
+                                    >
+                                      NG
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">كود الموديل</label>
+                            <input 
+                              type="text" 
+                              placeholder="مثال: GR-EF31" 
+                              value={manualModelCode} 
+                              onChange={e => setManualModelCode(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
+                              required 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">اسم المفتش</label>
+                            <input 
+                              type="text" 
+                              value={manualInspectorName} 
+                              onChange={e => setManualInspectorName(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
+                              required 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">حالة التجميع</label>
+                            <div className="flex gap-2">
+                              <button 
+                                type="button" onClick={() => setManualAssemblyStatus('PASS')} 
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualAssemblyStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
+                              >
+                                سليم (Pass)
+                              </button>
+                              <button 
+                                type="button" onClick={() => setManualAssemblyStatus('FAIL')} 
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualAssemblyStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
+                              >
+                                تالف (Fail)
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">ملاحظات الفحص</label>
+                            <textarea 
+                              rows={2}
+                              value={manualNotes} 
+                              onChange={e => setManualNotes(e.target.value)} 
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs outline-none resize-none"
+                              placeholder="أي ملحوظة جودة..."
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
@@ -2369,14 +2735,25 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                         </tr>
                       )}
                       {activeCritTab === 'init_ass' && (
-                        <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
-                          <th className="p-2.5">المصدر</th>
-                          <th className="p-2.5">التاريخ والوردية</th>
-                          <th className="p-2.5">كود الموديل</th>
-                          <th className="p-2.5">المفتش المسؤول</th>
-                          <th className="p-2.5 text-center">حالة التجميع</th>
-                          <th className="p-2.5">ملاحظات</th>
-                        </tr>
+                        lineId === 'LINE_B' ? (
+                          <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                            <th className="p-2.5">المصدر</th>
+                            <th className="p-2.5">التاريخ والوردية</th>
+                            <th className="p-2.5">الموديل</th>
+                            <th className="p-2.5 text-center">الأبعاد (Y/X/N/M/L/W/P/R/S)</th>
+                            <th className="p-2.5 text-center">حالة بنود الفحص</th>
+                            <th className="p-2.5 text-center">النتيجة النهائية</th>
+                          </tr>
+                        ) : (
+                          <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
+                            <th className="p-2.5">المصدر</th>
+                            <th className="p-2.5">التاريخ والوردية</th>
+                            <th className="p-2.5">كود الموديل</th>
+                            <th className="p-2.5">المفتش المسؤول</th>
+                            <th className="p-2.5 text-center">حالة التجميع</th>
+                            <th className="p-2.5">ملاحظات</th>
+                          </tr>
+                        )
                       )}
                       {activeCritTab === 'injection' && (
                         <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
@@ -2479,16 +2856,58 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                               )}
 
                               {activeCritTab === 'init_ass' && (
-                                <>
-                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelCode}</td>
-                                  <td className="p-2.5 text-zinc-650">{log.inspectorName}</td>
-                                  <td className="p-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.assemblyStatus)}`}>
-                                      {log.assemblyStatus || 'PASS'}
-                                    </span>
-                                  </td>
-                                  <td className="p-2.5 text-zinc-500 font-normal">{log.notes || '-'}</td>
-                                </>
+                                lineId === 'LINE_B' ? (
+                                  <>
+                                    <td className="p-2.5 font-bold text-zinc-800">{log.modelCode}</td>
+                                    <td className="p-2.5 text-center font-mono text-[11px] text-zinc-600">
+                                      {`Y:${log.Y ?? '0'} | X:${log.X ?? '0'} | N:${log.N ?? '0'} | M:${log.M ?? '0'} | L:${log.L ?? '0'} | W:${log.W ?? '0'} | P:${log.P ?? '0'} | R:${log.R ?? '0'} | S:${log.S ?? '0'}`}
+                                    </td>
+                                    <td className="p-2.5 text-center">
+                                      <div className="flex flex-wrap justify-center gap-1 max-w-[320px] mx-auto">
+                                        {[
+                                          { k: 'ضبعه', v: log.check_dabsha },
+                                          { k: 'خدوش', v: log.check_scratch },
+                                          { k: 'ألومنيوم', v: log.check_aluminum_tape },
+                                          { k: 'هوت بايب', v: log.check_hot_pipe },
+                                          { k: 'عجينة', v: log.check_paste },
+                                          { k: 'فوم', v: log.check_foam_back },
+                                          { k: 'ضفيرة', v: log.check_wiring_clip },
+                                          { k: 'سيلر', v: log.check_hot_sealer },
+                                          { k: 'باركود', v: log.check_barcode_date },
+                                          { k: 'بوردة', v: log.check_pcb_test },
+                                          { k: 'صرف', v: log.check_drain_hose },
+                                          { k: 'مفصلة', v: log.check_door_fixtures }
+                                        ].map((item, idx) => (
+                                          <span
+                                            key={idx}
+                                            title={item.k}
+                                            className={`px-1 py-0.5 rounded-[3px] text-[8px] font-black ${
+                                              item.v === 'NG' ? 'bg-red-100 text-red-700' : 'bg-emerald-55/60 bg-opacity-40 text-emerald-800'
+                                            }`}
+                                          >
+                                            {item.k}: {item.v || 'OK'}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </td>
+                                    <td className="p-2.5 text-center">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusColor(log.assemblyStatus)}`}>
+                                        {log.assemblyStatus || 'PASS'}
+                                      </span>
+                                    </td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td className="p-2.5 font-bold text-zinc-700">{log.modelCode}</td>
+                                    <td className="p-2.5 text-zinc-650">{log.inspectorName}</td>
+                                    <td className="p-2.5 text-center">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.assemblyStatus)}`}>
+                                        {log.assemblyStatus || 'PASS'}
+                                      </span>
+                                    </td>
+                                    <td className="p-2.5 text-zinc-500 font-normal">{log.notes || '-'}</td>
+                                  </>
+                                )
                               )}
 
                               {activeCritTab === 'injection' && (
