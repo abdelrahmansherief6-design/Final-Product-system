@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { User, QualityInspectionLog, ProcessAuditLog, UserRole, ManagedUser } from './types';
-import { generateSeedData } from './data';
+import { User, QualityInspectionLog, ProcessAuditLog, UserRole, ManagedUser, RefrigeratorModel } from './types';
+import { generateSeedData, REFRIGERATOR_MODELS } from './data';
 import Login from './components/Login';
 import TechnicianWorkspace from './components/TechnicianWorkspace';
 import SupervisorWorkspace from './components/SupervisorWorkspace';
@@ -44,6 +44,23 @@ export default function App() {
     localStorage.setItem('elaraby_qa_users_list', JSON.stringify(defaultUsers));
     return defaultUsers;
   });
+
+  // Refrigerator Models state with default catalog
+  const [models, setModels] = useState<RefrigeratorModel[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_models_list');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+    localStorage.setItem('elaraby_qa_models_list', JSON.stringify(REFRIGERATOR_MODELS));
+    return REFRIGERATOR_MODELS;
+  });
+
+  // Keep localStorage sync'd
+  useEffect(() => {
+    localStorage.setItem('elaraby_qa_models_list', JSON.stringify(models));
+  }, [models]);
 
   // 2. Hydrate Inspections and Process Audits state with LocalStorage or seed data
   const [inspections, setInspections] = useState<QualityInspectionLog[]>(() => {
@@ -127,6 +144,7 @@ export default function App() {
           onLogout={handleLogout}
           inspections={inspections}
           onAddInspection={handleAddInspection}
+          models={models}
         />
       ) : currentUser.role === 'SUPERVISOR' ? (
         <SupervisorWorkspace
@@ -136,6 +154,7 @@ export default function App() {
           onUpdateInspection={handleUpdateInspection}
           processAudits={processAudits}
           onAddProcessAudit={handleAddProcessAudit}
+          models={models}
         />
       ) : (
         <ManagerWorkspace
@@ -145,6 +164,8 @@ export default function App() {
           processAudits={processAudits}
           users={users}
           onUpdateUsers={setUsers}
+          models={models}
+          onUpdateModels={setModels}
         />
       )}
     </div>

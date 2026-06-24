@@ -6,10 +6,10 @@
 import { RefrigeratorModel, ProductionLine, ChecklistItem, DefectOption, QualityInspectionLog, ProcessAuditLog } from './types';
 
 export const REFRIGERATOR_MODELS: RefrigeratorModel[] = [
-  { id: 'MOD_450L', name: 'ثلاجة العربي توشيبا 450 لتر نوفروست', capacity: '450 لتر', type: 'No Frost' },
-  { id: 'MOD_340L', name: 'ثلاجة العربي شارب 340 لتر ديفروست', capacity: '340 لتر', type: 'Defrost' },
-  { id: 'MOD_520L_DIG', name: 'ثلاجة العربي تورنيدو 520 لتر ديجيتال', capacity: '520 لتر', type: 'Digital No Frost' },
-  { id: 'MOD_600L_SMART', name: 'ثلاجة العربي الذكية 600 لتر 4 أبواب', capacity: '600 لتر', type: 'Smart Multi-Door' },
+  { id: 'MOD_450L', name: 'ثلاجة العربي توشيبا 450 لتر نوفروست', type: 'No Frost', factoryId: 'LINE_A' },
+  { id: 'MOD_340L', name: 'ثلاجة العربي شارب 340 لتر ديفروست', type: 'Defrost', factoryId: 'LINE_B' },
+  { id: 'MOD_520L_DIG', name: 'ثلاجة العربي تورنيدو 520 لتر ديجيتال', type: 'No Frost', factoryId: 'LINE_C' },
+  { id: 'MOD_600L_SMART', name: 'ثلاجة العربي الذكية 600 لتر 4 أبواب', type: 'No Frost', factoryId: 'LINE_A' },
 ];
 
 export const PRODUCTION_LINES: ProductionLine[] = [

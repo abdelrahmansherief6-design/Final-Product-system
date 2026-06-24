@@ -5,8 +5,8 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, QualityInspectionLog, ProcessAuditLog, ProductionLineId } from '../types';
-import { REFRIGERATOR_MODELS, PRODUCTION_LINES, DEFECT_OPTIONS } from '../data';
+import { User, QualityInspectionLog, ProcessAuditLog, ProductionLineId, RefrigeratorModel } from '../types';
+import { PRODUCTION_LINES, DEFECT_OPTIONS } from '../data';
 import { ShieldCheck, LogOut, CheckCircle, RefreshCcw, ClipboardCheck, Trash2, ArrowLeftRight, Activity, Thermometer, Flame, Gauge, ShieldAlert, PlusCircle, History } from 'lucide-react';
 
 interface SupervisorWorkspaceProps {
@@ -16,6 +16,7 @@ interface SupervisorWorkspaceProps {
   onUpdateInspection: (id: string, updates: Partial<QualityInspectionLog>) => void;
   processAudits: ProcessAuditLog[];
   onAddProcessAudit: (audit: ProcessAuditLog) => void;
+  models: RefrigeratorModel[];
 }
 
 export default function SupervisorWorkspace({
@@ -25,6 +26,7 @@ export default function SupervisorWorkspace({
   onUpdateInspection,
   processAudits,
   onAddProcessAudit,
+  models,
 }: SupervisorWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<'PENDING_REPAIRS' | 'PROCESS_AUDIT' | 'AUDIT_HISTORY'>('PENDING_REPAIRS');
 
@@ -288,7 +290,7 @@ export default function SupervisorWorkspace({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {pendingLogs.map((log) => {
-                  const modelObj = REFRIGERATOR_MODELS.find((m) => m.id === log.modelId);
+                  const modelObj = models.find((m) => m.id === log.modelId);
                   const lineObj = PRODUCTION_LINES.find((l) => l.id === log.lineId);
                   return (
                     <motion.div

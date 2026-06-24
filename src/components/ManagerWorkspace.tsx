@@ -4,11 +4,11 @@
  */
 
 import React, { useState } from 'react';
-import { User, QualityInspectionLog, ProcessAuditLog, ManagedUser, UserRole } from '../types';
-import { REFRIGERATOR_MODELS, PRODUCTION_LINES } from '../data';
+import { User, QualityInspectionLog, ProcessAuditLog, ManagedUser, UserRole, RefrigeratorModel } from '../types';
+import { PRODUCTION_LINES } from '../data';
 import { 
   BarChart3, LogOut, TrendingUp, Printer, FileSpreadsheet, Download, HelpCircle, 
-  CheckCircle, ShieldAlert, Award, Users, UserPlus, Trash2, Lock, Shield, UserCheck
+  CheckCircle, ShieldAlert, Award, Users, UserPlus, Trash2, Lock, Shield, UserCheck, PlusCircle, Package
 } from 'lucide-react';
 
 interface ManagerWorkspaceProps {
@@ -18,6 +18,8 @@ interface ManagerWorkspaceProps {
   processAudits: ProcessAuditLog[];
   users: ManagedUser[];
   onUpdateUsers: (users: ManagedUser[]) => void;
+  models: RefrigeratorModel[];
+  onUpdateModels: React.Dispatch<React.SetStateAction<RefrigeratorModel[]>>;
 }
 
 export default function ManagerWorkspace({
@@ -27,6 +29,8 @@ export default function ManagerWorkspace({
   processAudits,
   users,
   onUpdateUsers,
+  models,
+  onUpdateModels,
 }: ManagerWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'PROCESS_REPORTS' | 'USER_DIRECTORY'>('ANALYTICS');
 
@@ -64,7 +68,7 @@ export default function ManagerWorkspace({
           exists.count += 1;
         } else {
           // Find standard option label
-          const label = REFRIGERATOR_MODELS.find(m => m.id === optionId)?.name || optionId;
+          const label = models.find(m => m.id === optionId)?.name || optionId;
           defectCounts[optionId] = {
             label: optionId, // default label gets updated by searching DEFECT_OPTIONS or using option ID
             count: 1
@@ -131,7 +135,7 @@ export default function ManagerWorkspace({
   const handleDownloadInventoryCSV = () => {
     const headers = ['Serial Number', 'Model Name', 'Production Line', 'Inspector SAP', 'Inspection Date/Time', 'Initial Status', 'Current Action Status'];
     const rows = inspections.map(log => {
-      const model = REFRIGERATOR_MODELS.find(m => m.id === log.modelId)?.name || log.modelId;
+      const model = models.find(m => m.id === log.modelId)?.name || log.modelId;
       const line = PRODUCTION_LINES.find(l => l.id === log.lineId)?.name || log.lineId;
       return [
         log.serialNumber,
@@ -601,7 +605,7 @@ export default function ManagerWorkspace({
                 </thead>
                 <tbody className="divide-y divide-zinc-100 text-zinc-700">
                   {inspections.map((log) => {
-                    const modelObj = REFRIGERATOR_MODELS.find(m => m.id === log.modelId);
+                    const modelObj = models.find(m => m.id === log.modelId);
                     const lineObj = PRODUCTION_LINES.find(l => l.id === log.lineId);
                     return (
                       <tr key={log.id} className="hover:bg-zinc-55/35 transition-colors">
@@ -746,18 +750,45 @@ export default function ManagerWorkspace({
 
         {/* User Directory Tab Panel */}
         {activeTab === 'USER_DIRECTORY' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
-            
-            {/* Left Column: Add User Form */}
-            <div className="lg:col-span-1">
-              <AddUserForm users={users} onAddUser={(newUser) => onUpdateUsers([...users, newUser])} />
+          <div className="space-y-12 animate-fadeIn">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Left Column: Add User Form */}
+              <div className="lg:col-span-1">
+                <AddUserForm users={users} onAddUser={(newUser) => onUpdateUsers([...users, newUser])} />
+              </div>
+
+              {/* Right Column: Users List & Management */}
+              <div className="lg:col-span-2">
+                <UsersList users={users} onDeleteUser={(sap) => onUpdateUsers(users.filter(u => u.sapNumber !== sap))} />
+              </div>
+
             </div>
 
-            {/* Right Column: Users List & Management */}
-            <div className="lg:col-span-2">
-              <UsersList users={users} onDeleteUser={(sap) => onUpdateUsers(users.filter(u => u.sapNumber !== sap))} />
-            </div>
+            {/* Separator / Header for Models Management */}
+            <div className="border-t border-zinc-200 pt-8">
+              <div className="flex items-center gap-3.5 mb-6">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-zinc-950">إضافة الموديلات على حسب المصنع</h2>
+                  <p className="text-xs text-zinc-400">إدارة كتالوج موديلات الثلاجات التي تظهر للفنيين والمشرفين في كل مصنع لتسجيل الفحوصات والتدقيق عليها</p>
+                </div>
+              </div>
 
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column: Add Model Form */}
+                <div className="lg:col-span-1">
+                  <AddModelForm models={models} onAddModel={(newModel) => onUpdateModels([...models, newModel])} />
+                </div>
+
+                {/* Right Column: Models List & Management */}
+                <div className="lg:col-span-2">
+                  <ModelsList models={models} onDeleteModel={(modelId) => onUpdateModels(models.filter(m => m.id !== modelId))} />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1033,6 +1064,231 @@ function UsersList({ users, onDeleteUser }: UsersListProps) {
               <tr>
                 <td colSpan={5} className="text-center py-6 text-zinc-400 font-bold">
                   لا يوجد مستخدمين يطابقون خيارات البحث والفرز الحالية.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+interface AddModelFormProps {
+  models: RefrigeratorModel[];
+  onAddModel: (model: RefrigeratorModel) => void;
+}
+
+function AddModelForm({ models, onAddModel }: AddModelFormProps) {
+  const [name, setName] = useState('');
+  const [type, setType] = useState<"No Frost" | "Defrost">('No Frost');
+  const [factoryId, setFactoryId] = useState<'LINE_A' | 'LINE_B' | 'LINE_C' | 'ALL'>('LINE_A');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!name.trim()) {
+      setError('يرجى إدخال اسم الموديل كاملاً.');
+      return;
+    }
+
+    const modelId = 'MOD_' + Math.floor(1000 + Math.random() * 9000);
+
+    onAddModel({
+      id: modelId,
+      name: name.trim(),
+      type,
+      factoryId,
+    });
+
+    setSuccess('تم إضافة الموديل الجديد بنجاح!');
+    setName('');
+    setTimeout(() => setSuccess(''), 3000);
+  };
+
+  return (
+    <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 text-xs">
+      <div className="border-b border-zinc-150 pb-2 flex items-center gap-2">
+        <PlusCircle className="w-4 h-4 text-amber-500" />
+        <h3 className="font-extrabold text-zinc-950 text-sm">إضافة موديل جديد للمصنع</h3>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-zinc-550 font-bold mb-1.5">اسم الموديل الفني الكامل</label>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="مثال: ثلاجة العربي تورنيدو 450 لتر نوفروست"
+            className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-zinc-800 outline-none transition-all text-right"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-zinc-550 font-bold mb-1.5">النوع الفني (Type)</label>
+          <select
+            value={type}
+            onChange={e => setType(e.target.value as any)}
+            className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-2.5 py-2 text-zinc-800 outline-none transition-all text-right"
+          >
+            <option value="No Frost">No Frost</option>
+            <option value="Defrost">Defrost</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-zinc-550 font-bold mb-1.5">المصنع المستهدف (Factory Line)</label>
+          <select
+            value={factoryId}
+            onChange={e => setFactoryId(e.target.value as any)}
+            className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-2.5 py-2 text-zinc-800 outline-none transition-all text-right"
+          >
+            <option value="LINE_A">مصنع A</option>
+            <option value="LINE_B">مصنع B</option>
+            <option value="LINE_C">مصنع C</option>
+            <option value="ALL">كل المصانع (ALL)</option>
+          </select>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-150 rounded-xl p-2.5 text-red-700 flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-emerald-50 border border-emerald-150 rounded-xl p-2.5 text-emerald-800 flex items-center gap-1.5">
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>{success}</span>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+        >
+          <PlusCircle className="w-4 h-4" />
+          <span>تثبيت وإضافة الموديل</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
+interface ModelsListProps {
+  models: RefrigeratorModel[];
+  onDeleteModel: (id: string) => void;
+}
+
+function ModelsList({ models, onDeleteModel }: ModelsListProps) {
+  const [filter, setFilter] = useState<'ALL' | 'LINE_A' | 'LINE_B' | 'LINE_C'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredModels = models.filter(m => {
+    const matchesFilter = filter === 'ALL' || m.factoryId === filter;
+    const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const getFactoryName = (fid: string) => {
+    switch (fid) {
+      case 'LINE_A': return 'مصنع A';
+      case 'LINE_B': return 'مصنع B';
+      case 'LINE_C': return 'مصنع C';
+      case 'ALL': return 'كل المصانع';
+      default: return fid;
+    }
+  };
+
+  return (
+    <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 text-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-zinc-150 pb-2">
+        <div className="flex items-center gap-2">
+          <Package className="w-4 h-4 text-amber-500" />
+          <h3 className="font-extrabold text-zinc-950 text-sm">قائمة موديلات الثلاجات المعتمدة</h3>
+        </div>
+
+        {/* Factory Filter */}
+        <div className="flex gap-1.5">
+          {(['ALL', 'LINE_A', 'LINE_B', 'LINE_C'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-2.5 py-1 rounded-lg font-bold border transition-all text-[10px] ${
+                filter === f
+                  ? 'bg-amber-50 border-amber-300 text-amber-700'
+                  : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
+              }`}
+            >
+              {f === 'ALL' ? 'الكل' : f === 'LINE_A' ? 'مصنع A' : f === 'LINE_B' ? 'مصنع B' : 'مصنع C'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="ابحث باسم الموديل..."
+          className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-zinc-800 outline-none transition-all text-right"
+        />
+      </div>
+
+      {/* Models Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-right text-xs">
+          <thead>
+            <tr className="border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px] bg-zinc-50">
+              <th className="py-2.5 px-3">رقم الموديل (ID)</th>
+              <th className="py-2.5 px-3">اسم الموديل الكامل</th>
+              <th className="py-2.5 px-3">النوع الفني</th>
+              <th className="py-2.5 px-3">المصنع التابع له</th>
+              <th className="py-2.5 px-3 text-center">حذف</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            {filteredModels.map(m => {
+              return (
+                <tr key={m.id} className="hover:bg-zinc-55/35 transition-all">
+                  <td className="py-2.5 px-3 font-mono font-bold text-zinc-400 text-[10px]">{m.id}</td>
+                  <td className="py-2.5 px-3 font-bold text-zinc-900">{m.name}</td>
+                  <td className="py-2.5 px-3">
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-100 border border-zinc-200 text-zinc-700 font-mono">
+                      {m.type}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 font-bold text-zinc-500">{getFactoryName(m.factoryId)}</td>
+                  <td className="py-2.5 px-3 text-center">
+                    <button
+                      onClick={() => {
+                        if (confirm(`هل أنت متأكد من رغبتك في حذف الموديل ${m.name}؟`)) {
+                          onDeleteModel(m.id);
+                        }
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition-colors inline-block"
+                      title="حذف هذا الموديل"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {filteredModels.length === 0 && (
+              <tr>
+                <td colSpan={5} className="text-center py-6 text-zinc-400 font-bold">
+                  لا توجد موديلات تطابق خيارات البحث والفرز الحالية.
                 </td>
               </tr>
             )}

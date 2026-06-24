@@ -26,8 +26,9 @@ export interface ManagedUser {
 export interface RefrigeratorModel {
   id: string;
   name: string;
-  capacity: string; // e.g. "450L", "340L", "520L"
-  type: "No Frost" | "Defrost" | "Digital No Frost" | "Smart Multi-Door";
+  capacity?: string; // e.g. "450L", "340L", "520L"
+  type: "No Frost" | "Defrost";
+  factoryId: 'LINE_A' | 'LINE_B' | 'LINE_C' | 'ALL';
 }
 
 // Production Lines
