@@ -11,7 +11,7 @@ import {
   Play, Sparkles, Send, CheckCircle2, XCircle, AlertTriangle, ListChecks, History, 
   LogOut, Check, BadgeAlert, ClipboardCheck, BookOpen, Layers, Ban, ClipboardList, 
   Calendar, Search, ArrowRight, HelpCircle, Archive, Save, PlusCircle, ShieldAlert,
-  Gauge, Activity, FileText, ChevronLeft, Settings, RefreshCw
+  Gauge, Activity, FileText, ChevronLeft, Settings, RefreshCw, Trash2
 } from 'lucide-react';
 
 interface TechnicianWorkspaceProps {
@@ -76,6 +76,28 @@ interface CriticalLog {
   foamWeight?: number;
   foamPressure?: number;
   injectionStatus?: 'PASS' | 'FAIL';
+  injModel?: '48' | '58' | '46&51' | string;
+  injJigNum?: number;
+  injF?: number;
+  injR1?: number;
+  injR2?: number;
+  injD?: number;
+  injK?: number;
+  injFR?: number;
+  injFL?: number;
+  injHR?: number;
+  injHL?: number;
+  injFPBow?: number;
+  injW1?: number;
+  injW2?: number;
+  injCastellaRight?: number;
+  injCastellaLeft?: number;
+  injFoamDensityHead1?: number;
+  injFoamDensityHead2?: number;
+  injMaterial?: 'Daw' | 'بعلبك' | string;
+  injVacuumMaterial?: 'N27' | 'samsunge' | 'LG' | string;
+  injTempDoor?: number;
+  injTempCabinet?: number;
 
   // 4. final_torque (عزوم التجميع النهائي)
   torqueValue?: number;
@@ -433,6 +455,30 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const [manualFoamPressure, setManualFoamPressure] = useState('');
   const [manualInjectionStatus, setManualInjectionStatus] = useState<'PASS' | 'FAIL'>('PASS');
 
+  // New injection fields states
+  const [injModel, setInjModel] = useState<'48' | '58' | '46&51'>('48');
+  const [injJigNum, setInjJigNum] = useState<number>(1);
+  const [injF, setInjF] = useState('');
+  const [injR1, setInjR1] = useState('');
+  const [injR2, setInjR2] = useState('');
+  const [injD, setInjD] = useState('');
+  const [injK, setInjK] = useState('');
+  const [injFR, setInjFR] = useState('');
+  const [injFL, setInjFL] = useState('');
+  const [injHR, setInjHR] = useState('');
+  const [injHL, setInjHL] = useState('');
+  const [injFPBow, setInjFPBow] = useState('');
+  const [injW1, setInjW1] = useState('');
+  const [injW2, setInjW2] = useState('');
+  const [injCastellaRight, setInjCastellaRight] = useState('');
+  const [injCastellaLeft, setInjCastellaLeft] = useState('');
+  const [injFoamDensityHead1, setInjFoamDensityHead1] = useState('');
+  const [injFoamDensityHead2, setInjFoamDensityHead2] = useState('');
+  const [injMaterial, setInjMaterial] = useState<'Daw' | 'بعلبك'>('Daw');
+  const [injVacuumMaterial, setInjVacuumMaterial] = useState<'N27' | 'samsunge' | 'LG'>('N27');
+  const [injTempDoor, setInjTempDoor] = useState('');
+  const [injTempCabinet, setInjTempCabinet] = useState('');
+
   const [manualTorqueValue, setManualTorqueValue] = useState('');
   const [manualTorqueStandard, setManualTorqueStandard] = useState('1.2 - 1.5 N.m');
   const [manualTorqueStatus, setManualTorqueStatus] = useState<'PASS' | 'FAIL'>('PASS');
@@ -561,10 +607,29 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           source: 'APPSHEET'
         });
       } else if (tabId === 'injection') {
-        const model = parts[2] || 'عام';
-        const weight = parseFloat(parts[3]) || 0;
-        const pressure = parseFloat(parts[4]) || 0;
-        const statusVal = parts[5] || 'سليم';
+        const model = parts[2] || '48';
+        const jigNum = parseInt(parts[3]) || 1;
+        const F = parseFloat(parts[4]) || 0;
+        const R1 = parseFloat(parts[5]) || 0;
+        const R2 = parseFloat(parts[6]) || 0;
+        const D = parseFloat(parts[7]) || 0;
+        const K = parseFloat(parts[8]) || 0;
+        const FR = parseFloat(parts[9]) || 0;
+        const FL = parseFloat(parts[10]) || 0;
+        const HR = parseFloat(parts[11]) || 0;
+        const HL = parseFloat(parts[12]) || 0;
+        const FPBow = parseFloat(parts[13]) || 0;
+        const W1 = parseFloat(parts[14]) || 0;
+        const W2 = parseFloat(parts[15]) || 0;
+        const castellaRight = parseFloat(parts[16]) || 0;
+        const castellaLeft = parseFloat(parts[17]) || 0;
+        const density1 = parseFloat(parts[18]) || 0;
+        const density2 = parseFloat(parts[19]) || 0;
+        const material = (parts[20] || 'Daw') as any;
+        const vacuumMaterial = (parts[21] || 'N27') as any;
+        const tempDoor = parseFloat(parts[22]) || 0;
+        const tempCabinet = parseFloat(parts[23]) || 0;
+
         results.push({
           id,
           lineId: targetLineId,
@@ -573,10 +638,28 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
-          modelName: model,
-          foamWeight: weight,
-          foamPressure: pressure,
-          injectionStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          injModel: model as any,
+          injJigNum: jigNum,
+          injF: F,
+          injR1: R1,
+          injR2: R2,
+          injD: D,
+          injK: K,
+          injFR: FR,
+          injFL: FL,
+          injHR: HR,
+          injHL: HL,
+          injFPBow: FPBow,
+          injW1: W1,
+          injW2: W2,
+          injCastellaRight: castellaRight,
+          injCastellaLeft: castellaLeft,
+          injFoamDensityHead1: density1,
+          injFoamDensityHead2: density2,
+          injMaterial: material,
+          injVacuumMaterial: vacuumMaterial,
+          injTempDoor: tempDoor,
+          injTempCabinet: tempCabinet,
           source: 'APPSHEET'
         });
       } else if (tabId === 'final_torque') {
@@ -762,6 +845,13 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       setCritSuccessMsg('تمت مزامنة جميع أقسام جدول البيانات بنجاح!');
       setTimeout(() => setCritSuccessMsg(''), 4000);
     }
+  };
+
+  const handleDeleteCriticalLog = (id: string) => {
+    setCriticalLogs(prev => prev.filter(log => log.id !== id));
+    setSyncedLogs(prev => prev.filter(log => log.id !== id));
+    setCritSuccessMsg('تم حذف السجل بنجاح.');
+    setTimeout(() => setCritSuccessMsg(''), 4000);
   };
 
   // Auto sync active tab on line or tab change
@@ -1033,6 +1123,34 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           'إختبار خرطوم الصرف بجهاز ضغط الهواء': log.check_drain_hose || 'OK',
           'التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج': log.check_door_fixtures || 'OK'
         };
+      } else if (log.tabId === 'injection') {
+        payload = {
+          tabId: 'injection',
+          'التاريخ': log.date,
+          'الوردية': log.shift,
+          'الموديل': log.injModel,
+          'رقم الجيك': log.injJigNum,
+          'F': log.injF,
+          'R 1': log.injR1,
+          'R 2': log.injR2,
+          'D': log.injD,
+          'K': log.injK,
+          'FR': log.injFR,
+          'FL': log.injFL,
+          'HR': log.injHR,
+          'HL': log.injHL,
+          'تقوس ال F/P': log.injFPBow,
+          'W1': log.injW1,
+          'W2': log.injW2,
+          'قياس استواء العارضة مع القائم اليمين': log.injCastellaRight,
+          'قياس استواء العارضة مع القائم الشمال': log.injCastellaLeft,
+          'كثافه الفوم Head 1': log.injFoamDensityHead1,
+          'كثافه الفوم Head 2': log.injFoamDensityHead2,
+          'مادة الحقن': log.injMaterial,
+          'خامة الفاكيوم': log.injVacuumMaterial,
+          'درجة حرارة ضبعة الحقن ( الباب )': log.injTempDoor,
+          'درجة حرارة ضبعة الحقن ( الكابينة )': log.injTempCabinet
+        };
       } else {
         payload = {
           tabId: log.tabId,
@@ -1163,10 +1281,28 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         timestamp: timestampVal,
         date: formattedDate,
         shift: manualShift,
-        modelName: manualModelName || getModelName(modelId),
-        foamWeight: parseFloat(manualFoamWeight) || 0,
-        foamPressure: parseFloat(manualFoamPressure) || 0,
-        injectionStatus: manualInjectionStatus,
+        injModel: injModel,
+        injJigNum: injJigNum,
+        injF: parseFloat(injF) || 0,
+        injR1: parseFloat(injR1) || 0,
+        injR2: parseFloat(injR2) || 0,
+        injD: parseFloat(injD) || 0,
+        injK: parseFloat(injK) || 0,
+        injFR: parseFloat(injFR) || 0,
+        injFL: parseFloat(injFL) || 0,
+        injHR: parseFloat(injHR) || 0,
+        injHL: parseFloat(injHL) || 0,
+        injFPBow: parseFloat(injFPBow) || 0,
+        injW1: parseFloat(injW1) || 0,
+        injW2: parseFloat(injW2) || 0,
+        injCastellaRight: parseFloat(injCastellaRight) || 0,
+        injCastellaLeft: parseFloat(injCastellaLeft) || 0,
+        injFoamDensityHead1: parseFloat(injFoamDensityHead1) || 0,
+        injFoamDensityHead2: parseFloat(injFoamDensityHead2) || 0,
+        injMaterial: injMaterial,
+        injVacuumMaterial: injVacuumMaterial,
+        injTempDoor: parseFloat(injTempDoor) || 0,
+        injTempCabinet: parseFloat(injTempCabinet) || 0,
         source: 'WEBSITE'
       };
     } else if (activeCritTab === 'final_torque') {
@@ -2319,42 +2455,11 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                       ) : (
                         <>
                           <div>
-                            <label className="block text-zinc-700 font-bold mb-1">مستوى تفريغ الهواء (Vacuum - mbar)</label>
-                            <input 
-                              type="number" step="0.001" value={vacuumInput} onChange={e => setVacuumInput(e.target.value)} 
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" required 
-                            />
-                          </div>
-                          <div>
                             <label className="block text-zinc-700 font-bold mb-1">شحنة الفريون (Gas Charge - Grams)</label>
                             <input 
                               type="number" step="0.1" value={gasInput} onChange={e => setGasInput(e.target.value)} 
                               className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" required 
                             />
-                          </div>
-                          <div>
-                            <label className="block text-zinc-700 font-bold mb-1">مقاومة عزل الكهرباء (Insulation - MΩ)</label>
-                            <input 
-                              type="number" step="1" value={insulationInput} onChange={e => setInsulationInput(e.target.value)} 
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" required 
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-zinc-700 font-bold mb-1">كاشف تسريب غاز الهيليوم</label>
-                            <div className="flex gap-2">
-                              <button 
-                                type="button" onClick={() => setHeliumLeakInput('PASS')} 
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${heliumLeakInput === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
-                              >
-                                PASS
-                              </button>
-                              <button 
-                                type="button" onClick={() => setHeliumLeakInput('FAIL')} 
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${heliumLeakInput === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
-                              >
-                                FAIL
-                              </button>
-                            </div>
                           </div>
                         </>
                       )}
@@ -2504,57 +2609,164 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                   )}
 
                   {activeCritTab === 'injection' && (
-                    <div className="space-y-3 pt-2">
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
-                        <select 
-                          value={manualModelName} 
-                          onChange={e => setManualModelName(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
-                        >
-                          <option value="">-- اختر موديل --</option>
-                          {factoryModels.map(m => (
-                            <option key={m.id} value={m.name}>{m.name}</option>
+                    <div className="space-y-4 pt-2">
+                      {/* معلومات عامة */}
+                      <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-150 space-y-3">
+                        <h4 className="font-extrabold text-zinc-900 border-b border-zinc-200 pb-1.5 text-[11px] flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-zinc-700 rounded-full"></span>
+                          بيانات الموديل والجيك
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                            <select 
+                              value={injModel} 
+                              onChange={e => setInjModel(e.target.value as any)} 
+                              className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1.5 text-xs outline-none font-bold"
+                            >
+                              <option value="48">48</option>
+                              <option value="58">58</option>
+                              <option value="46&51">46&51</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1">رقم الجيك</label>
+                            <select 
+                              value={injJigNum} 
+                              onChange={e => setInjJigNum(parseInt(e.target.value))} 
+                              className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1.5 text-xs outline-none font-bold font-mono"
+                            >
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* تسجيلات قيم الأبعاد */}
+                      <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-150 space-y-3">
+                        <h4 className="font-extrabold text-zinc-900 border-b border-zinc-200 pb-1.5 text-[11px] flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-zinc-700 rounded-full"></span>
+                          قيم الأبعاد (F/R/D/K/W)
+                        </h4>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: 'F', value: injF, setter: setInjF },
+                            { label: 'R 1', value: injR1, setter: setInjR1 },
+                            { label: 'R 2', value: injR2, setter: setInjR2 },
+                            { label: 'D', value: injD, setter: setInjD },
+                            { label: 'K', value: injK, setter: setInjK },
+                            { label: 'FR', value: injFR, setter: setInjFR },
+                            { label: 'FL', value: injFL, setter: setInjFL },
+                            { label: 'HR', value: injHR, setter: setInjHR },
+                            { label: 'HL', value: injHL, setter: setInjHL },
+                            { label: 'تقوس F/P', value: injFPBow, setter: setInjFPBow },
+                            { label: 'W1', value: injW1, setter: setInjW1 },
+                            { label: 'W2', value: injW2, setter: setInjW2 },
+                          ].map((field, idx) => (
+                            <div key={idx}>
+                              <label className="block text-zinc-650 font-bold mb-1 text-[10px]">{field.label}</label>
+                              <input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="0.0"
+                                value={field.value}
+                                onChange={e => field.setter(e.target.value)}
+                                className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold font-mono outline-none text-left"
+                                required
+                              />
+                            </div>
                           ))}
-                        </select>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">وزن الفوم الفعلي (جرام)</label>
-                        <input 
-                          type="number" 
-                          placeholder="مثال: 5400" 
-                          value={manualFoamWeight} 
-                          onChange={e => setManualFoamWeight(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
-                          required 
-                        />
+
+                      {/* إستواء الكاستلا وكثافة الفوم */}
+                      <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-150 space-y-3">
+                        <h4 className="font-extrabold text-zinc-900 border-b border-zinc-200 pb-1.5 text-[11px] flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-zinc-700 rounded-full"></span>
+                          إستواء الكاستلا وكثافة الفوم
+                        </h4>
+                        <div className="space-y-2.5">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-zinc-700 font-bold mb-1 text-[10px] leading-tight">إستواء العارضة/القائم يمين</label>
+                              <input 
+                                type="number" step="0.01" placeholder="0.0" value={injCastellaRight} onChange={e => setInjCastellaRight(e.target.value)}
+                                className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold outline-none font-mono text-left" required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-zinc-700 font-bold mb-1 text-[10px] leading-tight">إستواء العارضة/القائم شمال</label>
+                              <input 
+                                type="number" step="0.01" placeholder="0.0" value={injCastellaLeft} onChange={e => setInjCastellaLeft(e.target.value)}
+                                className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold outline-none font-mono text-left" required
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-zinc-700 font-bold mb-1 text-[10px]">كثافة الفوم Head 1</label>
+                              <input 
+                                type="number" step="0.01" placeholder="0.0" value={injFoamDensityHead1} onChange={e => setInjFoamDensityHead1(e.target.value)}
+                                className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold outline-none font-mono text-left" required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-zinc-700 font-bold mb-1 text-[10px]">كثافة الفوم Head 2</label>
+                              <input 
+                                type="number" step="0.01" placeholder="0.0" value={injFoamDensityHead2} onChange={e => setInjFoamDensityHead2(e.target.value)}
+                                className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold outline-none font-mono text-left" required
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">ضغط ماكينة الحقن (بار)</label>
-                        <input 
-                          type="number" 
-                          placeholder="مثال: 150" 
-                          value={manualFoamPressure} 
-                          onChange={e => setManualFoamPressure(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">حالة الحقن</label>
-                        <div className="flex gap-2">
-                          <button 
-                            type="button" onClick={() => setManualInjectionStatus('PASS')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectionStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            سليم (Pass)
-                          </button>
-                          <button 
-                            type="button" onClick={() => setManualInjectionStatus('FAIL')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectionStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            عيب حقن (Fail)
-                          </button>
+
+                      {/* المواد والحرارة */}
+                      <div className="bg-zinc-50 p-3 rounded-xl border border-zinc-150 space-y-3">
+                        <h4 className="font-extrabold text-zinc-900 border-b border-zinc-200 pb-1.5 text-[11px] flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-zinc-700 rounded-full"></span>
+                          الخامات ودرجات الحرارة
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1 text-[10px]">مادة الحقن</label>
+                            <select 
+                              value={injMaterial} 
+                              onChange={e => setInjMaterial(e.target.value as any)} 
+                              className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs outline-none font-bold"
+                            >
+                              <option value="Daw">Daw</option>
+                              <option value="بعلبك">بعلبك</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1 text-[10px]">خامة الفاكيوم</label>
+                            <select 
+                              value={injVacuumMaterial} 
+                              onChange={e => setInjVacuumMaterial(e.target.value as any)} 
+                              className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs outline-none font-bold"
+                            >
+                              <option value="N27">N27</option>
+                              <option value="samsunge">samsunge</option>
+                              <option value="LG">LG</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1 text-[10px] leading-tight">حرارة ضبعة الحقن (الباب)</label>
+                            <input 
+                              type="number" step="0.1" placeholder="0.0" value={injTempDoor} onChange={e => setInjTempDoor(e.target.value)}
+                              className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold outline-none font-mono text-left" required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-700 font-bold mb-1 text-[10px] leading-tight">حرارة ضبعة الحقن (الكابينة)</label>
+                            <input 
+                              type="number" step="0.1" placeholder="0.0" value={injTempCabinet} onChange={e => setInjTempCabinet(e.target.value)}
+                              className="w-full bg-white border border-zinc-200 rounded-lg px-2 py-1 text-xs font-bold outline-none font-mono text-left" required
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2813,8 +3025,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5">ماكينة الشحن</th>
                           <th className="p-2.5">الموديل</th>
                           <th className="p-2.5 text-center">شحنة الغاز</th>
-                          <th className="p-2.5 text-center">التفريغ والعزل</th>
-                          <th className="p-2.5 text-center">كاشف الهيليوم</th>
+                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
                         </tr>
                       )}
                       {activeCritTab === 'init_ass' && (
@@ -2826,6 +3037,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                             <th className="p-2.5 text-center">الأبعاد (Y/X/N/M/L/W/P/R/S)</th>
                             <th className="p-2.5 text-center">حالة بنود الفحص</th>
                             <th className="p-2.5 text-center">النتيجة النهائية</th>
+                            <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                           </tr>
                         ) : (
                           <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
@@ -2842,10 +3054,12 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                         <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
                           <th className="p-2.5">المصدر</th>
                           <th className="p-2.5">التاريخ والوردية</th>
-                          <th className="p-2.5">الموديل</th>
-                          <th className="p-2.5 text-center">وزن الفوم (جرام)</th>
-                          <th className="p-2.5 text-center">ضغط الماكينة (بار)</th>
-                          <th className="p-2.5 text-center">حالة الحقن</th>
+                          <th className="p-2.5">الموديل والجيك</th>
+                          <th className="p-2.5 text-center">قيم الأبعاد (F/R/D/K/W)</th>
+                          <th className="p-2.5 text-center">إستواء الكاستلا</th>
+                          <th className="p-2.5 text-center">كثافة الفوم</th>
+                          <th className="p-2.5 text-center">الخامة والحرارة</th>
+                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
                         </tr>
                       )}
                       {activeCritTab === 'final_torque' && (
@@ -2856,6 +3070,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5 text-center">العزم المقاس</th>
                           <th className="p-2.5 text-center">المعيار القياسي</th>
                           <th className="p-2.5 text-center">حالة العزم</th>
+                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
                         </tr>
                       )}
                       {activeCritTab === 'start_torque' && (
@@ -2865,6 +3080,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5">رقم المحطة</th>
                           <th className="p-2.5 text-center">عزم المفك (N.m)</th>
                           <th className="p-2.5 text-center">حالة الربط</th>
+                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
                         </tr>
                       )}
                       {activeCritTab === 'inject_torque' && (
@@ -2874,6 +3090,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5">مسمار التثبيت</th>
                           <th className="p-2.5 text-center">العزم الفعلي (N.m)</th>
                           <th className="p-2.5 text-center">الحالة</th>
+                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
                         </tr>
                       )}
                       {activeCritTab === 'perf_test' && (
@@ -2884,13 +3101,14 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5 text-center">حرارة الكابينة / الفريزر</th>
                           <th className="p-2.5 text-center">الأمبير (A)</th>
                           <th className="p-2.5 text-center">نتيجة الأداء</th>
+                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
                         </tr>
                       )}
                     </thead>
                     <tbody className="divide-y divide-zinc-150">
                       {allCriticalLogs.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="p-8 text-center text-zinc-400 font-medium">
+                          <td colSpan={lineId === 'LINE_B' ? 8 : 7} className="p-8 text-center text-zinc-400 font-medium">
                             لا توجد قراءات مسجلة حالياً لهذا القسم. قم بتسجيل قراءة أو مزامنة بيانات AppSheet.
                           </td>
                         </tr>
@@ -2927,14 +3145,6 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                                   <td className="p-2.5 font-bold text-zinc-700">{log.machine}</td>
                                   <td className="p-2.5 text-zinc-650 truncate max-w-[130px]">{log.modelName}</td>
                                   <td className="p-2.5 font-mono font-black text-center text-zinc-950">{log.rawCharge || log.gasCharge}</td>
-                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-500">
-                                    {isAppSheet ? '-' : `${log.vacuumLevel} mbar / ${log.insulationRes} MΩ`}
-                                  </td>
-                                  <td className="p-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.heliumLeak)}`}>
-                                      {log.heliumLeak || 'PASS'}
-                                    </span>
-                                  </td>
                                 </>
                               )}
 
@@ -2995,13 +3205,33 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
                               {activeCritTab === 'injection' && (
                                 <>
-                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelName}</td>
-                                  <td className="p-2.5 text-center font-mono">{log.foamWeight} ج</td>
-                                  <td className="p-2.5 text-center font-mono">{log.foamPressure} بار</td>
-                                  <td className="p-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.injectionStatus)}`}>
-                                      {log.injectionStatus || 'PASS'}
+                                  <td className="p-2.5 text-zinc-800">
+                                    <span className="font-extrabold block text-xs">
+                                      موديل {log.injModel || '48'}
                                     </span>
+                                    <span className="text-[10px] text-zinc-500 font-bold block">
+                                      جيك رقم: <strong className="text-zinc-800">{log.injJigNum || '1'}</strong>
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-600 leading-normal">
+                                    <div className="font-bold">
+                                      F:{log.injF ?? 0} | R1:{log.injR1 ?? 0} | R2:{log.injR2 ?? 0} | D:{log.injD ?? 0} | K:{log.injK ?? 0}
+                                    </div>
+                                    <div className="text-zinc-400 text-[9px]">
+                                      FR:{log.injFR ?? 0} FL:{log.injFL ?? 0} HR:{log.injHR ?? 0} HL:{log.injHL ?? 0} تقوس:{log.injFPBow ?? 0} W1:{log.injW1 ?? 0} W2:{log.injW2 ?? 0}
+                                    </div>
+                                  </td>
+                                  <td className="p-2.5 text-center font-mono text-[11px] text-zinc-700">
+                                    <div>يمين: {log.injCastellaRight ?? 0}</div>
+                                    <div className="text-zinc-400 text-[10px]">شمال: {log.injCastellaLeft ?? 0}</div>
+                                  </td>
+                                  <td className="p-2.5 text-center font-mono text-[11px] text-zinc-700">
+                                    <div>H1: {log.injFoamDensityHead1 ?? 0}</div>
+                                    <div className="text-zinc-400 text-[10px]">H2: {log.injFoamDensityHead2 ?? 0}</div>
+                                  </td>
+                                  <td className="p-2.5 text-center text-zinc-700 text-[10px]">
+                                    <div className="font-bold">مادة: {log.injMaterial || 'Daw'} | فاكيوم: {log.injVacuumMaterial || 'N27'}</div>
+                                    <div className="text-zinc-400 text-[9px] font-mono">باب: {log.injTempDoor ?? 0}°م | كابينة: {log.injTempCabinet ?? 0}°م</div>
                                   </td>
                                 </>
                               )}
@@ -3056,6 +3286,18 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                                     </span>
                                   </td>
                                 </>
+                              )}
+
+                              {lineId === 'LINE_B' && (
+                                <td className="p-2.5 text-center">
+                                  <button
+                                    onClick={() => handleDeleteCriticalLog(log.id)}
+                                    title="حذف السجل"
+                                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
                               )}
 
                             </tr>
