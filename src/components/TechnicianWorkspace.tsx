@@ -84,6 +84,57 @@ interface ProductionQty {
 }
 
 export default function TechnicianWorkspace({ user, onLogout, inspections, onAddInspection, models }: TechnicianWorkspaceProps) {
+  // Safe Date/Time Formatting Helpers to prevent rendering crashes due to invalid strings
+  const safeDateString = (timestamp: any) => {
+    if (!timestamp) return '--/--/----';
+    try {
+      const d = new Date(timestamp);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('ar-EG');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return '--/--/----';
+  };
+
+  const safeTimeString = (timestamp: any) => {
+    if (!timestamp) return '--:--';
+    try {
+      const d = new Date(timestamp);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return '--:--';
+  };
+
+  const safeDateStringWithOpts = (timestamp: any, opts?: Intl.DateTimeFormatOptions) => {
+    if (!timestamp) return '--/--';
+    try {
+      const d = new Date(timestamp);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('ar-EG', opts);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return '--/--';
+  };
+
+  // Helpers
+  const getLineName = (lid: string) => {
+    const l = PRODUCTION_LINES.find(x => x.id === lid);
+    return l ? l.name : lid;
+  };
+
+  const getModelName = (mid: string) => {
+    const m = models.find(x => x.id === mid);
+    return m ? m.name : mid;
+  };
+
   // Line Selection
   const [lineId, setLineId] = useState<ProductionLineId>(() => {
     if (user.factoryId && user.factoryId !== 'ALL') {
@@ -298,21 +349,25 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
   // Memoized unified critical logs list for display
   const allCriticalLogs = React.useMemo(() => {
-    const localLineLogs = criticalLogs.filter(l => l.lineId === lineId).map(log => ({
+    const localLineLogs = (criticalLogs || []).filter(l => l && l.lineId === lineId).map(log => ({
       ...log,
       source: log.source || 'WEBSITE' as const,
       shift: (log as any).shift || 'الأولى',
       machine: (log as any).machine || 'موقع الويب',
       modelName: (log as any).modelName || getModelName(log.modelName || modelId) || 'عام',
       rawCharge: (log as any).rawCharge || log.gasCharge,
-      date: (log as any).date || new Date(log.timestamp).toLocaleDateString('ar-EG')
+      date: (log as any).date || safeDateString(log.timestamp)
     }));
     
-    const syncedLineLogs = syncedLogs.filter(l => l.lineId === lineId);
+    const syncedLineLogs = (syncedLogs || []).filter(l => l && l.lineId === lineId);
     
-    return [...localLineLogs, ...syncedLineLogs].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    return [...localLineLogs, ...syncedLineLogs].sort((a, b) => {
+      const tA = new Date(a.timestamp).getTime();
+      const tB = new Date(b.timestamp).getTime();
+      const timeA = isNaN(tA) ? 0 : tA;
+      const timeB = isNaN(tB) ? 0 : tB;
+      return timeB - timeA;
+    });
   }, [criticalLogs, syncedLogs, lineId, modelId, models]);
 
   // Trial Runs State
@@ -640,17 +695,6 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setProdSuccessMsg('تم تحديث كمية إنتاج خط التجميع بنجاح!');
     setProdNotes('');
     setTimeout(() => setProdSuccessMsg(''), 3000);
-  };
-
-  // Helpers
-  const getLineName = (lid: string) => {
-    const l = PRODUCTION_LINES.find(x => x.id === lid);
-    return l ? l.name : lid;
-  };
-
-  const getModelName = (mid: string) => {
-    const m = models.find(x => x.id === mid);
-    return m ? m.name : mid;
   };
 
   return (
@@ -1507,9 +1551,9 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                               </td>
                               
                               <td className="p-2.5 text-zinc-600 font-mono">
-                                {log.date || new Date(log.timestamp).toLocaleDateString('ar-EG')}
+                                {log.date || safeDateString(log.timestamp)}
                                 <span className="text-[10px] text-zinc-400 block font-normal">
-                                  {new Date(log.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                                  {safeTimeString(log.timestamp)}
                                 </span>
                               </td>
                               
@@ -1753,7 +1797,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           {log.inspectorName} ({log.inspectorSap})
                         </td>
                         <td className="py-3 px-4 text-zinc-500 font-mono">
-                          {new Date(log.timestamp).toLocaleDateString('ar-EG')} - {new Date(log.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                          {safeDateString(log.timestamp)} - {safeTimeString(log.timestamp)}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -1898,7 +1942,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           {modelObj ? modelObj.name : log.modelId}
                         </td>
                         <td className="py-3 px-4 text-zinc-500 font-mono">
-                          {new Date(log.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })} ({new Date(log.timestamp).toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric' })})
+                          {safeTimeString(log.timestamp)} ({safeDateStringWithOpts(log.timestamp, { month: 'numeric', day: 'numeric' })})
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -2066,7 +2110,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                       <p className="text-zinc-500 font-medium bg-white border border-zinc-155 p-2 rounded-lg text-[11px]">{ncr.description}</p>
                       <div className="pt-2 border-t border-zinc-150 flex items-center justify-between text-[11px] text-zinc-400">
                         <span>الإجراء المطلق: <strong className="text-zinc-700">{ncr.actionRequired}</strong></span>
-                        <span className="font-mono">{new Date(ncr.timestamp).toLocaleDateString('ar-EG')}</span>
+                        <span className="font-mono">{safeDateString(ncr.timestamp)}</span>
                       </div>
                     </div>
                   ))}
@@ -2137,7 +2181,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           </span>
                         </td>
                         <td className="p-3 text-zinc-450 font-mono">
-                          {new Date(stop.timestamp).toLocaleDateString('ar-EG')} - {new Date(stop.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                          {safeDateString(stop.timestamp)} - {safeTimeString(stop.timestamp)}
                         </td>
                       </tr>
                     ))}
@@ -2226,7 +2270,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                     return (
                       <div key={p.id} className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-zinc-800 text-[11px] font-mono">تاريخ التسجيل: {new Date(p.timestamp).toLocaleDateString('ar-EG')}</span>
+                          <span className="font-bold text-zinc-800 text-[11px] font-mono">تاريخ التسجيل: {safeDateString(p.timestamp)}</span>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold bg-zinc-150 text-zinc-700`}>
                             نسبة الإنجاز: {pct}%
                           </span>
