@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { User, QualityInspectionLog, ProcessAuditLog, UserRole } from './types';
+import { User, QualityInspectionLog, ProcessAuditLog, UserRole, ManagedUser } from './types';
 import { generateSeedData } from './data';
 import Login from './components/Login';
 import TechnicianWorkspace from './components/TechnicianWorkspace';
@@ -20,6 +20,29 @@ export default function App() {
     } catch {
       return null;
     }
+  });
+
+  // Users directory state with default credentials
+  const [users, setUsers] = useState<ManagedUser[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_users_list');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {}
+    const defaultUsers: ManagedUser[] = [
+      { sapNumber: '40016452', name: 'عبد الرحمن شريف (مالك الموقع)', role: 'MANAGER', factoryId: 'ALL' },
+      { sapNumber: '12345678', name: 'المدير العام', role: 'MANAGER', factoryId: 'ALL' },
+      { sapNumber: '20114059', name: 'أحمد الشناوي', role: 'TECHNICIAN', factoryId: 'LINE_A' },
+      { sapNumber: '30114059', name: 'م. هاني العشري', role: 'SUPERVISOR', factoryId: 'LINE_A' },
+      { sapNumber: '20114092', name: 'محمود عبد السلام', role: 'TECHNICIAN', factoryId: 'LINE_B' },
+      { sapNumber: '30114092', name: 'م. سعيد عبد الجواد', role: 'SUPERVISOR', factoryId: 'LINE_B' },
+      { sapNumber: '20115011', name: 'مصطفى البحيري', role: 'TECHNICIAN', factoryId: 'LINE_C' },
+      { sapNumber: '30115011', name: 'م. أشرف رسلان', role: 'SUPERVISOR', factoryId: 'LINE_C' },
+      { sapNumber: '50114000', name: 'م. ممدوح الشريف', role: 'MANAGER', factoryId: 'ALL' }
+    ];
+    localStorage.setItem('elaraby_qa_users_list', JSON.stringify(defaultUsers));
+    return defaultUsers;
   });
 
   // 2. Hydrate Inspections and Process Audits state with LocalStorage or seed data
@@ -70,22 +93,8 @@ export default function App() {
   }, [currentUser]);
 
   // Auth Operations
-  const handleLogin = (role: UserRole, identifier: string, name: string) => {
-    if (role === 'TECHNICIAN') {
-      setCurrentUser({
-        id: `USER-${identifier}`,
-        name,
-        role,
-        sapNumber: identifier,
-      });
-    } else {
-      setCurrentUser({
-        id: `USER-${role}-${Date.now()}`,
-        name,
-        role,
-        code: identifier,
-      });
-    }
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
   };
 
   const handleLogout = () => {
@@ -111,7 +120,7 @@ export default function App() {
   return (
     <div className="bg-neutral-50 min-h-screen text-zinc-800 selection:bg-red-500 selection:text-white antialiased">
       {currentUser === null ? (
-        <Login onLogin={handleLogin} />
+        <Login onLogin={handleLogin} users={users} />
       ) : currentUser.role === 'TECHNICIAN' ? (
         <TechnicianWorkspace
           user={currentUser}
@@ -134,6 +143,8 @@ export default function App() {
           onLogout={handleLogout}
           inspections={inspections}
           processAudits={processAudits}
+          users={users}
+          onUpdateUsers={setUsers}
         />
       )}
     </div>

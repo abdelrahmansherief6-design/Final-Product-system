@@ -18,7 +18,12 @@ interface TechnicianWorkspaceProps {
 
 export default function TechnicianWorkspace({ user, onLogout, inspections, onAddInspection }: TechnicianWorkspaceProps) {
   // Form states
-  const [lineId, setLineId] = useState<ProductionLineId>('LINE_A');
+  const [lineId, setLineId] = useState<ProductionLineId>(() => {
+    if (user.factoryId && user.factoryId !== 'ALL') {
+      return user.factoryId;
+    }
+    return 'LINE_A';
+  });
   const [modelId, setModelId] = useState(REFRIGERATOR_MODELS[0].id);
   const [serialNumber, setSerialNumber] = useState('');
   
@@ -280,17 +285,23 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                 {/* Line ID Selector */}
                 <div>
                   <label className="block text-xs text-zinc-550 font-bold mb-2">خط الإنتاج الحالي</label>
-                  <select
-                    value={lineId}
-                    onChange={(e) => setLineId(e.target.value as ProductionLineId)}
-                    className="w-full bg-zinc-50 border border-zinc-200 focus:border-blue-500 focus:bg-white rounded-xl px-3 py-2.5 text-xs text-zinc-800 outline-none transition-all"
-                  >
-                    {PRODUCTION_LINES.map(line => (
-                      <option key={line.id} value={line.id}>
-                        {line.name} ({line.supervisorName})
-                      </option>
-                    ))}
-                  </select>
+                  {user.factoryId && user.factoryId !== 'ALL' ? (
+                    <div className="w-full bg-zinc-100 border border-zinc-200 text-zinc-700 rounded-xl px-3 py-2.5 text-xs font-bold font-sans">
+                      {PRODUCTION_LINES.find(l => l.id === user.factoryId)?.name || user.factoryId}
+                    </div>
+                  ) : (
+                    <select
+                      value={lineId}
+                      onChange={(e) => setLineId(e.target.value as ProductionLineId)}
+                      className="w-full bg-zinc-50 border border-zinc-200 focus:border-blue-500 focus:bg-white rounded-xl px-3 py-2.5 text-xs text-zinc-800 outline-none transition-all"
+                    >
+                      {PRODUCTION_LINES.map(line => (
+                        <option key={line.id} value={line.id}>
+                          {line.name} ({line.supervisorName})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {/* Refrigerator Model Selector */}

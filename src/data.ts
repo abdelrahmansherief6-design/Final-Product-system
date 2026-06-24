@@ -13,9 +13,9 @@ export const REFRIGERATOR_MODELS: RefrigeratorModel[] = [
 ];
 
 export const PRODUCTION_LINES: ProductionLine[] = [
-  { id: 'LINE_A', name: 'خط تجميع أ (Line A) - نوفروست', supervisorName: 'م. هاني العشري' },
-  { id: 'LINE_B', name: 'خط تجميع ب (Line B) - ديجيتال', supervisorName: 'م. سعيد عبد الجواد' },
-  { id: 'LINE_C', name: 'خط تجميع ج (Line C) - اقتصادي', supervisorName: 'م. أشرف رسلان' },
+  { id: 'LINE_A', name: 'مصنع A', supervisorName: 'م. هاني العشري' },
+  { id: 'LINE_B', name: 'مصنع B', supervisorName: 'م. سعيد عبد الجواد' },
+  { id: 'LINE_C', name: 'مصنع C', supervisorName: 'م. أشرف رسلان' },
 ];
 
 export const CHECKLIST_ITEMS: ChecklistItem[] = [

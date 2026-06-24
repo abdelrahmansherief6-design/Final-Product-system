@@ -12,6 +12,14 @@ export interface User {
   role: UserRole;
   sapNumber?: string; // For Technician
   code?: string; // For Supervisor/Manager
+  factoryId?: 'LINE_A' | 'LINE_B' | 'LINE_C' | 'ALL'; // Factory assignment
+}
+
+export interface ManagedUser {
+  sapNumber: string;
+  name: string;
+  role: UserRole;
+  factoryId: 'LINE_A' | 'LINE_B' | 'LINE_C' | 'ALL';
 }
 
 // Refrigerator Models

@@ -4,11 +4,11 @@
  */
 
 import React, { useState } from 'react';
-import { User, QualityInspectionLog, ProcessAuditLog } from '../types';
+import { User, QualityInspectionLog, ProcessAuditLog, ManagedUser, UserRole } from '../types';
 import { REFRIGERATOR_MODELS, PRODUCTION_LINES } from '../data';
 import { 
   BarChart3, LogOut, TrendingUp, Printer, FileSpreadsheet, Download, HelpCircle, 
-  CheckCircle, ShieldAlert, Award
+  CheckCircle, ShieldAlert, Award, Users, UserPlus, Trash2, Lock, Shield, UserCheck
 } from 'lucide-react';
 
 interface ManagerWorkspaceProps {
@@ -16,6 +16,8 @@ interface ManagerWorkspaceProps {
   onLogout: () => void;
   inspections: QualityInspectionLog[];
   processAudits: ProcessAuditLog[];
+  users: ManagedUser[];
+  onUpdateUsers: (users: ManagedUser[]) => void;
 }
 
 export default function ManagerWorkspace({
@@ -23,8 +25,10 @@ export default function ManagerWorkspace({
   onLogout,
   inspections,
   processAudits,
+  users,
+  onUpdateUsers,
 }: ManagerWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'PROCESS_REPORTS'>('ANALYTICS');
+  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'PROCESS_REPORTS' | 'USER_DIRECTORY'>('ANALYTICS');
 
   // KPI calculations
   const totalInspected = inspections.length;
@@ -281,7 +285,7 @@ export default function ManagerWorkspace({
         </div>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-zinc-200 gap-2">
+        <div className="flex border-b border-zinc-200 gap-2 flex-wrap">
           <button
             onClick={() => setActiveTab('ANALYTICS')}
             className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
@@ -316,6 +320,18 @@ export default function ManagerWorkspace({
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>تقارير تدقيق معايير العمليات (Line Process QC)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('USER_DIRECTORY')}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
+              activeTab === 'USER_DIRECTORY'
+                ? 'border-amber-500 text-amber-605 bg-white shadow-sm rounded-t-xl border-t border-x border-zinc-200'
+                : 'border-transparent text-zinc-500 hover:text-zinc-850'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>بيانات المستخدمين ({users.length})</span>
           </button>
         </div>
 
@@ -728,12 +744,301 @@ export default function ManagerWorkspace({
           </div>
         )}
 
+        {/* User Directory Tab Panel */}
+        {activeTab === 'USER_DIRECTORY' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+            
+            {/* Left Column: Add User Form */}
+            <div className="lg:col-span-1">
+              <AddUserForm users={users} onAddUser={(newUser) => onUpdateUsers([...users, newUser])} />
+            </div>
+
+            {/* Right Column: Users List & Management */}
+            <div className="lg:col-span-2">
+              <UsersList users={users} onDeleteUser={(sap) => onUpdateUsers(users.filter(u => u.sapNumber !== sap))} />
+            </div>
+
+          </div>
+        )}
+
       </main>
 
       {/* Footer */}
       <footer className="bg-white border-t border-zinc-200 py-6 mt-12 text-center text-zinc-405 text-[11px]">
         <p>© شركة العربي للصناعات الهندسية • الإشراف والتحليل الذكي لخطوط الإنتاج</p>
       </footer>
+    </div>
+  );
+}
+
+// Subcomponents for User Directory Management
+interface AddUserFormProps {
+  users: ManagedUser[];
+  onAddUser: (user: ManagedUser) => void;
+}
+
+function AddUserForm({ users, onAddUser }: AddUserFormProps) {
+  const [sapNumber, setSapNumber] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState<'TECHNICIAN' | 'SUPERVISOR' | 'MANAGER'>('TECHNICIAN');
+  const [factoryId, setFactoryId] = useState<'LINE_A' | 'LINE_B' | 'LINE_C' | 'ALL'>('LINE_A');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!/^\d{8}$/.test(sapNumber)) {
+      setError('يجب أن يتكون رقم الساب (SAP Number) من 8 أرقام فقط.');
+      return;
+    }
+
+    if (users.some(u => u.sapNumber === sapNumber)) {
+      setError('رقم الساب هذا مسجل بالفعل لمستخدم آخر!');
+      return;
+    }
+
+    if (!name.trim()) {
+      setError('يرجى إدخال اسم المستخدم الكامل.');
+      return;
+    }
+
+    // Add user
+    onAddUser({
+      sapNumber,
+      name: name.trim(),
+      role,
+      factoryId: role === 'MANAGER' ? 'ALL' : factoryId
+    });
+
+    setSuccess('تم إضافة المستخدم الجديد بنجاح!');
+    setSapNumber('');
+    setName('');
+    // Auto clear success after 3s
+    setTimeout(() => setSuccess(''), 3000);
+  };
+
+  return (
+    <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 text-xs">
+      <div className="border-b border-zinc-150 pb-2 flex items-center gap-2">
+        <UserPlus className="w-4 h-4 text-amber-500" />
+        <h3 className="font-extrabold text-zinc-950 text-sm">إضافة مستخدم جديد للنظام</h3>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-zinc-550 font-bold mb-1.5">الاسم الكامل (ثنائي أو ثلاثي)</label>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="مثال: أحمد عبد الرحمن"
+            className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-zinc-800 outline-none transition-all text-right"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-zinc-550 font-bold mb-1.5">رقم الساب الوظيفي (SAP Number)</label>
+          <input
+            type="text"
+            maxLength={8}
+            value={sapNumber}
+            onChange={e => setSapNumber(e.target.value.replace(/\D/g, ''))}
+            placeholder="مثال: 20114059"
+            className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 font-mono font-bold text-center tracking-wide text-zinc-900 outline-none transition-all"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-zinc-550 font-bold mb-1.5">الفئة والصلاحية (Role)</label>
+          <select
+            value={role}
+            onChange={e => {
+              const val = e.target.value as 'TECHNICIAN' | 'SUPERVISOR' | 'MANAGER';
+              setRole(val);
+              if (val === 'MANAGER') {
+                setFactoryId('ALL');
+              } else if (factoryId === 'ALL') {
+                setFactoryId('LINE_A');
+              }
+            }}
+            className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-2.5 py-2 text-zinc-800 outline-none transition-all"
+          >
+            <option value="TECHNICIAN">فني جودة (Technician)</option>
+            <option value="SUPERVISOR">مشرف خط إنتاج (Supervisor)</option>
+            <option value="MANAGER">مدير جودة ومتابعة (Manager)</option>
+          </select>
+        </div>
+
+        {role !== 'MANAGER' && (
+          <div>
+            <label className="block text-zinc-550 font-bold mb-1.5">المصنع التابع له (Factory Line)</label>
+            <select
+              value={factoryId}
+              onChange={e => setFactoryId(e.target.value as 'LINE_A' | 'LINE_B' | 'LINE_C')}
+              className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-2.5 py-2 text-zinc-800 outline-none transition-all"
+            >
+              <option value="LINE_A">مصنع A</option>
+              <option value="LINE_B">مصنع B</option>
+              <option value="LINE_C">مصنع C</option>
+            </select>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-150 rounded-xl p-2.5 text-red-700 flex items-center gap-1.5 font-sans">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-emerald-50 border border-emerald-150 rounded-xl p-2.5 text-emerald-800 flex items-center gap-1.5 font-sans">
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>{success}</span>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="w-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+        >
+          <UserCheck className="w-4 h-4" />
+          <span>تثبيت وإضافة المستخدم</span>
+        </button>
+      </form>
+    </div>
+  );
+}
+
+interface UsersListProps {
+  users: ManagedUser[];
+  onDeleteUser: (sapNumber: string) => void;
+}
+
+function UsersList({ users, onDeleteUser }: UsersListProps) {
+  const [filter, setFilter] = useState<'ALL' | 'LINE_A' | 'LINE_B' | 'LINE_C'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredUsers = users.filter(u => {
+    const matchesFilter = filter === 'ALL' || u.factoryId === filter;
+    const matchesSearch = u.name.toLowerCase().includes(searchQuery.toLowerCase()) || u.sapNumber.includes(searchQuery);
+    return matchesFilter && matchesSearch;
+  });
+
+  const getFactoryName = (fid: string) => {
+    switch (fid) {
+      case 'LINE_A': return 'مصنع A';
+      case 'LINE_B': return 'مصنع B';
+      case 'LINE_C': return 'مصنع C';
+      case 'ALL': return 'الإدارة العامة';
+      default: return fid;
+    }
+  };
+
+  return (
+    <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 text-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-zinc-150 pb-2">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-amber-500" />
+          <h3 className="font-extrabold text-zinc-950 text-sm">مستشاري ومستخدمي المنظومة المعتمدين</h3>
+        </div>
+
+        {/* Factory Filter */}
+        <div className="flex gap-1.5">
+          {(['ALL', 'LINE_A', 'LINE_B', 'LINE_C'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-2.5 py-1 rounded-lg font-bold border transition-all text-[10px] ${
+                filter === f
+                  ? 'bg-amber-50 border-amber-300 text-amber-700'
+                  : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'
+              }`}
+            >
+              {f === 'ALL' ? 'الكل' : f === 'LINE_A' ? 'مصنع A' : f === 'LINE_B' ? 'مصنع B' : 'مصنع C'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder="ابحث بالاسم أو برقم الساب..."
+          className="w-full bg-zinc-50 border border-zinc-200 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-zinc-800 outline-none transition-all text-right"
+        />
+      </div>
+
+      {/* Users Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-right text-xs">
+          <thead>
+            <tr className="border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px] bg-zinc-50">
+              <th className="py-2.5 px-3">الاسم الكامل</th>
+              <th className="py-2.5 px-3">رقم الساب</th>
+              <th className="py-2.5 px-3">الصلاحية</th>
+              <th className="py-2.5 px-3">المصنع المعين</th>
+              <th className="py-2.5 px-3 text-center">حذف</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            {filteredUsers.map(u => {
+              const isOwner = u.sapNumber === '40016452';
+              return (
+                <tr key={u.sapNumber} className="hover:bg-zinc-50/50 transition-all">
+                  <td className="py-2.5 px-3 font-bold text-zinc-900">{u.name}</td>
+                  <td className="py-2.5 px-3 font-mono text-zinc-650 font-extrabold">{u.sapNumber}</td>
+                  <td className="py-2.5 px-3">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      u.role === 'MANAGER'
+                        ? 'bg-purple-50 border border-purple-150 text-purple-700'
+                        : u.role === 'SUPERVISOR'
+                        ? 'bg-blue-50 border border-blue-150 text-blue-700'
+                        : 'bg-zinc-50 border border-zinc-200 text-zinc-650'
+                    }`}>
+                      {u.role === 'MANAGER' ? 'مدير' : u.role === 'SUPERVISOR' ? 'مشرف' : 'فني'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 font-bold text-zinc-500">{getFactoryName(u.factoryId)}</td>
+                  <td className="py-2.5 px-3 text-center">
+                    {isOwner ? (
+                      <span className="text-zinc-400 font-bold text-[9px]">مالك غير قابل للحذف</span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          if (confirm(`هل أنت متأكد من رغبتك في حذف المستخدم ${u.name}؟`)) {
+                            onDeleteUser(u.sapNumber);
+                          }
+                        }}
+                        className="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition-colors inline-block"
+                        title="حذف هذا المستخدم"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+
+            {filteredUsers.length === 0 && (
+              <tr>
+                <td colSpan={5} className="text-center py-6 text-zinc-400 font-bold">
+                  لا يوجد مستخدمين يطابقون خيارات البحث والفرز الحالية.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

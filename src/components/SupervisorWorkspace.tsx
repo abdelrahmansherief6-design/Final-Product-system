@@ -29,7 +29,12 @@ export default function SupervisorWorkspace({
   const [activeTab, setActiveTab] = useState<'PENDING_REPAIRS' | 'PROCESS_AUDIT' | 'AUDIT_HISTORY'>('PENDING_REPAIRS');
 
   // Process Audit form states
-  const [auditLineId, setAuditLineId] = useState<ProductionLineId>('LINE_A');
+  const [auditLineId, setAuditLineId] = useState<ProductionLineId>(() => {
+    if (user.factoryId && user.factoryId !== 'ALL') {
+      return user.factoryId;
+    }
+    return 'LINE_A';
+  });
   const [weldingTemp, setWeldingTemp] = useState(380);
   const [foamingDensity, setFoamingDensity] = useState(38.5);
   const [gasPressure, setGasPressure] = useState(2.3);
@@ -42,15 +47,17 @@ export default function SupervisorWorkspace({
   // Repair action state (supervisor comments per card)
   const [supervisorComments, setSupervisorComments] = useState<Record<string, string>>({});
 
-  // Filters
+  // Filters (Restricted by factoryId)
   const pendingLogs = inspections.filter(
-    (log) => log.status === 'FAIL' && log.recheckStatus === 'PENDING'
+    (log) => log.status === 'FAIL' && 
+             log.recheckStatus === 'PENDING' &&
+             (!user.factoryId || user.factoryId === 'ALL' || log.lineId === user.factoryId)
   );
 
-  // My line audits list (supervisor specific or general)
-  const sortedAudits = [...processAudits].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  // My line audits list (restricted by factoryId)
+  const sortedAudits = [...processAudits]
+    .filter((aud) => !user.factoryId || user.factoryId === 'ALL' || aud.lineId === user.factoryId)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // Submitting final product repair approval
   const handleApproveRepair = (logId: string) => {
@@ -386,17 +393,23 @@ export default function SupervisorWorkspace({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs text-zinc-550 font-bold mb-2">خط الإنتاج المستهدف بالتدقيق</label>
-                    <select
-                      value={auditLineId}
-                      onChange={(e) => setAuditLineId(e.target.value as ProductionLineId)}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-xs text-zinc-850 outline-none transition-all"
-                    >
-                      {PRODUCTION_LINES.map(line => (
-                        <option key={line.id} value={line.id}>
-                          {line.name} ({line.supervisorName})
-                        </option>
-                      ))}
-                    </select>
+                    {user.factoryId && user.factoryId !== 'ALL' ? (
+                      <div className="w-full bg-zinc-100 border border-zinc-200 text-zinc-700 rounded-xl px-3 py-2.5 text-xs font-bold font-sans">
+                        {PRODUCTION_LINES.find(l => l.id === user.factoryId)?.name || user.factoryId}
+                      </div>
+                    ) : (
+                      <select
+                        value={auditLineId}
+                        onChange={(e) => setAuditLineId(e.target.value as ProductionLineId)}
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-xs text-zinc-850 outline-none transition-all"
+                      >
+                        {PRODUCTION_LINES.map(line => (
+                          <option key={line.id} value={line.id}>
+                            {line.name} ({line.supervisorName})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-zinc-550 font-bold mb-2">اسم المشرف المدقق</label>
