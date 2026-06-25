@@ -100,22 +100,97 @@ interface CriticalLog {
   injTempCabinet?: number;
 
   // 4. final_torque (عزوم التجميع النهائي)
-  torqueValue?: number;
+  ftModel?: 'TOSHIBA' | 'TORNADO&SHARP' | string;
+  ftHingeTopL1?: number;
+  ftHingeTopC1?: number;
+  ftHingeTopR1?: number;
+  ftHingeTopL2?: number;
+  ftHingeTopC2?: number;
+  ftHingeTopR2?: number;
+  ftHingeMidL1?: number;
+  ftHingeMidR1?: number;
+  ftHingeMidL2?: number;
+  ftHingeMidR2?: number;
+  ftHingeBotL1?: number;
+  ftHingeBotR1?: number;
+  ftHingeBotL2?: number;
+  ftHingeBotR2?: number;
+  ftVacuumCycleTime?: number;
+  ftCapillaryDepth?: number;
+
+  ft_check_fan_lover?: 'OK' | 'NG';
+  ft_check_comp_overload?: 'OK' | 'NG';
+  ft_check_comp_assembly?: 'OK' | 'NG';
+  ft_check_welding_shrink?: 'OK' | 'NG';
+  ft_check_pipe_fasteners?: 'OK' | 'NG';
+  ft_check_wiring_fast?: 'OK' | 'NG';
+  ft_check_leak_device_calib?: 'OK' | 'NG';
+  ft_check_evap_leak?: 'OK' | 'NG';
+  ft_check_condenser_storage?: 'OK' | 'NG';
+  ft_check_alu_tape_freezer?: 'OK' | 'NG';
+  ft_check_wire_checker_46_51?: 'OK' | 'NG';
+  ft_check_evap_model_match?: 'OK' | 'NG';
+
+  torqueValue?: number; // legacy fallback
   torqueStandard?: string;
   torqueStatus?: 'PASS' | 'FAIL';
 
   // 5. start_torque (عزوم بداية خط)
-  stationNum?: string;
+  stModel?: 'TOSHIBA' | 'TORNADO&SHARP' | string;
+  stCompBaseFrontL1?: number;
+  stCompBaseFrontR1?: number;
+  stCompBaseBackL1?: number;
+  stCompBaseBackR1?: number;
+  stCompBaseFrontL2?: number;
+  stCompBaseFrontR2?: number;
+  stCompBaseBackL2?: number;
+  stCompBaseBackR2?: number;
+  stBaseScrewFrontL1?: number;
+  stBaseScrewFrontR1?: number;
+  stBaseScrewBackL1?: number;
+  stBaseScrewBackR1?: number;
+  stBaseScrewFrontL2?: number;
+  stBaseScrewFrontR2?: number;
+  stBaseScrewBackL2?: number;
+  stBaseScrewBackR2?: number;
+
+  stationNum?: string; // legacy fallback
   screwdriverTorque?: number;
   startTorqueStatus?: 'PASS' | 'FAIL';
 
   // 6. inject_torque (عزوم الحقن)
-  fixingBolt?: string;
+  itModel?: 'TOSHIBA' | 'TORNADO&SHARP' | string;
+  itLegFrontL1?: number;
+  itLegFrontR1?: number;
+  itLegBackL2?: number;
+  itLegBackR2?: number;
+  itScrewFPL?: number;
+
+  fixingBolt?: string; // legacy fallback
   measuredTorque?: number;
   injectTorqueStatus?: 'PASS' | 'FAIL';
 
   // 7. perf_test (اختبار الأداء)
-  cabinetTemp?: number;
+  pt_check_low_press_leak?: 'OK' | 'NG';
+  pt_check_high_press_leak?: 'OK' | 'NG';
+  pt_check_lamp?: 'OK' | 'NG';
+  pt_check_fan?: 'OK' | 'NG';
+  pt_check_gasket?: 'OK' | 'NG';
+  pt_check_freezer_cooling?: 'OK' | 'NG';
+  pt_check_heater?: 'OK' | 'NG';
+  pt_check_silicon?: 'OK' | 'NG';
+  pt_check_capillary_solder?: 'OK' | 'NG';
+  pt_check_drain_pipe?: 'OK' | 'NG';
+  pt_check_leak_test_time?: 'OK' | 'NG';
+  pt_check_electric_insulation?: 'OK' | 'NG';
+  ptTempPerfRoom?: number;
+  ptModelName?: string;
+  pt_check_carton_printing?: 'OK' | 'NG';
+  pt_check_strap_strength?: 'OK' | 'NG';
+  ptStrapTightL1?: number;
+  ptStrapTightL2?: number;
+
+  cabinetTemp?: number; // legacy fallback
   freezerTemp?: number;
   currentAmp?: number;
   perfResult?: 'PASS' | 'FAIL';
@@ -483,18 +558,100 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const [manualTorqueStandard, setManualTorqueStandard] = useState('1.2 - 1.5 N.m');
   const [manualTorqueStatus, setManualTorqueStatus] = useState<'PASS' | 'FAIL'>('PASS');
 
+  // Final Torque new states
+  const [ftModel, setFtModel] = useState<'TOSHIBA' | 'TORNADO&SHARP'>('TOSHIBA');
+  const [ftHingeTopL1, setFtHingeTopL1] = useState('');
+  const [ftHingeTopC1, setFtHingeTopC1] = useState('');
+  const [ftHingeTopR1, setFtHingeTopR1] = useState('');
+  const [ftHingeTopL2, setFtHingeTopL2] = useState('');
+  const [ftHingeTopC2, setFtHingeTopC2] = useState('');
+  const [ftHingeTopR2, setFtHingeTopR2] = useState('');
+  const [ftHingeMidL1, setFtHingeMidL1] = useState('');
+  const [ftHingeMidR1, setFtHingeMidR1] = useState('');
+  const [ftHingeMidL2, setFtHingeMidL2] = useState('');
+  const [ftHingeMidR2, setFtHingeMidR2] = useState('');
+  const [ftHingeBotL1, setFtHingeBotL1] = useState('');
+  const [ftHingeBotR1, setFtHingeBotR1] = useState('');
+  const [ftHingeBotL2, setFtHingeBotL2] = useState('');
+  const [ftHingeBotR2, setFtHingeBotR2] = useState('');
+  const [ftVacuumCycleTime, setFtVacuumCycleTime] = useState('');
+  const [ftCapillaryDepth, setFtCapillaryDepth] = useState('');
+
+  const [ftCheckFanLover, setFtCheckFanLover] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckCompOverload, setFtCheckCompOverload] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckCompAssembly, setFtCheckCompAssembly] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckWeldingShrink, setFtCheckWeldingShrink] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckPipeFasteners, setFtCheckPipeFasteners] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckWiringFast, setFtCheckWiringFast] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckLeakDeviceCalib, setFtCheckLeakDeviceCalib] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckEvapLeak, setFtCheckEvapLeak] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckCondenserStorage, setFtCheckCondenserStorage] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckAluTapeFreezer, setFtCheckAluTapeFreezer] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckWireChecker46_51, setFtCheckWireChecker46_51] = useState<'OK' | 'NG'>('OK');
+  const [ftCheckEvapModelMatch, setFtCheckEvapModelMatch] = useState<'OK' | 'NG'>('OK');
+
+
   const [manualStationNum, setManualStationNum] = useState('Station 1');
   const [manualScrewdriverTorque, setManualScrewdriverTorque] = useState('');
   const [manualStartTorqueStatus, setManualStartTorqueStatus] = useState<'PASS' | 'FAIL'>('PASS');
+
+  // Start Torque new states
+  const [stModel, setStModel] = useState<'TOSHIBA' | 'TORNADO&SHARP'>('TOSHIBA');
+  const [stCompBaseFrontL1, setStCompBaseFrontL1] = useState('');
+  const [stCompBaseFrontR1, setStCompBaseFrontR1] = useState('');
+  const [stCompBaseBackL1, setStCompBaseBackL1] = useState('');
+  const [stCompBaseBackR1, setStCompBaseBackR1] = useState('');
+  const [stCompBaseFrontL2, setStCompBaseFrontL2] = useState('');
+  const [stCompBaseFrontR2, setStCompBaseFrontR2] = useState('');
+  const [stCompBaseBackL2, setStCompBaseBackL2] = useState('');
+  const [stCompBaseBackR2, setStCompBaseBackR2] = useState('');
+  const [stBaseScrewFrontL1, setStBaseScrewFrontL1] = useState('');
+  const [stBaseScrewFrontR1, setStBaseScrewFrontR1] = useState('');
+  const [stBaseScrewBackL1, setStBaseScrewBackL1] = useState('');
+  const [stBaseScrewBackR1, setStBaseScrewBackR1] = useState('');
+  const [stBaseScrewFrontL2, setStBaseScrewFrontL2] = useState('');
+  const [stBaseScrewFrontR2, setStBaseScrewFrontR2] = useState('');
+  const [stBaseScrewBackL2, setStBaseScrewBackL2] = useState('');
+  const [stBaseScrewBackR2, setStBaseScrewBackR2] = useState('');
+
 
   const [manualFixingBolt, setManualFixingBolt] = useState('M6 Joint');
   const [manualMeasuredTorque, setManualMeasuredTorque] = useState('');
   const [manualInjectTorqueStatus, setManualInjectTorqueStatus] = useState<'PASS' | 'FAIL'>('PASS');
 
+  // Inject Torque new states
+  const [itModel, setItModel] = useState<'TOSHIBA' | 'TORNADO&SHARP'>('TOSHIBA');
+  const [itLegFrontL1, setItLegFrontL1] = useState('');
+  const [itLegFrontR1, setItLegFrontR1] = useState('');
+  const [itLegBackL2, setItLegBackL2] = useState('');
+  const [itLegBackR2, setItLegBackR2] = useState('');
+  const [itScrewFPL, setItScrewFPL] = useState('');
+
+
   const [manualCabinetTemp, setManualCabinetTemp] = useState('');
   const [manualFreezerTemp, setManualFreezerTemp] = useState('');
   const [manualCurrentAmp, setManualCurrentAmp] = useState('');
   const [manualPerfResult, setManualPerfResult] = useState<'PASS' | 'FAIL'>('PASS');
+
+  // Performance Test new states
+  const [pt_check_low_press_leak, setPtCheckLowPressLeak] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_high_press_leak, setPtCheckHighPressLeak] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_lamp, setPtCheckLamp] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_fan, setPtCheckFan] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_gasket, setPtCheckGasket] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_freezer_cooling, setPtCheckFreezerCooling] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_heater, setPtCheckHeater] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_silicon, setPtCheckSilicon] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_capillary_solder, setPtCheckCapillarySolder] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_drain_pipe, setPtCheckDrainPipe] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_leak_test_time, setPtCheckLeakTestTime] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_electric_insulation, setPtCheckElectricInsulation] = useState<'OK' | 'NG'>('OK');
+  const [ptTempPerfRoom, setPtTempPerfRoom] = useState('');
+  const [ptModelName, setPtModelName] = useState('');
+  const [pt_check_carton_printing, setPtCheckCartonPrinting] = useState<'OK' | 'NG'>('OK');
+  const [pt_check_strap_strength, setPtCheckStrapStrength] = useState<'OK' | 'NG'>('OK');
+  const [ptStrapTightL1, setPtStrapTightL1] = useState('');
+  const [ptStrapTightL2, setPtStrapTightL2] = useState('');
 
   // Sync URLs and logs to localStorage on changes
   useEffect(() => {
@@ -1151,6 +1308,119 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           'درجة حرارة ضبعة الحقن ( الباب )': log.injTempDoor,
           'درجة حرارة ضبعة الحقن ( الكابينة )': log.injTempCabinet
         };
+      } else if (log.tabId === 'final_torque') {
+        payload = {
+          tabId: 'final_torque',
+          'التاريخ': log.date,
+          'الوردية': log.shift,
+          'الموديل': log.ftModel,
+          'المفصلة العلوية (L) للعينة الأولى': log.ftHingeTopL1,
+          'المفصلة العلوية (C) للعينة الأولى': log.ftHingeTopC1,
+          'المفصلة العلوية (R) للعينة الأولى': log.ftHingeTopR1,
+          'المفصلة العلوية (L) للعينة الثانية': log.ftHingeTopL2,
+          'المفصلة العلوية (C) للعينة الثانية': log.ftHingeTopC2,
+          'المفصلة العلوية (R) للعينة الثانية': log.ftHingeTopR2,
+          'المفصلة الوسطى (L) للعينة الأولى': log.ftHingeMidL1,
+          'المفصلة الوسطى (R) للعينة الأولى': log.ftHingeMidR1,
+          'المفصلة الوسطى (L) للعينة الثانية': log.ftHingeMidL2,
+          'المفصلة الوسطى (R) للعينة الثانية': log.ftHingeMidR2,
+          'المفصلة السفلية (L) للعينة الأولى': log.ftHingeBotL1,
+          'المفصلة السفلية (R) للعينة الأولى': log.ftHingeBotR1,
+          'المفصلة السفلية (L) للعينة الثانية': log.ftHingeBotL2,
+          'المفصلة السفلية (R) للعينة الثانية': log.ftHingeBotR2,
+          'زمن دوره الفاكيوم': log.ftVacuumCycleTime,
+          'مسافه ادخال الماسوره الشعريه داخل المبخر لجميع الموديلات .': log.ftCapillaryDepth,
+          'فحص تجميع الجزء Fan lover والتأكد من تجميع السوفت .': log.ft_check_fan_lover,
+          'الكباس والاوفر لود مناسبين لموديل الثلاجه': log.ft_check_comp_overload,
+          'التأكد من تجميع الكباس بطريقة سليمة وعدم امالة او قلب الكباس اثناء تجميعة بالكابينة وتركيب سدادات مواسير الكباس': log.ft_check_comp_assembly,
+          'نقط اللحام مغطاه بالشرينك': log.ft_check_welding_shrink,
+          'مثبتات المواسير ( افيز بلاستيك ) فى مكانها': log.ft_check_pipe_fasteners,
+          'الوصلات الكهربيه مثبته جيدا': log.ft_check_wiring_fast,
+          'التأكد من معايرة جهاز التسريب بالتجميع النهائي': log.ft_check_leak_device_calib,
+          'التأكد من إختبار تسريب المبخر لجميع الموديلات يتم عمل Self Calibration والتأكد من حساسية الجهاز 0.3 G/A': log.ft_check_evap_leak,
+          'التأكد من سلامة تخزين وتغليف مواسير المكثف ووصلات الشحن وكذلك تركيب سدادات المواسير على حوامل التخزين وأثناء عمليات التجميع وتخزين وتغليف الفلتر بطريقة صحيحة': log.ft_check_condenser_storage,
+          'التأكد من لصق الالمونيوم على كاب الفريزر بقسم تجميع الباب قبل الحقن حسب تعليمات التشغيل': log.ft_check_alu_tape_freezer,
+          'التأكد من سلامة عملية إختبار Wire Checker لموديلات 46 - 51': log.ft_check_wire_checker_46_51,
+          'مطابقة نوع المبخر لموديل الثلاجة': log.ft_check_evap_model_match,
+          // for backwards compatibility / appscript alignment
+          'torqueValue': log.ftHingeTopL1,
+          'torqueStandard': 'Multi-Field',
+          'torqueStatus': log.ft_check_fan_lover === 'OK' ? 'PASS' : 'FAIL',
+          'modelName': log.ftModel
+        };
+      } else if (log.tabId === 'start_torque') {
+        payload = {
+          tabId: 'start_torque',
+          'التاريخ': log.date,
+          'الوردية': log.shift,
+          'الموديل': log.stModel,
+          'الكباس مع القاعدة (Front (L للعينة الأولى': log.stCompBaseFrontL1,
+          'الكباس مع القاعدة (Front (R للعينة الأولى': log.stCompBaseFrontR1,
+          'الكباس مع القاعدة (Back (L للعينة الأولى': log.stCompBaseBackL1,
+          'الكباس مع القاعدة (Back (R للعينة الأولى': log.stCompBaseBackR1,
+          'الكباس مع القاعدة (Front (L للعينة الثانية': log.stCompBaseFrontL2,
+          'الكباس مع القاعدة (Front (R للعينة الثانية': log.stCompBaseFrontR2,
+          'الكباس مع القاعدة (Back (L للعينة الثانية': log.stCompBaseBackL2,
+          'الكباس مع القاعدة (Back (R للعينة الثانية': log.stCompBaseBackR2,
+          'مسامير القاعدة مع الثلاجة (Front (L للعينة الأولى': log.stBaseScrewFrontL1,
+          'مسامير القاعدة مع الثلاجة (Front (R للعينة الأولى': log.stBaseScrewFrontR1,
+          'مسامير القاعدة مع الثلاجة (Back (L للعينة الأولى': log.stBaseScrewBackL1,
+          'مسامير القاعدة مع الثلاجة (Back (R للعينة الأولى': log.stBaseScrewBackR1,
+          'مسامير القاعدة مع الثلاجة (Front (L للعينة الثانية': log.stBaseScrewFrontL2,
+          'مسامير القاعدة مع الثلاجة (Front (R للعينة الثانية': log.stBaseScrewFrontR2,
+          'مسامير القاعدة مع الثلاجة (Back (L للعينة الثانية': log.stBaseScrewBackL2,
+          'مسامير القاعدة مع الثلاجة (Back (R للعينة الثانية': log.stBaseScrewBackR2,
+          // for backwards compatibility / appscript alignment
+          'stationNum': 'stFrontL1:' + log.stCompBaseFrontL1,
+          'screwdriverTorque': log.stCompBaseFrontL1,
+          'startTorqueStatus': 'PASS'
+        };
+      } else if (log.tabId === 'inject_torque') {
+        payload = {
+          tabId: 'inject_torque',
+          'التاريخ': log.date,
+          'الوردية': log.shift,
+          'الموديل': log.itModel,
+          'تثبيت ارجل الثلاجة (Front (L للعينة الأولى': log.itLegFrontL1,
+          'تثبيت ارجل الثلاجة (Front (R للعينة الأولى': log.itLegFrontR1,
+          'تثبيت ارجل الثلاجة (Back (L للعينة الثانية': log.itLegBackL2,
+          'تثبيت ارجل الثلاجة (Back (R للعينة الثانية': log.itLegBackR2,
+          'مسمار F/P (L)': log.itScrewFPL,
+          // for backwards compatibility / appscript alignment
+          'fixingBolt': 'itFrontL1:' + log.itLegFrontL1,
+          'measuredTorque': log.itLegFrontL1,
+          'injectTorqueStatus': 'PASS'
+        };
+      } else if (log.tabId === 'perf_test') {
+        payload = {
+          tabId: 'perf_test',
+          'التاريخ': log.date,
+          'الوردية': log.shift,
+          'التأكد من معايرة جهاز تسريب الضغط المنخفض .': log.pt_check_low_press_leak,
+          'التأكد من معايرة جهاز تسريب الضغط العالى .': log.pt_check_high_press_leak,
+          'التأكد من اجراء ٳختبار اللمبة .': log.pt_check_lamp,
+          'التأكد من إجراء ٳختبار المروحة .': log.pt_check_fan,
+          'التأكيد علي خلوص الجوان .': log.pt_check_gasket,
+          'التأكد من إجراء اختبار التبريد في الفريزر .': log.pt_check_freezer_cooling,
+          'التأكد من إجراء ٳختبار السخان .': log.pt_check_heater,
+          'التأكد من وضع السيلكون في الاماكن المحددة .': log.pt_check_silicon,
+          'التأكد من لحام ماسورة الكابلرى وعدم وجود حرق او اثار لحام على I/L الخاص بالعينة .': log.pt_check_capillary_solder,
+          'متابعة تثبيت ماسورة حوض الصرف بطريقة صحيحة': log.pt_check_drain_pipe,
+          'التأكد من إجراء ٳختبار تسريب للضغط المنخفض والعالي و يتم إختبار كل نقطة لمدة 3 ثواني': log.pt_check_leak_test_time,
+          'التأكد من إجراء ٳختبار العزل الكهربي لجميع الموديلات': log.pt_check_electric_insulation,
+          'درجة حرارة غرفة إختبار الاداء': log.ptTempPerfRoom,
+          'الموديل': log.ptModelName,
+          'التأكد من سلامة الطباعة والملصقات لكرتون التغليف .': log.pt_check_carton_printing,
+          'مدى تحمل لحام حزام التغليف للشد بقوة 100 Kg': log.pt_check_strap_strength,
+          'L1 قوة ربط حزام التغليف': log.ptStrapTightL1,
+          'L2 قوة ربط حزام التغليف': log.ptStrapTightL2,
+          // for backwards compatibility / appscript alignment
+          'cabinetTemp': log.ptTempPerfRoom,
+          'freezerTemp': 0,
+          'currentAmp': log.ptStrapTightL1,
+          'perfResult': log.perfResult,
+          'modelName': log.ptModelName
+        };
       } else {
         payload = {
           tabId: log.tabId,
@@ -1314,10 +1584,35 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         timestamp: timestampVal,
         date: formattedDate,
         shift: manualShift,
-        modelName: manualModelName || getModelName(modelId),
-        torqueValue: parseFloat(manualTorqueValue) || 0,
-        torqueStandard: manualTorqueStandard,
-        torqueStatus: manualTorqueStatus,
+        ftModel: ftModel,
+        ftHingeTopL1: parseFloat(ftHingeTopL1) || 0,
+        ftHingeTopC1: parseFloat(ftHingeTopC1) || 0,
+        ftHingeTopR1: parseFloat(ftHingeTopR1) || 0,
+        ftHingeTopL2: parseFloat(ftHingeTopL2) || 0,
+        ftHingeTopC2: parseFloat(ftHingeTopC2) || 0,
+        ftHingeTopR2: parseFloat(ftHingeTopR2) || 0,
+        ftHingeMidL1: parseFloat(ftHingeMidL1) || 0,
+        ftHingeMidR1: parseFloat(ftHingeMidR1) || 0,
+        ftHingeMidL2: parseFloat(ftHingeMidL2) || 0,
+        ftHingeMidR2: parseFloat(ftHingeMidR2) || 0,
+        ftHingeBotL1: parseFloat(ftHingeBotL1) || 0,
+        ftHingeBotR1: parseFloat(ftHingeBotR1) || 0,
+        ftHingeBotL2: parseFloat(ftHingeBotL2) || 0,
+        ftHingeBotR2: parseFloat(ftHingeBotR2) || 0,
+        ftVacuumCycleTime: parseFloat(ftVacuumCycleTime) || 0,
+        ftCapillaryDepth: parseFloat(ftCapillaryDepth) || 0,
+        ft_check_fan_lover: ftCheckFanLover,
+        ft_check_comp_overload: ftCheckCompOverload,
+        ft_check_comp_assembly: ftCheckCompAssembly,
+        ft_check_welding_shrink: ftCheckWeldingShrink,
+        ft_check_pipe_fasteners: ftCheckPipeFasteners,
+        ft_check_wiring_fast: ftCheckWiringFast,
+        ft_check_leak_device_calib: ftCheckLeakDeviceCalib,
+        ft_check_evap_leak: ftCheckEvapLeak,
+        ft_check_condenser_storage: ftCheckCondenserStorage,
+        ft_check_alu_tape_freezer: ftCheckAluTapeFreezer,
+        ft_check_wire_checker_46_51: ftCheckWireChecker46_51,
+        ft_check_evap_model_match: ftCheckEvapModelMatch,
         source: 'WEBSITE'
       };
     } else if (activeCritTab === 'start_torque') {
@@ -1329,9 +1624,23 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         timestamp: timestampVal,
         date: formattedDate,
         shift: manualShift,
-        stationNum: manualStationNum,
-        screwdriverTorque: parseFloat(manualScrewdriverTorque) || 0,
-        startTorqueStatus: manualStartTorqueStatus,
+        stModel: stModel,
+        stCompBaseFrontL1: parseFloat(stCompBaseFrontL1) || 0,
+        stCompBaseFrontR1: parseFloat(stCompBaseFrontR1) || 0,
+        stCompBaseBackL1: parseFloat(stCompBaseBackL1) || 0,
+        stCompBaseBackR1: parseFloat(stCompBaseBackR1) || 0,
+        stCompBaseFrontL2: parseFloat(stCompBaseFrontL2) || 0,
+        stCompBaseFrontR2: parseFloat(stCompBaseFrontR2) || 0,
+        stCompBaseBackL2: parseFloat(stCompBaseBackL2) || 0,
+        stCompBaseBackR2: parseFloat(stCompBaseBackR2) || 0,
+        stBaseScrewFrontL1: parseFloat(stBaseScrewFrontL1) || 0,
+        stBaseScrewFrontR1: parseFloat(stBaseScrewFrontR1) || 0,
+        stBaseScrewBackL1: parseFloat(stBaseScrewBackL1) || 0,
+        stBaseScrewBackR1: parseFloat(stBaseScrewBackR1) || 0,
+        stBaseScrewFrontL2: parseFloat(stBaseScrewFrontL2) || 0,
+        stBaseScrewFrontR2: parseFloat(stBaseScrewFrontR2) || 0,
+        stBaseScrewBackL2: parseFloat(stBaseScrewBackL2) || 0,
+        stBaseScrewBackR2: parseFloat(stBaseScrewBackR2) || 0,
         source: 'WEBSITE'
       };
     } else if (activeCritTab === 'inject_torque') {
@@ -1343,12 +1652,22 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         timestamp: timestampVal,
         date: formattedDate,
         shift: manualShift,
-        fixingBolt: manualFixingBolt,
-        measuredTorque: parseFloat(manualMeasuredTorque) || 0,
-        injectTorqueStatus: manualInjectTorqueStatus,
+        itModel: itModel,
+        itLegFrontL1: parseFloat(itLegFrontL1) || 0,
+        itLegFrontR1: parseFloat(itLegFrontR1) || 0,
+        itLegBackL2: parseFloat(itLegBackL2) || 0,
+        itLegBackR2: parseFloat(itLegBackR2) || 0,
+        itScrewFPL: parseFloat(itScrewFPL) || 0,
         source: 'WEBSITE'
       };
     } else { // perf_test
+      const overallPass = [
+        pt_check_low_press_leak, pt_check_high_press_leak, pt_check_lamp, pt_check_fan,
+        pt_check_gasket, pt_check_freezer_cooling, pt_check_heater, pt_check_silicon,
+        pt_check_capillary_solder, pt_check_drain_pipe, pt_check_leak_test_time,
+        pt_check_electric_insulation, pt_check_carton_printing, pt_check_strap_strength
+      ].every(s => s === 'OK');
+
       newLog = {
         id: `CRIT-PERF-${Date.now()}`,
         lineId,
@@ -1357,11 +1676,25 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         timestamp: timestampVal,
         date: formattedDate,
         shift: manualShift,
-        modelName: manualModelName || getModelName(modelId),
-        cabinetTemp: parseFloat(manualCabinetTemp) || 0,
-        freezerTemp: parseFloat(manualFreezerTemp) || 0,
-        currentAmp: parseFloat(manualCurrentAmp) || 0,
-        perfResult: manualPerfResult,
+        pt_check_low_press_leak: pt_check_low_press_leak,
+        pt_check_high_press_leak: pt_check_high_press_leak,
+        pt_check_lamp: pt_check_lamp,
+        pt_check_fan: pt_check_fan,
+        pt_check_gasket: pt_check_gasket,
+        pt_check_freezer_cooling: pt_check_freezer_cooling,
+        pt_check_heater: pt_check_heater,
+        pt_check_silicon: pt_check_silicon,
+        pt_check_capillary_solder: pt_check_capillary_solder,
+        pt_check_drain_pipe: pt_check_drain_pipe,
+        pt_check_leak_test_time: pt_check_leak_test_time,
+        pt_check_electric_insulation: pt_check_electric_insulation,
+        ptTempPerfRoom: parseFloat(ptTempPerfRoom) || 0,
+        ptModelName: ptModelName || 'عام',
+        pt_check_carton_printing: pt_check_carton_printing,
+        pt_check_strap_strength: pt_check_strap_strength,
+        ptStrapTightL1: parseFloat(ptStrapTightL1) || 0,
+        ptStrapTightL2: parseFloat(ptStrapTightL2) || 0,
+        perfResult: overallPass ? 'PASS' : 'FAIL',
         source: 'WEBSITE'
       };
     }
@@ -1369,7 +1702,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setCriticalLogs(prev => [newLog, ...prev]);
     sendToGoogleSheet(newLog);
     
-    // Reset Factory B custom input states
+    // Reset Factory B custom input states (Initial Assembly)
     setManualY('');
     setManualX('');
     setManualN('');
@@ -1391,6 +1724,108 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setCheckPcbTest('OK');
     setCheckDrainHose('OK');
     setCheckDoorFixtures('OK');
+
+    // Reset Calibration
+    setManualCharge('');
+
+    // Reset Injection states
+    setInjF('');
+    setInjR1('');
+    setInjR2('');
+    setInjD('');
+    setInjK('');
+    setInjFR('');
+    setInjFL('');
+    setInjHR('');
+    setInjHL('');
+    setInjFPBow('');
+    setInjW1('');
+    setInjW2('');
+    setInjCastellaRight('');
+    setInjCastellaLeft('');
+    setInjFoamDensityHead1('');
+    setInjFoamDensityHead2('');
+    setInjTempDoor('');
+    setInjTempCabinet('');
+    setInjModel('48');
+    setInjJigNum(1);
+    setInjMaterial('Daw');
+    setInjVacuumMaterial('N27');
+
+    // Reset Final Torque states
+    setFtHingeTopL1('');
+    setFtHingeTopC1('');
+    setFtHingeTopR1('');
+    setFtHingeTopL2('');
+    setFtHingeTopC2('');
+    setFtHingeTopR2('');
+    setFtHingeMidL1('');
+    setFtHingeMidR1('');
+    setFtHingeMidL2('');
+    setFtHingeMidR2('');
+    setFtHingeBotL1('');
+    setFtHingeBotR1('');
+    setFtHingeBotL2('');
+    setFtHingeBotR2('');
+    setFtVacuumCycleTime('');
+    setFtCapillaryDepth('');
+    setFtCheckFanLover('OK');
+    setFtCheckCompOverload('OK');
+    setFtCheckCompAssembly('OK');
+    setFtCheckWeldingShrink('OK');
+    setFtCheckPipeFasteners('OK');
+    setFtCheckWiringFast('OK');
+    setFtCheckLeakDeviceCalib('OK');
+    setFtCheckEvapLeak('OK');
+    setFtCheckCondenserStorage('OK');
+    setFtCheckAluTapeFreezer('OK');
+    setFtCheckWireChecker46_51('OK');
+    setFtCheckEvapModelMatch('OK');
+
+    // Reset Start Torque states
+    setStCompBaseFrontL1('');
+    setStCompBaseFrontR1('');
+    setStCompBaseBackL1('');
+    setStCompBaseBackR1('');
+    setStCompBaseFrontL2('');
+    setStCompBaseFrontR2('');
+    setStCompBaseBackL2('');
+    setStCompBaseBackR2('');
+    setStBaseScrewFrontL1('');
+    setStBaseScrewFrontR1('');
+    setStBaseScrewBackL1('');
+    setStBaseScrewBackR1('');
+    setStBaseScrewFrontL2('');
+    setStBaseScrewFrontR2('');
+    setStBaseScrewBackL2('');
+    setStBaseScrewBackR2('');
+
+    // Reset Inject Torque states
+    setItLegFrontL1('');
+    setItLegFrontR1('');
+    setItLegBackL2('');
+    setItLegBackR2('');
+    setItScrewFPL('');
+
+    // Reset Performance Test states
+    setPtCheckLowPressLeak('OK');
+    setPtCheckHighPressLeak('OK');
+    setPtCheckLamp('OK');
+    setPtCheckFan('OK');
+    setPtCheckGasket('OK');
+    setPtCheckFreezerCooling('OK');
+    setPtCheckHeater('OK');
+    setPtCheckSilicon('OK');
+    setPtCheckCapillarySolder('OK');
+    setPtCheckDrainPipe('OK');
+    setPtCheckLeakTestTime('OK');
+    setPtCheckElectricInsulation('OK');
+    setPtTempPerfRoom('');
+    setPtModelName('');
+    setPtCheckCartonPrinting('OK');
+    setPtCheckStrapStrength('OK');
+    setPtStrapTightL1('');
+    setPtStrapTightL2('');
 
     setCritSuccessMsg('تم تسجيل وتوثيق العملية الحرجة وتحديث السجل وإرسالها لجدول جوجل بنجاح!');
     setTimeout(() => setCritSuccessMsg(''), 4000);
@@ -2773,215 +3208,532 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                   )}
 
                   {activeCritTab === 'final_torque' && (
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-4 pt-2">
                       <div>
                         <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
                         <select 
-                          value={manualModelName} 
-                          onChange={e => setManualModelName(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
+                          value={ftModel} 
+                          onChange={e => setFtModel(e.target.value as any)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none font-bold text-zinc-800"
                         >
-                          <option value="">-- اختر موديل --</option>
-                          {factoryModels.map(m => (
-                            <option key={m.id} value={m.name}>{m.name}</option>
-                          ))}
+                          <option value="TOSHIBA">TOSHIBA</option>
+                          <option value="TORNADO&SHARP">TORNADO&SHARP</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">قيمة العزم المقاسة (N.m)</label>
-                        <input 
-                          type="number" step="0.01"
-                          placeholder="مثال: 1.35" 
-                          value={manualTorqueValue} 
-                          onChange={e => setManualTorqueValue(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">العزم القياسي المطلق</label>
-                        <input 
-                          type="text" 
-                          value={manualTorqueStandard} 
-                          onChange={e => setManualTorqueStandard(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">حالة العزم</label>
-                        <div className="flex gap-2">
-                          <button 
-                            type="button" onClick={() => setManualTorqueStatus('PASS')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualTorqueStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            مطابق (Pass)
-                          </button>
-                          <button 
-                            type="button" onClick={() => setManualTorqueStatus('FAIL')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualTorqueStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            غير مطابق (Fail)
-                          </button>
+
+                      {/* sample 1 */}
+                      <div className="bg-zinc-50/50 p-2.5 rounded-lg border border-zinc-150 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-500 block">العينة الأولى</span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة علوية (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeTopL1} onChange={e => setFtHingeTopL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة علوية (C)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeTopC1} onChange={e => setFtHingeTopC1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة علوية (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeTopR1} onChange={e => setFtHingeTopR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة وسطى (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeMidL1} onChange={e => setFtHingeMidL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة وسطى (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeMidR1} onChange={e => setFtHingeMidR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة سفلية (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeBotL1} onChange={e => setFtHingeBotL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة سفلية (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeBotR1} onChange={e => setFtHingeBotR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* sample 2 */}
+                      <div className="bg-zinc-50/50 p-2.5 rounded-lg border border-zinc-150 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-500 block">العينة الثانية</span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة علوية (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeTopL2} onChange={e => setFtHingeTopL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة علوية (C)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeTopC2} onChange={e => setFtHingeTopC2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة علوية (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeTopR2} onChange={e => setFtHingeTopR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة وسطى (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeMidL2} onChange={e => setFtHingeMidL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة وسطى (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeMidR2} onChange={e => setFtHingeMidR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة سفلية (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeBotL2} onChange={e => setFtHingeBotL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">مفصلة سفلية (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="قيمة"
+                              value={ftHingeBotR2} onChange={e => setFtHingeBotR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Decimals */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-zinc-700 font-bold mb-1">زمن دورة الفاكيوم</label>
+                          <input 
+                            type="number" step="0.1" placeholder="ثواني"
+                            value={ftVacuumCycleTime} onChange={e => setFtVacuumCycleTime(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none font-mono text-left" 
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-700 font-bold mb-1">مسافة إدخال الماسورة الشعرية</label>
+                          <input 
+                            type="number" step="0.1" placeholder="سم"
+                            value={ftCapillaryDepth} onChange={e => setFtCapillaryDepth(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none font-mono text-left" 
+                          />
+                        </div>
+                      </div>
+
+                      {/* Checklist */}
+                      <div className="border-t border-zinc-150 pt-2.5 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-600 block">فحوصات الجودة الفنية (OK/NG)</span>
+                        {[
+                          { label: 'فحص تجميع الجزء Fan lover والتأكد من تجميع السوفت', val: ftCheckFanLover, set: setFtCheckFanLover },
+                          { label: 'الكباس والاوفر لود مناسبين لموديل الثلاجه', val: ftCheckCompOverload, set: setFtCheckCompOverload },
+                          { label: 'التأكد من تجميع الكباس بطريقة سليمة وعدم امالة او قلب الكباس اثناء تجميعة بالكابينة وتركيب سدادات مواسير الكباس', val: ftCheckCompAssembly, set: setFtCheckCompAssembly },
+                          { label: 'نقط اللحام مغطاه بالشرينك', val: ftCheckWeldingShrink, set: setFtCheckWeldingShrink },
+                          { label: 'مثبتات المواسير ( افيز بلاستيك ) فى مكانها', val: ftCheckPipeFasteners, set: setFtCheckPipeFasteners },
+                          { label: 'الوصلات الكهربيه مثبته جيدا', val: ftCheckWiringFast, set: setFtCheckWiringFast },
+                          { label: 'التأكد من معايرة جهاز التسريب بالتجميع النهائي', val: ftCheckLeakDeviceCalib, set: setFtCheckLeakDeviceCalib },
+                          { label: 'التأكد من إختبار تسريب المبخر لجميع الموديلات يتم عمل Self Calibration والتأكد من حساسية الجهاز 0.3 G/A', val: ftCheckEvapLeak, set: setFtCheckEvapLeak },
+                          { label: 'التأكد من سلامة تخزين وتغليف مواسير المكثف ووصلات الشحن وكذلك تركيب سدادات المواسير على حوامل التخزين وأثناء عمليات التجميع وتخزين وتغليف الفلتر بطريقة صحيحة', val: ftCheckCondenserStorage, set: setFtCheckCondenserStorage },
+                          { label: 'التأكد من لصق الالمونيوم على كاب الفريزر بقسم تجميع الباب قبل الحقن حسب تعليمات التشغيل', val: ftCheckAluTapeFreezer, set: setFtCheckAluTapeFreezer },
+                          { label: 'التأكد من سلامة عملية إختبار Wire Checker لموديلات 46 - 51', val: ftCheckWireChecker46_51, set: setFtCheckWireChecker46_51 },
+                          { label: 'مطابقة نوع المبخر لموديل الثلاجة', val: ftCheckEvapModelMatch, set: setFtCheckEvapModelMatch }
+                        ].map((chk, index) => (
+                          <div key={index} className="flex items-center justify-between bg-zinc-50 p-1.5 rounded border border-zinc-150">
+                            <span className="text-[10px] font-bold text-zinc-700 leading-snug w-3/4">{chk.label}</span>
+                            <div className="flex bg-zinc-200 p-0.5 rounded gap-0.5">
+                              <button
+                                type="button" onClick={() => chk.set('OK')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-black transition-all ${chk.val === 'OK' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-550'}`}
+                              >
+                                OK
+                              </button>
+                              <button
+                                type="button" onClick={() => chk.set('NG')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-black transition-all ${chk.val === 'NG' ? 'bg-red-600 text-white shadow' : 'text-zinc-550'}`}
+                              >
+                                NG
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
 
                   {activeCritTab === 'start_torque' && (
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-4 pt-2">
                       <div>
-                        <label className="block text-zinc-700 font-bold mb-1">رقم المحطة</label>
-                        <input 
-                          type="text" 
-                          placeholder="مثال: Station 4" 
-                          value={manualStationNum} 
-                          onChange={e => setManualStationNum(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
-                          required 
-                        />
+                        <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                        <select 
+                          value={stModel} 
+                          onChange={e => setStModel(e.target.value as any)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none font-bold text-zinc-800"
+                        >
+                          <option value="TOSHIBA">TOSHIBA</option>
+                          <option value="TORNADO&SHARP">TORNADO&SHARP</option>
+                        </select>
                       </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">عزم مفك الربط (N.m)</label>
-                        <input 
-                          type="number" step="0.01"
-                          placeholder="مثال: 1.45" 
-                          value={manualScrewdriverTorque} 
-                          onChange={e => setManualScrewdriverTorque(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
-                          required 
-                        />
+
+                      {/* Sample 1: Comp to Base */}
+                      <div className="bg-zinc-50/50 p-2.5 rounded-lg border border-zinc-150 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-500 block">الكباس مع القاعدة (العينة الأولى)</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseFrontL1} onChange={e => setStCompBaseFrontL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseFrontR1} onChange={e => setStCompBaseFrontR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseBackL1} onChange={e => setStCompBaseBackL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseBackR1} onChange={e => setStCompBaseBackR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">النتيجة</label>
-                        <div className="flex gap-2">
-                          <button 
-                            type="button" onClick={() => setManualStartTorqueStatus('PASS')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualStartTorqueStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            مطابق (Pass)
-                          </button>
-                          <button 
-                            type="button" onClick={() => setManualStartTorqueStatus('FAIL')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualStartTorqueStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            غير مطابق (Fail)
-                          </button>
+
+                      {/* Sample 2: Comp to Base */}
+                      <div className="bg-zinc-50/50 p-2.5 rounded-lg border border-zinc-150 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-500 block">الكباس مع القاعدة (العينة الثانية)</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseFrontL2} onChange={e => setStCompBaseFrontL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseFrontR2} onChange={e => setStCompBaseFrontR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseBackL2} onChange={e => setStCompBaseBackL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stCompBaseBackR2} onChange={e => setStCompBaseBackR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sample 1: Screws to Fridge */}
+                      <div className="bg-zinc-50/50 p-2.5 rounded-lg border border-zinc-150 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-500 block">مسامير القاعدة مع الثلاجة (العينة الأولى)</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewFrontL1} onChange={e => setStBaseScrewFrontL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewFrontR1} onChange={e => setStBaseScrewFrontR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewBackL1} onChange={e => setStBaseScrewBackL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewBackR1} onChange={e => setStBaseScrewBackR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sample 2: Screws to Fridge */}
+                      <div className="bg-zinc-50/50 p-2.5 rounded-lg border border-zinc-150 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-500 block">مسامير القاعدة مع الثلاجة (العينة الثانية)</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewFrontL2} onChange={e => setStBaseScrewFrontL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewFrontR2} onChange={e => setStBaseScrewFrontR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (L)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewBackL2} onChange={e => setStBaseScrewBackL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (R)</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={stBaseScrewBackR2} onChange={e => setStBaseScrewBackR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {activeCritTab === 'inject_torque' && (
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-4 pt-2">
                       <div>
-                        <label className="block text-zinc-700 font-bold mb-1">مسمار التثبيت المربوط</label>
-                        <input 
-                          type="text" 
-                          placeholder="مثال: Fixing Bolt M6" 
-                          value={manualFixingBolt} 
-                          onChange={e => setManualFixingBolt(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none" 
-                          required 
-                        />
+                        <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
+                        <select 
+                          value={itModel} 
+                          onChange={e => setItModel(e.target.value as any)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none font-bold text-zinc-800"
+                        >
+                          <option value="TOSHIBA">TOSHIBA</option>
+                          <option value="TORNADO&SHARP">TORNADO&SHARP</option>
+                        </select>
                       </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">العزم الفعلي المقاس (N.m)</label>
-                        <input 
-                          type="number" step="0.01"
-                          placeholder="مثال: 2.10" 
-                          value={manualMeasuredTorque} 
-                          onChange={e => setManualMeasuredTorque(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">حالة العزم</label>
-                        <div className="flex gap-2">
-                          <button 
-                            type="button" onClick={() => setManualInjectTorqueStatus('PASS')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectTorqueStatus === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            مطابق (Pass)
-                          </button>
-                          <button 
-                            type="button" onClick={() => setManualInjectTorqueStatus('FAIL')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualInjectTorqueStatus === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            غير مطابق (Fail)
-                          </button>
+
+                      {/* Leg Torque */}
+                      <div className="bg-zinc-50/50 p-2.5 rounded-lg border border-zinc-150 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-500 block">تثبيت أرجل الثلاجة</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (L) للعينة الأولى</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={itLegFrontL1} onChange={e => setItLegFrontL1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Front (R) للعينة الأولى</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={itLegFrontR1} onChange={e => setItLegFrontR1(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (L) للعينة الثانية</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={itLegBackL2} onChange={e => setItLegBackL2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-zinc-500 font-bold mb-0.5 text-[9px]">Back (R) للعينة الثانية</label>
+                            <input 
+                              type="number" step="0.01" placeholder="N.m"
+                              value={itLegBackR2} onChange={e => setItLegBackR2(e.target.value)} 
+                              className="w-full bg-white border border-zinc-200 rounded px-1.5 py-1 text-xs font-bold text-left outline-none font-mono" 
+                            />
+                          </div>
                         </div>
+                      </div>
+
+                      {/* Screw FP L */}
+                      <div>
+                        <label className="block text-zinc-700 font-bold mb-1">مسمار F/P (L)</label>
+                        <input 
+                          type="number" step="0.01" placeholder="N.m"
+                          value={itScrewFPL} onChange={e => setItScrewFPL(e.target.value)} 
+                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none font-mono text-left" 
+                        />
                       </div>
                     </div>
                   )}
 
                   {activeCritTab === 'perf_test' && (
-                    <div className="space-y-3 pt-2">
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">الموديل</label>
-                        <select 
-                          value={manualModelName} 
-                          onChange={e => setManualModelName(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs outline-none"
-                        >
-                          <option value="">-- اختر موديل --</option>
-                          {factoryModels.map(m => (
-                            <option key={m.id} value={m.name}>{m.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="space-y-4 pt-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-zinc-700 font-bold mb-1">حرارة الكابينة (°C)</label>
+                          <label className="block text-zinc-700 font-bold mb-1">الموديل (نص حر)</label>
                           <input 
-                            type="number" step="0.1"
-                            placeholder="مثال: 5" 
-                            value={manualCabinetTemp} 
-                            onChange={e => setManualCabinetTemp(e.target.value)} 
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none text-left" 
+                            type="text" placeholder="اسم الموديل"
+                            value={ptModelName} onChange={e => setPtModelName(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none" 
                             required 
                           />
                         </div>
                         <div>
-                          <label className="block text-zinc-700 font-bold mb-1">حرارة الفريزر (°C)</label>
+                          <label className="block text-zinc-700 font-bold mb-1">حرارة الغرفة (°م)</label>
                           <input 
-                            type="number" step="0.1"
-                            placeholder="مثال: -18" 
-                            value={manualFreezerTemp} 
-                            onChange={e => setManualFreezerTemp(e.target.value)} 
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none text-left" 
+                            type="number" step="0.1" placeholder="مثال: 25" 
+                            value={ptTempPerfRoom} onChange={e => setPtTempPerfRoom(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none font-mono text-left" 
                             required 
                           />
                         </div>
                       </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">الأمبير الفعلي المستهلك</label>
-                        <input 
-                          type="number" step="0.01"
-                          placeholder="مثال: 0.85" 
-                          value={manualCurrentAmp} 
-                          onChange={e => setManualCurrentAmp(e.target.value)} 
-                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none text-left" 
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-zinc-700 font-bold mb-1">نتيجة اختبار الأداء</label>
-                        <div className="flex gap-2">
-                          <button 
-                            type="button" onClick={() => setManualPerfResult('PASS')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualPerfResult === 'PASS' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            مقبول (Pass)
-                          </button>
-                          <button 
-                            type="button" onClick={() => setManualPerfResult('FAIL')} 
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-lg border transition-all ${manualPerfResult === 'FAIL' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-zinc-100 text-zinc-500'}`}
-                          >
-                            مرفوض (Fail)
-                          </button>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-zinc-700 font-bold mb-1">ربط حزام التغليف L1</label>
+                          <input 
+                            type="number" step="0.01" placeholder="كجم"
+                            value={ptStrapTightL1} onChange={e => setPtStrapTightL1(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none font-mono text-left" 
+                          />
                         </div>
+                        <div>
+                          <label className="block text-zinc-700 font-bold mb-1">ربط حزام التغليف L2</label>
+                          <input 
+                            type="number" step="0.01" placeholder="كجم"
+                            value={ptStrapTightL2} onChange={e => setPtStrapTightL2(e.target.value)} 
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none font-mono text-left" 
+                          />
+                        </div>
+                      </div>
+
+                      {/* Checklist */}
+                      <div className="border-t border-zinc-150 pt-2.5 space-y-2">
+                        <span className="font-extrabold text-[10px] text-zinc-600 block">فحوصات اختبار الأداء والتغليف (OK/NG)</span>
+                        {[
+                          { label: 'التأكد من معايرة جهاز تسريب الضغط المنخفض', val: pt_check_low_press_leak, set: setPtCheckLowPressLeak },
+                          { label: 'التأكد من معايرة جهاز تسريب الضغط العالى', val: pt_check_high_press_leak, set: setPtCheckHighPressLeak },
+                          { label: 'التأكد من اجراء ٳختبار اللمبة', val: pt_check_lamp, set: setPtCheckLamp },
+                          { label: 'التأكد من إجراء ٳختبار المروحة', val: pt_check_fan, set: setPtCheckFan },
+                          { label: 'التأكيد علي خلوص الجوان', val: pt_check_gasket, set: setPtCheckGasket },
+                          { label: 'التأكد من إجراء اختبار التبريد في الفريزر', val: pt_check_freezer_cooling, set: setPtCheckFreezerCooling },
+                          { label: 'التأكد من إجراء ٳختبار السخان', val: pt_check_heater, set: setPtCheckHeater },
+                          { label: 'التأكد من وضع السيلكون في الاماكن المحددة', val: pt_check_silicon, set: setPtCheckSilicon },
+                          { label: 'التأكد من لحام ماسورة الكابلرى وعدم وجود حرق او اثار لحام على I/L الخاص بالعينة', val: pt_check_capillary_solder, set: setPtCheckCapillarySolder },
+                          { label: 'متابعة تثبيت ماسورة حوض الصرف بطريقة صحيحة', val: pt_check_drain_pipe, set: setPtCheckDrainPipe },
+                          { label: 'التأكد من إجراء ٳختبار تسريب للضغط المنخفض والعالي و يتم إختبار كل نقطة لمدة 3 ثواني', val: pt_check_leak_test_time, set: setPtCheckLeakTestTime },
+                          { label: 'التأكد من إجراء ٳختبار العزل الكهربي لجميع الموديلات', val: pt_check_electric_insulation, set: setPtCheckElectricInsulation },
+                          { label: 'التأكد من سلامة الطباعة والملصقات لكرتون التغليف', val: pt_check_carton_printing, set: setPtCheckCartonPrinting },
+                          { label: 'مدى تحمل لحام حزام التغليف للشد بقوة 100 Kg', val: pt_check_strap_strength, set: setPtCheckStrapStrength }
+                        ].map((chk, index) => (
+                          <div key={index} className="flex items-center justify-between bg-zinc-50 p-1.5 rounded border border-zinc-150">
+                            <span className="text-[10px] font-bold text-zinc-700 leading-snug w-3/4">{chk.label}</span>
+                            <div className="flex bg-zinc-200 p-0.5 rounded gap-0.5">
+                              <button
+                                type="button" onClick={() => chk.set('OK')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-black transition-all ${chk.val === 'OK' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-550'}`}
+                              >
+                                OK
+                              </button>
+                              <button
+                                type="button" onClick={() => chk.set('NG')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-black transition-all ${chk.val === 'NG' ? 'bg-red-600 text-white shadow' : 'text-zinc-550'}`}
+                              >
+                                NG
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -3025,7 +3777,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5">ماكينة الشحن</th>
                           <th className="p-2.5">الموديل</th>
                           <th className="p-2.5 text-center">شحنة الغاز</th>
-                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
+                          <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                         </tr>
                       )}
                       {activeCritTab === 'init_ass' && (
@@ -3047,6 +3799,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                             <th className="p-2.5">المفتش المسؤول</th>
                             <th className="p-2.5 text-center">حالة التجميع</th>
                             <th className="p-2.5">ملاحظات</th>
+                            <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                           </tr>
                         )
                       )}
@@ -3059,7 +3812,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5 text-center">إستواء الكاستلا</th>
                           <th className="p-2.5 text-center">كثافة الفوم</th>
                           <th className="p-2.5 text-center">الخامة والحرارة</th>
-                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
+                          <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                         </tr>
                       )}
                       {activeCritTab === 'final_torque' && (
@@ -3067,30 +3820,33 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5">المصدر</th>
                           <th className="p-2.5">التاريخ والوردية</th>
                           <th className="p-2.5">الموديل</th>
-                          <th className="p-2.5 text-center">العزم المقاس</th>
-                          <th className="p-2.5 text-center">المعيار القياسي</th>
-                          <th className="p-2.5 text-center">حالة العزم</th>
-                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
+                          <th className="p-2.5 text-center">العزوم (علوي/وسط/سفلي)</th>
+                          <th className="p-2.5 text-center">التوصيلات والتحقق الفني</th>
+                          <th className="p-2.5 text-center">الفاكيوم وعمق الكابلري والسخانات</th>
+                          <th className="p-2.5 text-center font-bold">النتيجة</th>
+                          <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                         </tr>
                       )}
                       {activeCritTab === 'start_torque' && (
                         <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
                           <th className="p-2.5">المصدر</th>
                           <th className="p-2.5">التاريخ والوردية</th>
-                          <th className="p-2.5">رقم المحطة</th>
-                          <th className="p-2.5 text-center">عزم المفك (N.m)</th>
-                          <th className="p-2.5 text-center">حالة الربط</th>
-                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
+                          <th className="p-2.5">الموديل</th>
+                          <th className="p-2.5 text-center">مسامير العارضة مع الثلاجة</th>
+                          <th className="p-2.5 text-center">العزوم (علوي/وسط/سفلي)</th>
+                          <th className="p-2.5 text-center font-bold">الحالة</th>
+                          <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                         </tr>
                       )}
                       {activeCritTab === 'inject_torque' && (
                         <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-extrabold text-[10px]">
                           <th className="p-2.5">المصدر</th>
                           <th className="p-2.5">التاريخ والوردية</th>
-                          <th className="p-2.5">مسمار التثبيت</th>
-                          <th className="p-2.5 text-center">العزم الفعلي (N.m)</th>
-                          <th className="p-2.5 text-center">الحالة</th>
-                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
+                          <th className="p-2.5">الموديل</th>
+                          <th className="p-2.5 text-center">مسامير التثبيت ومقبض الباب</th>
+                          <th className="p-2.5 text-center">العزوم (علوي/وسط/سفلي)</th>
+                          <th className="p-2.5 text-center font-bold">الحالة</th>
+                          <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                         </tr>
                       )}
                       {activeCritTab === 'perf_test' && (
@@ -3098,25 +3854,26 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                           <th className="p-2.5">المصدر</th>
                           <th className="p-2.5">التاريخ والوردية</th>
                           <th className="p-2.5">الموديل</th>
-                          <th className="p-2.5 text-center">حرارة الكابينة / الفريزر</th>
-                          <th className="p-2.5 text-center">الأمبير (A)</th>
-                          <th className="p-2.5 text-center">نتيجة الأداء</th>
-                          {lineId === 'LINE_B' && <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>}
+                          <th className="p-2.5 text-center">درجات الحرارة (الفريزر والكابينة)</th>
+                          <th className="p-2.5 text-center">الأمبير (A) والوات (W) والضغط</th>
+                          <th className="p-2.5 text-center">التحقق (اللمبة/السيرموستات/الفاكيوم)</th>
+                          <th className="p-2.5 text-center font-bold">النتيجة</th>
+                          <th className="p-2.5 text-center text-red-600 font-extrabold">حذف</th>
                         </tr>
                       )}
                     </thead>
                     <tbody className="divide-y divide-zinc-150">
                       {allCriticalLogs.length === 0 ? (
                         <tr>
-                          <td colSpan={lineId === 'LINE_B' ? 8 : 7} className="p-8 text-center text-zinc-400 font-medium">
+                          <td colSpan={10} className="p-8 text-center text-zinc-400 font-medium">
                             لا توجد قراءات مسجلة حالياً لهذا القسم. قم بتسجيل قراءة أو مزامنة بيانات AppSheet.
                           </td>
                         </tr>
                       ) : (
                         allCriticalLogs.map((log) => {
                           const isAppSheet = log.source === 'APPSHEET';
-                          const statusColor = (status: 'PASS' | 'FAIL' | undefined) => 
-                            status === 'FAIL' ? 'text-red-600 bg-red-50 font-bold' : 'text-emerald-600 bg-emerald-50 font-bold';
+                          const statusColor = (status: 'PASS' | 'FAIL' | 'OK' | 'NG' | undefined) => 
+                            (status === 'FAIL' || status === 'NG') ? 'text-red-600 bg-red-50 font-bold' : 'text-emerald-600 bg-emerald-50 font-bold';
                           
                           return (
                             <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
@@ -3238,12 +3995,38 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
                               {activeCritTab === 'final_torque' && (
                                 <>
-                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelName}</td>
-                                  <td className="p-2.5 text-center font-mono">{log.torqueValue} N.m</td>
-                                  <td className="p-2.5 text-center text-zinc-500">{log.torqueStandard}</td>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.ftModel || log.modelName || 'TOSHIBA'}</td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-650 leading-normal">
+                                    <div className="font-bold">
+                                      علوي ع1: {log.ftHingeTopL1 ?? '-'}/{log.ftHingeTopC1 ?? '-'}/{log.ftHingeTopR1 ?? '-'}
+                                    </div>
+                                    <div className="font-bold">
+                                      علوي ع2: {log.ftHingeTopL2 ?? '-'}/{log.ftHingeTopC2 ?? '-'}/{log.ftHingeTopR2 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-500 text-[9px]">
+                                      وسطى ع1: {log.ftHingeMidL1 ?? '-'}/{log.ftHingeMidR1 ?? '-'} | ع2: {log.ftHingeMidL2 ?? '-'}/{log.ftHingeMidR2 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-500 text-[9px]">
+                                      سفلية ع1: {log.ftHingeBottomL1 ?? '-'}/{log.ftHingeBottomR1 ?? '-'} | ع2: {log.ftHingeBottomL2 ?? '-'}/{log.ftHingeBottomR2 ?? '-'}
+                                    </div>
+                                  </td>
+                                  <td className="p-2.5 text-center text-zinc-700 text-[10px] leading-normal">
+                                    <div className="font-mono">سلك أرضي ع1: {log.ftEarthWire1 ?? '-'} N.m | ع2: {log.ftEarthWire2 ?? '-'} N.m</div>
+                                    <div className="font-mono">كابل الباور: {log.ftPowerCord ?? '-'} N.m</div>
+                                  </td>
+                                  <td className="p-2.5 text-center text-zinc-700 text-[10px] leading-normal">
+                                    <div className="font-mono">فاكيوم ع1: {log.ftCheckVacuum1 ?? '-'} | ع2: {log.ftCheckVacuum2 ?? '-'}</div>
+                                    <div className="font-mono text-zinc-500">كابلري ع1: {log.ftCapillaryDepth1 ?? '-'} ملم | ع2: {log.ftCapillaryDepth2 ?? '-'} ملم</div>
+                                    <div className="flex justify-center gap-1 mt-0.5">
+                                      <span className={`px-1 py-0.2 rounded text-[8px] font-bold ${log.ftDoorHeaterStatus === 'NG' ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-700'}`}>هيتـر باب: {log.ftDoorHeaterStatus || 'OK'}</span>
+                                      <span className={`px-1 py-0.2 rounded text-[8px] font-bold ${log.ftEvaporatorHeater === 'NG' ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-700'}`}>مبخر: {log.ftEvaporatorHeater || 'OK'}</span>
+                                      <span className={`px-1 py-0.2 rounded text-[8px] font-bold ${log.ftCabinetHeater === 'NG' ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-700'}`}>كابينة: {log.ftCabinetHeater || 'OK'}</span>
+                                      <span className={`px-1 py-0.2 rounded text-[8px] font-bold ${log.ftDrainHeater === 'NG' ? 'bg-red-50 text-red-600' : 'bg-zinc-100 text-zinc-700'}`}>صرف: {log.ftDrainHeater || 'OK'}</span>
+                                    </div>
+                                  </td>
                                   <td className="p-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.torqueStatus)}`}>
-                                      {log.torqueStatus || 'PASS'}
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${statusColor(log.ftResult || log.torqueStatus)}`}>
+                                      {log.ftResult || log.torqueStatus || 'OK'}
                                     </span>
                                   </td>
                                 </>
@@ -3251,11 +4034,35 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
                               {activeCritTab === 'start_torque' && (
                                 <>
-                                  <td className="p-2.5 font-bold text-zinc-700">{log.stationNum}</td>
-                                  <td className="p-2.5 text-center font-mono">{log.screwdriverTorque} N.m</td>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.stModel || 'TOSHIBA'}</td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-650 leading-normal">
+                                    <div className="font-bold">
+                                      ع1 (أمامي): L:{log.stBaseScrewFrontL1 ?? '-'} | R:{log.stBaseScrewFrontR1 ?? '-'}
+                                    </div>
+                                    <div className="font-bold">
+                                      ع1 (خلفي): L:{log.stBaseScrewBackL1 ?? '-'} | R:{log.stBaseScrewBackR1 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-550 text-[9px] mt-0.5">
+                                      ع2 (أمامي): L:{log.stBaseScrewFrontL2 ?? '-'} | R:{log.stBaseScrewFrontR2 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-550 text-[9px]">
+                                      ع2 (خلفي): L:{log.stBaseScrewBackL2 ?? '-'} | R:{log.stBaseScrewBackR2 ?? '-'}
+                                    </div>
+                                  </td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-650 leading-normal">
+                                    <div className="font-bold">
+                                      ع1: علوي {log.stHingeTop1 ?? '-'} | وسط {log.stHingeMid1 ?? '-'} | سفلي {log.stHingeBottom1 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-550 text-[9px]">
+                                      ع2: علوي {log.stHingeTop2 ?? '-'} | وسط {log.stHingeMid2 ?? '-'} | سفلي {log.stHingeBottom2 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-400 text-[9px]">
+                                      الأرضي ع1: {log.stEarthWire1 ?? '-'} | ع2: {log.stEarthWire2 ?? '-'}
+                                    </div>
+                                  </td>
                                   <td className="p-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.startTorqueStatus)}`}>
-                                      {log.startTorqueStatus || 'PASS'}
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${statusColor(log.stResult || log.startTorqueStatus)}`}>
+                                      {log.stResult || log.startTorqueStatus || 'OK'}
                                     </span>
                                   </td>
                                 </>
@@ -3263,11 +4070,29 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
                               {activeCritTab === 'inject_torque' && (
                                 <>
-                                  <td className="p-2.5 font-bold text-zinc-700">{log.fixingBolt}</td>
-                                  <td className="p-2.5 text-center font-mono">{log.measuredTorque} N.m</td>
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.itModel || 'TOSHIBA'}</td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-650 leading-normal">
+                                    <div className="font-bold">
+                                      ع1 (مسمار التثبيت): علوي L:{log.itTopHingeBoltL1 ?? '-'} R:{log.itTopHingeBoltR1 ?? '-'} | سفلي L:{log.itBottomHingeBoltL1 ?? '-'} R:{log.itBottomHingeBoltR1 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-550 text-[9px] mt-0.5">
+                                      ع2 (مسمار التثبيت): علوي L:{log.itTopHingeBoltL2 ?? '-'} R:{log.itTopHingeBoltR2 ?? '-'} | سفلي L:{log.itBottomHingeBoltL2 ?? '-'} R:{log.itBottomHingeBoltR2 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-400 text-[9px]">
+                                      مقبض الباب ع1: {log.itDoorHandle1 ?? '-'} | ع2: {log.itDoorHandle2 ?? '-'}
+                                    </div>
+                                  </td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-650 leading-normal">
+                                    <div className="font-bold">
+                                      ع1: علوي L:{log.itHingeTopL1 ?? '-'} R:{log.itHingeTopR1 ?? '-'} | وسط L:{log.itHingeMidL1 ?? '-'} R:{log.itHingeMidR1 ?? '-'} | سفلي L:{log.itHingeBottomL1 ?? '-'} R:{log.itHingeBottomR1 ?? '-'}
+                                    </div>
+                                    <div className="text-zinc-550 text-[9px]">
+                                      ع2: علوي L:{log.itHingeTopL2 ?? '-'} R:{log.itHingeTopR2 ?? '-'} | وسط L:{log.itHingeMidL2 ?? '-'} R:{log.itHingeMidR2 ?? '-'} | سفلي L:{log.itHingeBottomL2 ?? '-'} R:{log.itHingeBottomR2 ?? '-'}
+                                    </div>
+                                  </td>
                                   <td className="p-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.injectTorqueStatus)}`}>
-                                      {log.injectTorqueStatus || 'PASS'}
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${statusColor(log.itResult || log.injectTorqueStatus)}`}>
+                                      {log.itResult || log.injectTorqueStatus || 'OK'}
                                     </span>
                                   </td>
                                 </>
@@ -3275,31 +4100,46 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
                               {activeCritTab === 'perf_test' && (
                                 <>
-                                  <td className="p-2.5 font-bold text-zinc-700">{log.modelName}</td>
-                                  <td className="p-2.5 text-center font-mono text-zinc-800">
-                                    {log.cabinetTemp}°C / {log.freezerTemp}°C
+                                  <td className="p-2.5 font-bold text-zinc-700">{log.ptModel || log.modelName || 'TOSHIBA'}</td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-650 leading-normal">
+                                    <div className="font-bold">
+                                      ع1: كابينة {log.ptCabinetTemp1 ?? '-'}°م | فريزر {log.ptFreezerTemp1 ?? '-'}°م
+                                    </div>
+                                    <div className="text-zinc-550">
+                                      ع2: كابينة {log.ptCabinetTemp2 ?? '-'}°م | فريزر {log.ptFreezerTemp2 ?? '-'}°م
+                                    </div>
                                   </td>
-                                  <td className="p-2.5 text-center font-mono">{log.currentAmp} A</td>
+                                  <td className="p-2.5 text-center font-mono text-[10px] text-zinc-650 leading-normal">
+                                    <div className="font-bold">
+                                      ع1: أمبير {log.ptCurrentAmp1 ?? '-'} A | وات {log.ptWatt1 ?? '-'} W | ضغط {log.ptHighPressure1 ?? '-'}/{log.ptLowPressure1 ?? '-'} bar
+                                    </div>
+                                    <div className="text-zinc-550">
+                                      ع2: أمبير {log.ptCurrentAmp2 ?? '-'} A | وات {log.ptWatt2 ?? '-'} W | ضغط {log.ptHighPressure2 ?? '-'}/{log.ptLowPressure2 ?? '-'} bar
+                                    </div>
+                                  </td>
+                                  <td className="p-2.5 text-center text-zinc-700 text-[10px] leading-normal">
+                                    <div className="flex flex-col gap-0.5">
+                                      <div>ع1: لمبة {log.ptLampSwitch1 || 'OK'} | ثيرمو {log.ptThermostat1 || 'OK'} | فاكيوم {log.ptVacuumCheck1 || 'OK'}</div>
+                                      <div>ع2: لمبة {log.ptLampSwitch2 || 'OK'} | ثيرمو {log.ptThermostat2 || 'OK'} | فاكيوم {log.ptVacuumCheck2 || 'OK'}</div>
+                                    </div>
+                                  </td>
                                   <td className="p-2.5 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${statusColor(log.perfResult)}`}>
-                                      {log.perfResult || 'PASS'}
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${statusColor(log.ptResult || log.perfResult)}`}>
+                                      {log.ptResult || log.perfResult || 'OK'}
                                     </span>
                                   </td>
                                 </>
                               )}
 
-                              {lineId === 'LINE_B' && (
-                                <td className="p-2.5 text-center">
-                                  <button
-                                    onClick={() => handleDeleteCriticalLog(log.id)}
-                                    title="حذف السجل"
-                                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </td>
-                              )}
-
+                              <td className="p-2.5 text-center">
+                                <button
+                                  onClick={() => handleDeleteCriticalLog(log.id)}
+                                  title="حذف السجل"
+                                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors inline-flex items-center justify-center"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
                             </tr>
                           );
                         })
