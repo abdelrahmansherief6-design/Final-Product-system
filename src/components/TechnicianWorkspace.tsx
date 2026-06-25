@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, QualityInspectionLog, ProductionLineId, RefrigeratorModel } from '../types';
+import DailyInspectionFactoryB from './DailyInspectionFactoryB';
 import { PRODUCTION_LINES, CHECKLIST_ITEMS, DEFECT_OPTIONS, generateSerialNumber } from '../data';
 import { 
   Play, Sparkles, Send, CheckCircle2, XCircle, AlertTriangle, ListChecks, History, 
@@ -1410,6 +1411,24 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     }, 5000);
   };
 
+  const handleSaveFactoryBInspection = (payload: any) => {
+    const transformed: QualityInspectionLog = {
+      id: payload.id,
+      serialNumber: payload.barcode,
+      modelId: payload.model,
+      lineId: 'LINE_B',
+      inspectorSap: user.sapNumber || 'UNKNOWN',
+      inspectorName: payload.inspectorName,
+      timestamp: payload.timestamp,
+      status: payload.overallStatus,
+      checkedItems: {},
+      defects: [],
+      factoryBData: payload
+    };
+    onAddInspection(transformed);
+    setCurrentSection('DASHBOARD');
+  };
+
   // State: New Critical Log Form
   const [vacuumInput, setVacuumInput] = useState('0.07');
   const [gasInput, setGasInput] = useState('60');
@@ -2455,7 +2474,14 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         ) : null}
 
         {currentSection === 'DAILY_INSPECTION' ? (
-          <div className="space-y-6 animate-fadeIn">
+          lineId === 'LINE_B' ? (
+            <DailyInspectionFactoryB 
+              onBack={() => setCurrentSection('DASHBOARD')} 
+              onSave={handleSaveFactoryBInspection} 
+              user={user} 
+            />
+          ) : (
+            <div className="space-y-6 animate-fadeIn">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
               <div className="flex items-center gap-2">
@@ -2640,6 +2666,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
             </form>
           </div>
+          )
         ) : null}
 
         {/* ========================================================================= */}

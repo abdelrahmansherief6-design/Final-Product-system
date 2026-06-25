@@ -77,6 +77,7 @@ export interface QualityInspectionLog {
   supervisorApproved?: boolean;
   approvalTimestamp?: string;
   recheckStatus?: 'PENDING' | 'APPROVED_AFTER_REPAIR' | 'SCRAPPED';
+  factoryBData?: any;
 }
 
 // Process Quality Audit Log (Audit of the workstations and parameters)
