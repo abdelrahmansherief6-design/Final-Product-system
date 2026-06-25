@@ -750,9 +750,38 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         });
       } else if (tabId === 'init_ass') {
         const modelCode = parts[2] || 'عام';
-        const inspectorName = parts[3] || 'مفتش أب شيت';
-        const statusVal = parts[4] || 'سليم';
-        const notes = parts[5] || '';
+        const Y = parts[3] || '0';
+        const X = parts[4] || '0';
+        const N = parts[5] || '0';
+        const M = parts[6] || '0';
+        const L = parts[7] || '0';
+        const W = parts[8] || '0';
+        const P = parts[9] || '0';
+        const R = parts[10] || '0';
+        const S = parts[11] || '0';
+        
+        const check_dabsha = (parts[12] || 'OK') as 'OK' | 'NG';
+        const check_scratch = (parts[13] || 'OK') as 'OK' | 'NG';
+        const check_aluminum_tape = (parts[14] || 'OK') as 'OK' | 'NG';
+        const check_hot_pipe = (parts[15] || 'OK') as 'OK' | 'NG';
+        const check_paste = (parts[16] || 'OK') as 'OK' | 'NG';
+        const check_foam_back = (parts[17] || 'OK') as 'OK' | 'NG';
+        const check_wiring_clip = (parts[18] || 'OK') as 'OK' | 'NG';
+        const check_hot_sealer = (parts[19] || 'OK') as 'OK' | 'NG';
+        const check_barcode_date = (parts[20] || 'OK') as 'OK' | 'NG';
+        const check_pcb_test = (parts[21] || 'OK') as 'OK' | 'NG';
+        const check_drain_hose = (parts[22] || 'OK') as 'OK' | 'NG';
+        const check_door_fixtures = (parts[23] || 'OK') as 'OK' | 'NG';
+
+        // Check if any check is NG, or if there's any AppSheet fail keyword in any field
+        const hasNG = [
+          check_dabsha, check_scratch, check_aluminum_tape, check_hot_pipe, check_paste,
+          check_foam_back, check_wiring_clip, check_hot_sealer, check_barcode_date,
+          check_pcb_test, check_drain_hose, check_door_fixtures
+        ].some(v => v === 'NG') || line.toUpperCase().includes('FAIL') || line.toUpperCase().includes('NG') || line.includes('تالف') || line.includes('راسب');
+
+        const assemblyStatus = hasNG ? 'FAIL' : 'PASS';
+
         results.push({
           id,
           lineId: targetLineId,
@@ -762,9 +791,22 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           date: dateStr,
           shift,
           modelCode,
-          inspectorName,
-          assemblyStatus: (statusVal.includes('تالف') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
-          notes,
+          inspectorName: 'AppSheet',
+          Y, X, N, M, L, W, P, R, S,
+          check_dabsha,
+          check_scratch,
+          check_aluminum_tape,
+          check_hot_pipe,
+          check_paste,
+          check_foam_back,
+          check_wiring_clip,
+          check_hot_sealer,
+          check_barcode_date,
+          check_pcb_test,
+          check_drain_hose,
+          check_door_fixtures,
+          assemblyStatus,
+          notes: '',
           source: sourceVal
         });
       } else if (tabId === 'injection') {
@@ -825,9 +867,46 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         });
       } else if (tabId === 'final_torque') {
         const model = parts[2] || 'عام';
-        const value = parseFloat(parts[3]) || 0;
-        const std = parts[4] || '';
-        const statusVal = parts[5] || 'مطابق';
+        const ftHingeTopL1 = parseFloat(parts[3]) || 0;
+        const ftHingeTopC1 = parseFloat(parts[4]) || 0;
+        const ftHingeTopR1 = parseFloat(parts[5]) || 0;
+        const ftHingeTopL2 = parseFloat(parts[6]) || 0;
+        const ftHingeTopC2 = parseFloat(parts[7]) || 0;
+        const ftHingeTopR2 = parseFloat(parts[8]) || 0;
+        const ftHingeMidL1 = parseFloat(parts[9]) || 0;
+        const ftHingeMidR1 = parseFloat(parts[10]) || 0;
+        const ftHingeMidL2 = parseFloat(parts[11]) || 0;
+        const ftHingeMidR2 = parseFloat(parts[12]) || 0;
+        const ftHingeBottomL1 = parseFloat(parts[13]) || 0;
+        const ftHingeBottomR1 = parseFloat(parts[14]) || 0;
+        const ftHingeBottomL2 = parseFloat(parts[15]) || 0;
+        const ftHingeBottomR2 = parseFloat(parts[16]) || 0;
+        const ftVacuumCycleTime = parseFloat(parts[17]) || 0;
+        const ftCapillaryDepth = parseFloat(parts[18]) || 0;
+        
+        const ft_check_fan_lover = (parts[19] || 'OK') as 'OK' | 'NG';
+        const ft_check_comp_overload = (parts[20] || 'OK') as 'OK' | 'NG';
+        const ft_check_comp_assembly = (parts[21] || 'OK') as 'OK' | 'NG';
+        const ft_check_welding_shrink = (parts[22] || 'OK') as 'OK' | 'NG';
+        const ft_check_pipe_fasteners = (parts[23] || 'OK') as 'OK' | 'NG';
+        const ft_check_wiring_fast = (parts[24] || 'OK') as 'OK' | 'NG';
+        const ft_check_leak_device_calib = (parts[25] || 'OK') as 'OK' | 'NG';
+        const ft_check_evap_leak = (parts[26] || 'OK') as 'OK' | 'NG';
+        const ft_check_condenser_storage = (parts[27] || 'OK') as 'OK' | 'NG';
+        const ft_check_alu_tape_freezer = (parts[28] || 'OK') as 'OK' | 'NG';
+        const ft_check_wire_checker_46_51 = (parts[29] || 'OK') as 'OK' | 'NG';
+        const ft_check_evap_model_match = (parts[30] || 'OK') as 'OK' | 'NG';
+
+        // Check if any check is NG, or if any fail keyword exists
+        const hasNG = [
+          ft_check_fan_lover, ft_check_comp_overload, ft_check_comp_assembly,
+          ft_check_welding_shrink, ft_check_pipe_fasteners, ft_check_wiring_fast,
+          ft_check_leak_device_calib, ft_check_evap_leak, ft_check_condenser_storage,
+          ft_check_alu_tape_freezer, ft_check_wire_checker_46_51, ft_check_evap_model_match
+        ].some(v => v === 'NG') || line.toUpperCase().includes('FAIL') || line.toUpperCase().includes('NG') || line.includes('تالف') || line.includes('راسب');
+
+        const torqueStatus = hasNG ? 'FAIL' : 'PASS';
+
         results.push({
           id,
           lineId: targetLineId,
@@ -836,16 +915,55 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
+          ftModel: model,
           modelName: model,
-          torqueValue: value,
-          torqueStandard: std,
-          torqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          ftHingeTopL1, ftHingeTopC1, ftHingeTopR1,
+          ftHingeTopL2, ftHingeTopC2, ftHingeTopR2,
+          ftHingeMidL1, ftHingeMidR1,
+          ftHingeMidL2, ftHingeMidR2,
+          ftHingeBotL1: ftHingeBottomL1, ftHingeBotR1: ftHingeBottomR1,
+          ftHingeBotL2: ftHingeBottomL2, ftHingeBotR2: ftHingeBottomR2,
+          ftVacuumCycleTime,
+          ftCapillaryDepth,
+          ft_check_fan_lover,
+          ft_check_comp_overload,
+          ft_check_comp_assembly,
+          ft_check_welding_shrink,
+          ft_check_pipe_fasteners,
+          ft_check_wiring_fast,
+          ft_check_leak_device_calib,
+          ft_check_evap_leak,
+          ft_check_condenser_storage,
+          ft_check_alu_tape_freezer,
+          ft_check_wire_checker_46_51,
+          ft_check_evap_model_match,
+          torqueValue: 0,
+          torqueStandard: '',
+          torqueStatus,
           source: sourceVal
         });
       } else if (tabId === 'start_torque') {
-        const stationNum = parts[2] || '';
-        const value = parseFloat(parts[3]) || 0;
-        const statusVal = parts[4] || 'مطابق';
+        const model = parts[2] || 'عام';
+        const stCompBaseFrontL1 = parseFloat(parts[3]) || 0;
+        const stCompBaseFrontR1 = parseFloat(parts[4]) || 0;
+        const stCompBaseBackL1 = parseFloat(parts[5]) || 0;
+        const stCompBaseBackR1 = parseFloat(parts[6]) || 0;
+        const stCompBaseFrontL2 = parseFloat(parts[7]) || 0;
+        const stCompBaseFrontR2 = parseFloat(parts[8]) || 0;
+        const stCompBaseBackL2 = parseFloat(parts[9]) || 0;
+        const stCompBaseBackR2 = parseFloat(parts[10]) || 0;
+        const stBaseScrewFrontL1 = parseFloat(parts[11]) || 0;
+        const stBaseScrewFrontR1 = parseFloat(parts[12]) || 0;
+        const stBaseScrewBackL1 = parseFloat(parts[13]) || 0;
+        const stBaseScrewBackR1 = parseFloat(parts[14]) || 0;
+        const stBaseScrewFrontL2 = parseFloat(parts[15]) || 0;
+        const stBaseScrewFrontR2 = parseFloat(parts[16]) || 0;
+        const stBaseScrewBackL2 = parseFloat(parts[17]) || 0;
+        const stBaseScrewBackR2 = parseFloat(parts[18]) || 0;
+
+        const hasNG = line.toUpperCase().includes('FAIL') || line.toUpperCase().includes('NG') || line.includes('غير مطابق') || line.includes('تالف') || line.includes('راسب');
+        const startTorqueStatus = hasNG ? 'FAIL' : 'PASS';
+
         results.push({
           id,
           lineId: targetLineId,
@@ -854,15 +972,27 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
-          stationNum,
-          screwdriverTorque: value,
-          startTorqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          stModel: model,
+          stCompBaseFrontL1, stCompBaseFrontR1, stCompBaseBackL1, stCompBaseBackR1,
+          stCompBaseFrontL2, stCompBaseFrontR2, stCompBaseBackL2, stCompBaseBackR2,
+          stBaseScrewFrontL1, stBaseScrewFrontR1, stBaseScrewBackL1, stBaseScrewBackR1,
+          stBaseScrewFrontL2, stBaseScrewFrontR2, stBaseScrewBackL2, stBaseScrewBackR2,
+          stationNum: '',
+          screwdriverTorque: 0,
+          startTorqueStatus,
           source: sourceVal
         });
       } else if (tabId === 'inject_torque') {
-        const fixingBolt = parts[2] || '';
-        const value = parseFloat(parts[3]) || 0;
-        const statusVal = parts[4] || 'مطابق';
+        const model = parts[2] || 'عام';
+        const itLegFrontL1 = parseFloat(parts[3]) || 0;
+        const itLegFrontR1 = parseFloat(parts[4]) || 0;
+        const itLegBackL2 = parseFloat(parts[5]) || 0;
+        const itLegBackR2 = parseFloat(parts[6]) || 0;
+        const itScrewFPL = parseFloat(parts[7]) || 0;
+
+        const hasNG = line.toUpperCase().includes('FAIL') || line.toUpperCase().includes('NG') || line.includes('غير مطابق') || line.includes('تالف') || line.includes('راسب');
+        const injectTorqueStatus = hasNG ? 'FAIL' : 'PASS';
+
         results.push({
           id,
           lineId: targetLineId,
@@ -871,17 +1001,45 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
-          fixingBolt,
-          measuredTorque: value,
-          injectTorqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
+          itModel: model,
+          itLegFrontL1, itLegFrontR1, itLegBackL2, itLegBackR2,
+          itScrewFPL,
+          fixingBolt: '',
+          measuredTorque: 0,
+          injectTorqueStatus,
           source: sourceVal
         });
       } else if (tabId === 'perf_test') {
-        const model = parts[2] || 'عام';
-        const cabTemp = parseFloat(parts[3]) || 0;
-        const freezTemp = parseFloat(parts[4]) || 0;
-        const current = parseFloat(parts[5]) || 0;
-        const statusVal = parts[6] || 'PASS';
+        const pt_check_low_press_leak = (parts[2] || 'OK') as 'OK' | 'NG';
+        const pt_check_high_press_leak = (parts[3] || 'OK') as 'OK' | 'NG';
+        const pt_check_lamp = (parts[4] || 'OK') as 'OK' | 'NG';
+        const pt_check_fan = (parts[5] || 'OK') as 'OK' | 'NG';
+        const pt_check_gasket = (parts[6] || 'OK') as 'OK' | 'NG';
+        const pt_check_freezer_cooling = (parts[7] || 'OK') as 'OK' | 'NG';
+        const pt_check_heater = (parts[8] || 'OK') as 'OK' | 'NG';
+        const pt_check_silicon = (parts[9] || 'OK') as 'OK' | 'NG';
+        const pt_check_capillary_solder = (parts[10] || 'OK') as 'OK' | 'NG';
+        const pt_check_drain_pipe = (parts[11] || 'OK') as 'OK' | 'NG';
+        const pt_check_leak_test_time = (parts[12] || 'OK') as 'OK' | 'NG';
+        const pt_check_electric_insulation = (parts[13] || 'OK') as 'OK' | 'NG';
+        const ptTempPerfRoom = parseFloat(parts[14]) || 25;
+        const model = parts[15] || 'عام';
+        const pt_check_carton_printing = (parts[16] || 'OK') as 'OK' | 'NG';
+        const pt_check_strap_strength = (parts[17] || 'OK') as 'OK' | 'NG';
+        const ptStrapTightL1 = parseFloat(parts[18]) || 0;
+        const ptStrapTightL2 = parseFloat(parts[19]) || 0;
+
+        // Check if any check is NG, or if any fail keyword exists
+        const hasNG = [
+          pt_check_low_press_leak, pt_check_high_press_leak, pt_check_lamp,
+          pt_check_fan, pt_check_gasket, pt_check_freezer_cooling, pt_check_heater,
+          pt_check_silicon, pt_check_capillary_solder, pt_check_drain_pipe,
+          pt_check_leak_test_time, pt_check_electric_insulation, pt_check_carton_printing,
+          pt_check_strap_strength
+        ].some(v => v === 'NG') || line.toUpperCase().includes('FAIL') || line.toUpperCase().includes('NG') || line.includes('تالف') || line.includes('راسب');
+
+        const perfResult = hasNG ? 'FAIL' : 'PASS';
+
         results.push({
           id,
           lineId: targetLineId,
@@ -891,10 +1049,28 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           date: dateStr,
           shift,
           modelName: model,
-          cabinetTemp: cabTemp,
-          freezerTemp: freezTemp,
-          currentAmp: current,
-          perfResult: (statusVal.includes('FAIL') || statusVal.toUpperCase().includes('NG') || statusVal.includes('راسب')) ? 'FAIL' : 'PASS',
+          ptModelName: model,
+          ptTempPerfRoom,
+          ptStrapTightL1,
+          ptStrapTightL2,
+          pt_check_low_press_leak,
+          pt_check_high_press_leak,
+          pt_check_lamp,
+          pt_check_fan,
+          pt_check_gasket,
+          pt_check_freezer_cooling,
+          pt_check_heater,
+          pt_check_silicon,
+          pt_check_capillary_solder,
+          pt_check_drain_pipe,
+          pt_check_leak_test_time,
+          pt_check_electric_insulation,
+          pt_check_carton_printing,
+          pt_check_strap_strength,
+          cabinetTemp: 0,
+          freezerTemp: 0,
+          currentAmp: 0,
+          perfResult,
           source: sourceVal
         });
       }
@@ -2616,21 +2792,21 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     sheet = ss.insertSheet(targetPrefix);
   }
   
-  // إضافة السطر بناءً على نوع القسم
+  // إضافة السطر بناءً على نوع القسم ومصدره (الموقع)
   if (data.tabId === 'calib') {
     sheet.appendRow([
-      data['التاريخ'] || data['date'], 
-      data['الوردية'] || data['shift'], 
-      data['ماكينة الشحن'] || data['machine'], 
-      data['الموديل'] || data['modelName'], 
-      data['الشحنة'] || data['rawCharge'],
+      data['التاريخ'] || data['date'] || '', 
+      data['الوردية'] || data['shift'] || '', 
+      data['ماكينة الشحن'] || data['machine'] || '', 
+      data['الموديل'] || data['modelName'] || '', 
+      data['الشحنة'] || data['rawCharge'] || '',
       "الموقع"
     ]);
   } else if (data.tabId === 'init_ass') {
     sheet.appendRow([
-      data['التاريخ'] || data['date'], 
-      data['الوردية'] || data['shift'], 
-      data['الموديل'] || data['modelCode'], 
+      data['التاريخ'] || data['date'] || '', 
+      data['الوردية'] || data['shift'] || '', 
+      data['الموديل'] || data['modelCode'] || '', 
       data['Y'] || '0', 
       data['X'] || '0', 
       data['N'] || '0', 
@@ -2656,50 +2832,124 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     ]);
   } else if (data.tabId === 'injection') {
     sheet.appendRow([
-      data['التاريخ'] || data['date'],
-      data['الوردية'] || data['shift'],
-      data['الموديل'] || data['modelName'],
-      data['foamWeight'] || '',
-      data['foamPressure'] || '',
-      data['injectionStatus'] || 'PASS',
+      data['التاريخ'] || data['date'] || '',
+      data['الوردية'] || data['shift'] || '',
+      data['الموديل'] || data['modelName'] || '',
+      data['رقم الجيك'] || data['injJigNum'] || '',
+      data['F'] || data['injF'] || '',
+      data['R 1'] || data['injR1'] || '',
+      data['R 2'] || data['injR2'] || '',
+      data['D'] || data['injD'] || '',
+      data['K'] || data['injK'] || '',
+      data['FR'] || data['injFR'] || '',
+      data['FL'] || data['injFL'] || '',
+      data['HR'] || data['injHR'] || '',
+      data['HL'] || data['injHL'] || '',
+      data['تقوس ال F/P'] || data['injFPBow'] || '',
+      data['W1'] || data['injW1'] || '',
+      data['W2'] || data['injW2'] || '',
+      data['قياس استواء العارضة مع القائم اليمين'] || data['injCastellaRight'] || '',
+      data['قياس استواء العارضة مع القائم الشمال'] || data['injCastellaLeft'] || '',
+      data['كثافه الفوم Head 1'] || data['injFoamDensityHead1'] || '',
+      data['كثافه الفوم Head 2'] || data['injFoamDensityHead2'] || '',
+      data['مادة الحقن'] || data['injMaterial'] || '',
+      data['خامة الفاكيوم'] || data['injVacuumMaterial'] || '',
+      data['درجة حرارة ضبعة الحقن ( الباب )'] || data['injTempDoor'] || '',
+      data['درجة حرارة ضبعة الحقن ( الكابينة )'] || data['injTempCabinet'] || '',
       "الموقع"
     ]);
   } else if (data.tabId === 'final_torque') {
     sheet.appendRow([
-      data['التاريخ'] || data['date'],
-      data['الوردية'] || data['shift'],
-      data['الموديل'] || data['modelName'],
-      data['torqueValue'] || '',
-      data['torqueStandard'] || '',
-      data['torqueStatus'] || 'PASS',
+      data['التاريخ'] || data['date'] || '',
+      data['الوردية'] || data['shift'] || '',
+      data['الموديل'] || data['ftModel'] || data['modelName'] || '',
+      data['المفصلة العلوية (L) للعينة الأولى'] || data['ftHingeTopL1'] || '',
+      data['المفصلة العلوية (C) للعينة الأولى'] || data['ftHingeTopC1'] || '',
+      data['المفصلة العلوية (R) للعينة الأولى'] || data['ftHingeTopR1'] || '',
+      data['المفصلة العلوية (L) للعينة الثانية'] || data['ftHingeTopL2'] || '',
+      data['المفصلة العلوية (C) للعينة الثانية'] || data['ftHingeTopC2'] || '',
+      data['المفصلة العلوية (R) للعينة الثانية'] || data['ftHingeTopR2'] || '',
+      data['المفصلة الوسطى (L) للعينة الأولى'] || data['ftHingeMidL1'] || '',
+      data['المفصلة الوسطى (R) للعينة الأولى'] || data['ftHingeMidR1'] || '',
+      data['المفصلة الوسطى (L) للعينة الثانية'] || data['ftHingeMidL2'] || '',
+      data['المفصلة الوسطى (R) للعينة الثانية'] || data['ftHingeMidR2'] || '',
+      data['المفصلة السفلية (L) للعينة الأولى'] || data['ftHingeBotL1'] || '',
+      data['المفصلة السفلية (R) للعينة الأولى'] || data['ftHingeBotR1'] || '',
+      data['المفصلة السفلية (L) للعينة الثانية'] || data['ftHingeBotL2'] || '',
+      data['المفصلة السفلية (R) للعينة الثانية'] || data['ftHingeBotR2'] || '',
+      data['زمن دوره الفاكيوم'] || data['ftVacuumCycleTime'] || '',
+      data['مسافه ادخال الماسوره الشعريه داخل المبخر لجميع الموديلات .'] || data['ftCapillaryDepth'] || '',
+      data['فحص تجميع الجزء Fan lover والتأكد من تجميع السوفت .'] || data['ft_check_fan_lover'] || 'OK',
+      data['الكباس والاوفر لود مناسبين لموديل الثلاجه'] || data['ft_check_comp_overload'] || 'OK',
+      data['التأكد من تجميع الكباس بطريقة سليمة وعدم امالة او قلب الكباس اثناء تجميعة بالكابينة وتركيب سدادات مواسير الكباس'] || data['ft_check_comp_assembly'] || 'OK',
+      data['نقط اللحام مغطاه بالشرينك'] || data['ft_check_welding_shrink'] || 'OK',
+      data['مثبتات المواسير ( افيز بلاستيك ) فى مكانها'] || data['ft_check_pipe_fasteners'] || 'OK',
+      data['الوصلات الكهربيه مثبته جيدا'] || data['ft_check_wiring_fast'] || 'OK',
+      data['التأكد من معايرة جهاز التسريب بالتجميع النهائي'] || data['ft_check_leak_device_calib'] || 'OK',
+      data['التأكد من إختبار تسريب المبخر لجميع الموديلات يتم عمل Self Calibration والتأكد من حساسية الجهاز 0.3 G/A'] || data['ft_check_evap_leak'] || 'OK',
+      data['التأكد من سلامة تخزين وتغليف مواسير المكثف ووصلات الشحن وكذلك تركيب سدادات المواسير على حوامل التخزين وأثناء عمليات التجميع وتخزين وتغليف الفلتر بطريقة صحيحة'] || data['ft_check_condenser_storage'] || 'OK',
+      data['التأكد من لصق الالمونيوم على كاب الفريزر بقسم تجميع الباب قبل الحقن حسب تعليمات التشغيل'] || data['ft_check_alu_tape_freezer'] || 'OK',
+      data['التأكد من سلامة عملية إختبار Wire Checker لموديلات 46 - 51'] || data['ft_check_wire_checker_46_51'] || 'OK',
+      data['مطابقة نوع المبخر لموديل الثلاجة'] || data['ft_check_evap_model_match'] || 'OK',
       "الموقع"
     ]);
   } else if (data.tabId === 'start_torque') {
     sheet.appendRow([
-      data['التاريخ'] || data['date'],
-      data['الوردية'] || data['shift'],
-      data['stationNum'] || '',
-      data['screwdriverTorque'] || '',
-      data['startTorqueStatus'] || 'PASS',
+      data['التاريخ'] || data['date'] || '',
+      data['الوردية'] || data['shift'] || '',
+      data['الموديل'] || data['stModel'] || '',
+      data['الكباس مع القاعدة (Front (L للعينة الأولى'] || data['stCompBaseFrontL1'] || '',
+      data['الكباس مع القاعدة (Front (R للعينة الأولى'] || data['stCompBaseFrontR1'] || '',
+      data['الكباس مع القاعدة (Back (L للعينة الأولى'] || data['stCompBaseBackL1'] || '',
+      data['الكباس مع القاعدة (Back (R للعينة الأولى'] || data['stCompBaseBackR1'] || '',
+      data['الكباس مع القاعدة (Front (L للعينة الثانية'] || data['stCompBaseFrontL2'] || '',
+      data['الكباس مع القاعدة (Front (R للعينة الثانية'] || data['stCompBaseFrontR2'] || '',
+      data['الكباس مع القاعدة (Back (L للعينة الثانية'] || data['stCompBaseBackL2'] || '',
+      data['الكباس مع القاعدة (Back (R للعينة الثانية'] || data['stCompBaseBackR2'] || '',
+      data['مسامير القاعدة مع الثلاجة (Front (L للعينة الأولى'] || data['stBaseScrewFrontL1'] || '',
+      data['مسامير القاعدة مع الثلاجة (Front (R للعينة الأولى'] || data['stBaseScrewFrontR1'] || '',
+      data['مسامير القاعدة مع الثلاجة (Back (L للعينة الأولى'] || data['stBaseScrewBackL1'] || '',
+      data['مسامير القاعدة مع الثلاجة (Back (R للعينة الأولى'] || data['stBaseScrewBackR1'] || '',
+      data['مسامير القاعدة مع الثلاجة (Front (L للعينة الثانية'] || data['stBaseScrewFrontL2'] || '',
+      data['مسامير القاعدة مع الثلاجة (Front (R للعينة الثانية'] || data['stBaseScrewFrontR2'] || '',
+      data['مسامير القاعدة مع الثلاجة (Back (L للعينة الثانية'] || data['stBaseScrewBackL2'] || '',
+      data['مسامير القاعدة مع الثلاجة (Back (R للعينة الثانية'] || data['stBaseScrewBackR2'] || '',
       "الموقع"
     ]);
   } else if (data.tabId === 'inject_torque') {
     sheet.appendRow([
-      data['التاريخ'] || data['date'],
-      data['الوردية'] || data['shift'],
-      data['fixingBolt'] || '',
-      data['measuredTorque'] || '',
-      data['injectTorqueStatus'] || 'PASS',
+      data['التاريخ'] || data['date'] || '',
+      data['الوردية'] || data['shift'] || '',
+      data['الموديل'] || data['itModel'] || '',
+      data['تثبيت ارجل الثلاجة (Front (L للعينة الأولى'] || data['itLegFrontL1'] || '',
+      data['تثبيت ارجل الثلاجة (Front (R للعينة الأولى'] || data['itLegFrontR1'] || '',
+      data['تثبيت ارجل الثلاجة (Back (L للعينة الثانية'] || data['itLegBackL2'] || '',
+      data['تثبيت ارجل الثلاجة (Back (R للعينة الثانية'] || data['itLegBackR2'] || '',
+      data['مسمار F/P (L)'] || data['itScrewFPL'] || '',
       "الموقع"
     ]);
   } else if (data.tabId === 'perf_test') {
     sheet.appendRow([
-      data['التاريخ'] || data['date'],
-      data['الوردية'] || data['shift'],
-      data['الموديل'] || data['modelName'],
-      (data['cabinetTemp'] || '0') + ' / ' + (data['freezerTemp'] || '0'),
-      data['currentAmp'] || '',
-      data['perfResult'] || 'PASS',
+      data['التاريخ'] || data['date'] || '',
+      data['الوردية'] || data['shift'] || '',
+      data['التأكد من معايرة جهاز تسريب الضغط المنخفض .'] || data['pt_check_low_press_leak'] || 'OK',
+      data['التأكد من معايرة جهاز تسريب الضغط العالى .'] || data['pt_check_high_press_leak'] || 'OK',
+      data['التأكد من اجراء ٳختبار اللمبة .'] || data['pt_check_lamp'] || 'OK',
+      data['التأكد من إجراء ٳختبار المروحة .'] || data['pt_check_fan'] || 'OK',
+      data['التأكيد علي خلوص الجوان .'] || data['pt_check_gasket'] || 'OK',
+      data['التأكد من إجراء اختبار التبريد في الفريزر .'] || data['pt_check_freezer_cooling'] || 'OK',
+      data['التأكد من إجراء ٳختبار السخان .'] || data['pt_check_heater'] || 'OK',
+      data['التأكد من وضع السيلكون في الاماكن المحددة .'] || data['pt_check_silicon'] || 'OK',
+      data['التأكد من لحام ماسورة الكابلرى وعدم وجود حرق او اثار لحام على I/L الخاص بالعينة .'] || data['pt_check_capillary_solder'] || 'OK',
+      data['متابعة تثبيت ماسورة حوض الصرف بطريقة صحيحة'] || data['pt_check_drain_pipe'] || 'OK',
+      data['التأكد من إجراء ٳختبار تسريب للضغط المنخفض والعالي و يتم إختبار كل نقطة لمدة 3 ثواني'] || data['pt_check_leak_test_time'] || 'OK',
+      data['التأكد من إجراء ٳختبار العزل الكهربي لجميع الموديلات'] || data['pt_check_electric_insulation'] || 'OK',
+      data['درجة حرارة غرفة إختبار الاداء'] || data['ptTempPerfRoom'] || '',
+      data['الموديل'] || data['ptModelName'] || data['modelName'] || '',
+      data['التأكد من سلامة الطباعة والملصقات لكرتون التغليف .'] || data['pt_check_carton_printing'] || 'OK',
+      data['مدى تحمل لحام حزام التغليف للشد بقوة 100 Kg'] || data['pt_check_strap_strength'] || 'OK',
+      data['L1 قوة ربط حزام التغليف'] || data['ptStrapTightL1'] || '',
+      data['L2 قوة ربط حزام التغليف'] || data['ptStrapTightL2'] || '',
       "الموقع"
     ]);
   }
