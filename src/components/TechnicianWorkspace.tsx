@@ -723,6 +723,10 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       
       const id = `APPSHEET-${targetLineId}-${tabId}-${i}-${dateStr}-${shift}`;
       
+      const isFromWebsite = line.includes('الموقع') || line.includes('WEBSITE') || line.includes('Website') || line.includes('موقع الويب');
+      const sourceVal = isFromWebsite ? 'WEBSITE' as const : 'APPSHEET' as const;
+      const inspectorSapVal = isFromWebsite ? 'Website' : 'AppSheet';
+      
       if (tabId === 'calib') {
         const machine = parts[2] || 'غير محدد';
         const model = parts[3] || 'عام';
@@ -731,7 +735,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           id,
           lineId: targetLineId,
           tabId: 'calib',
-          inspectorSap: 'AppSheet',
+          inspectorSap: inspectorSapVal,
           vacuumLevel: 0.08,
           gasCharge: parseFloat(charge) || 0,
           insulationRes: 110,
@@ -741,7 +745,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           shift,
           machine,
           modelName: model,
-          source: 'APPSHEET',
+          source: sourceVal,
           rawCharge: charge
         });
       } else if (tabId === 'init_ass') {
@@ -753,7 +757,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           id,
           lineId: targetLineId,
           tabId: 'init_ass',
-          inspectorSap: 'AppSheet',
+          inspectorSap: inspectorSapVal,
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
@@ -761,7 +765,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           inspectorName,
           assemblyStatus: (statusVal.includes('تالف') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
           notes,
-          source: 'APPSHEET'
+          source: sourceVal
         });
       } else if (tabId === 'injection') {
         const model = parts[2] || '48';
@@ -791,7 +795,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           id,
           lineId: targetLineId,
           tabId: 'injection',
-          inspectorSap: 'AppSheet',
+          inspectorSap: inspectorSapVal,
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
@@ -817,7 +821,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           injVacuumMaterial: vacuumMaterial,
           injTempDoor: tempDoor,
           injTempCabinet: tempCabinet,
-          source: 'APPSHEET'
+          source: sourceVal
         });
       } else if (tabId === 'final_torque') {
         const model = parts[2] || 'عام';
@@ -828,7 +832,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           id,
           lineId: targetLineId,
           tabId: 'final_torque',
-          inspectorSap: 'AppSheet',
+          inspectorSap: inspectorSapVal,
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
@@ -836,7 +840,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           torqueValue: value,
           torqueStandard: std,
           torqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
-          source: 'APPSHEET'
+          source: sourceVal
         });
       } else if (tabId === 'start_torque') {
         const stationNum = parts[2] || '';
@@ -846,14 +850,14 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           id,
           lineId: targetLineId,
           tabId: 'start_torque',
-          inspectorSap: 'AppSheet',
+          inspectorSap: inspectorSapVal,
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
           stationNum,
           screwdriverTorque: value,
           startTorqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
-          source: 'APPSHEET'
+          source: sourceVal
         });
       } else if (tabId === 'inject_torque') {
         const fixingBolt = parts[2] || '';
@@ -863,14 +867,14 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           id,
           lineId: targetLineId,
           tabId: 'inject_torque',
-          inspectorSap: 'AppSheet',
+          inspectorSap: inspectorSapVal,
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
           fixingBolt,
           measuredTorque: value,
           injectTorqueStatus: (statusVal.includes('غير') || statusVal.toUpperCase().includes('FAIL') || statusVal.toUpperCase().includes('NG')) ? 'FAIL' : 'PASS',
-          source: 'APPSHEET'
+          source: sourceVal
         });
       } else if (tabId === 'perf_test') {
         const model = parts[2] || 'عام';
@@ -882,7 +886,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           id,
           lineId: targetLineId,
           tabId: 'perf_test',
-          inspectorSap: 'AppSheet',
+          inspectorSap: inspectorSapVal,
           timestamp: parsedTimestamp,
           date: dateStr,
           shift,
@@ -891,7 +895,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           freezerTemp: freezTemp,
           currentAmp: current,
           perfResult: (statusVal.includes('FAIL') || statusVal.toUpperCase().includes('NG') || statusVal.includes('راسب')) ? 'FAIL' : 'PASS',
-          source: 'APPSHEET'
+          source: sourceVal
         });
       }
     }
@@ -2619,7 +2623,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['الوردية'] || data['shift'], 
       data['ماكينة الشحن'] || data['machine'], 
       data['الموديل'] || data['modelName'], 
-      data['الشحنة'] || data['rawCharge']
+      data['الشحنة'] || data['rawCharge'],
+      "الموقع"
     ]);
   } else if (data.tabId === 'init_ass') {
     sheet.appendRow([
@@ -2646,7 +2651,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['التأكد من مطابقة تاريخ الباركود لتاريخ اليوم .'] || 'OK',
       data['التأكد من إجراء إختبار البوردة بطريقة صحيحة.'] || 'OK',
       data['إختبار خرطوم الصرف بجهاز ضغط الهواء'] || 'OK',
-      data['التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج'] || 'OK'
+      data['التأكد من إستخدام ضبعات تركيب المفصلة السفلية وضبعات أبعاد الأبواب وضبعات تركيب البادج'] || 'OK',
+      "الموقع"
     ]);
   } else if (data.tabId === 'injection') {
     sheet.appendRow([
@@ -2655,7 +2661,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['الموديل'] || data['modelName'],
       data['foamWeight'] || '',
       data['foamPressure'] || '',
-      data['injectionStatus'] || 'PASS'
+      data['injectionStatus'] || 'PASS',
+      "الموقع"
     ]);
   } else if (data.tabId === 'final_torque') {
     sheet.appendRow([
@@ -2664,7 +2671,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['الموديل'] || data['modelName'],
       data['torqueValue'] || '',
       data['torqueStandard'] || '',
-      data['torqueStatus'] || 'PASS'
+      data['torqueStatus'] || 'PASS',
+      "الموقع"
     ]);
   } else if (data.tabId === 'start_torque') {
     sheet.appendRow([
@@ -2672,7 +2680,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['الوردية'] || data['shift'],
       data['stationNum'] || '',
       data['screwdriverTorque'] || '',
-      data['startTorqueStatus'] || 'PASS'
+      data['startTorqueStatus'] || 'PASS',
+      "الموقع"
     ]);
   } else if (data.tabId === 'inject_torque') {
     sheet.appendRow([
@@ -2680,7 +2689,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['الوردية'] || data['shift'],
       data['fixingBolt'] || '',
       data['measuredTorque'] || '',
-      data['injectTorqueStatus'] || 'PASS'
+      data['injectTorqueStatus'] || 'PASS',
+      "الموقع"
     ]);
   } else if (data.tabId === 'perf_test') {
     sheet.appendRow([
@@ -2689,7 +2699,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['الموديل'] || data['modelName'],
       (data['cabinetTemp'] || '0') + ' / ' + (data['freezerTemp'] || '0'),
       data['currentAmp'] || '',
-      data['perfResult'] || 'PASS'
+      data['perfResult'] || 'PASS',
+      "الموقع"
     ]);
   }
   
