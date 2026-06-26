@@ -12,7 +12,7 @@ import {
   Play, Sparkles, Send, CheckCircle2, XCircle, AlertTriangle, ListChecks, History, 
   LogOut, Check, BadgeAlert, ClipboardCheck, BookOpen, Layers, Ban, ClipboardList, 
   Calendar, Search, ArrowRight, HelpCircle, Archive, Save, PlusCircle, ShieldAlert,
-  Gauge, Activity, FileText, ChevronLeft, Settings, RefreshCw, Trash2
+  Gauge, Activity, FileText, ChevronLeft, Settings, RefreshCw, Trash2, Printer
 } from 'lucide-react';
 
 interface TechnicianWorkspaceProps {
@@ -20,6 +20,7 @@ interface TechnicianWorkspaceProps {
   onLogout: () => void;
   inspections: QualityInspectionLog[];
   onAddInspection: (log: QualityInspectionLog) => void;
+  onDeleteInspection?: (id: string) => void;
   models: RefrigeratorModel[];
 }
 
@@ -273,7 +274,7 @@ interface ProductionQty {
   timestamp: string;
 }
 
-export default function TechnicianWorkspace({ user, onLogout, inspections, onAddInspection, models }: TechnicianWorkspaceProps) {
+export default function TechnicianWorkspace({ user, onLogout, inspections, onAddInspection, onDeleteInspection, models }: TechnicianWorkspaceProps) {
   // Safe Date/Time Formatting Helpers to prevent rendering crashes due to invalid strings
   const safeDateString = (timestamp: any) => {
     if (!timestamp) return '--/--/----';
@@ -371,6 +372,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const [selectedDefects, setSelectedDefects] = useState<string[]>([]);
   const [defectNotes, setDefectNotes] = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg] = useState('');
+  const [activeReport, setActiveReport] = useState<QualityInspectionLog | null>(null);
 
   // Critical Operations State
   const [criticalLogs, setCriticalLogs] = useState<CriticalLog[]>(() => {
@@ -1293,6 +1295,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
   // Statistics calculation filtered by SELECTED MONTH and SELECTED PRODUCTION LINE
   const lineInspections = inspections.filter(log => log.lineId === lineId);
+  const sortedLineInspections = [...lineInspections].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   const monthlyInspections = lineInspections.filter(log => {
     const logDate = new Date(log.timestamp);
     const logY = logDate.getFullYear();
@@ -1402,6 +1405,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     };
 
     onAddInspection(newLog);
+    setActiveReport(newLog);
     setSuccessMsg(`تم بنجاح تسجيل فحص الثلاجات بالخط! الرقم التسلسلي: ${serialNumber}`);
     handleResetForm();
     setCurrentSection('DASHBOARD');
@@ -1426,7 +1430,16 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       factoryBData: payload
     };
     onAddInspection(transformed);
+    setActiveReport(transformed);
     setCurrentSection('DASHBOARD');
+  };
+
+  const handleDeleteClick = (id: string, serial: string) => {
+    if (window.confirm(`هل أنت متأكد من رغبتك في حذف عينة الفحص ذات السيريال (${serial}) وتقريرها نهائياً؟`)) {
+      if (onDeleteInspection) {
+        onDeleteInspection(id);
+      }
+    }
   };
 
   // State: New Critical Log Form
@@ -4624,10 +4637,11 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                     <th className="py-3 px-4">وقت الفحص</th>
                     <th className="py-3 px-4 text-center">النتيجة</th>
                     <th className="py-3 px-4">أعطال الوحدة إن وجدت</th>
+                    <th className="py-3 px-4 text-center">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
-                  {lineInspections.map((log) => {
+                  {sortedLineInspections.map((log) => {
                     const modelObj = models.find(m => m.id === log.modelId);
                     return (
                       <tr key={log.id} className="hover:bg-zinc-50/55 transition-colors">
@@ -4666,12 +4680,30 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                             </div>
                           )}
                         </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setActiveReport(log)}
+                              className="p-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-900 rounded-lg transition-colors cursor-pointer"
+                              title="طباعة التقرير بالكامل"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(log.id, log.serialNumber)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-800 rounded-lg transition-colors cursor-pointer"
+                              title="حذف العينة بتقريرها"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
-                  {lineInspections.length === 0 && (
+                  {sortedLineInspections.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-zinc-400 font-bold">لا توجد فحوصات مسجلة في الأرشيف لخط الإنتاج هذا.</td>
+                      <td colSpan={7} className="text-center py-12 text-zinc-400 font-bold">لا توجد فحوصات مسجلة في الأرشيف لخط الإنتاج هذا.</td>
                     </tr>
                   )}
                 </tbody>
@@ -4772,6 +4804,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                     <th className="py-3 px-4 text-center">النتيجة</th>
                     <th className="py-3 px-4 text-center">قرار المشرف الفني</th>
                     <th className="py-3 px-4">المخالفات المرصودة</th>
+                    <th className="py-3 px-4 text-center">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -4828,12 +4861,30 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                             </div>
                           )}
                         </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setActiveReport(log)}
+                              className="p-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-900 rounded-lg transition-colors cursor-pointer"
+                              title="طباعة التقرير بالكامل"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(log.id, log.serialNumber)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-800 rounded-lg transition-colors cursor-pointer"
+                              title="حذف العينة بتقريرها"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
                   {myInspections.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-zinc-400 font-bold">لم تقم بتسجيل أي فحوصات ثلاجات حتى الآن في هذه الجلسة.</td>
+                      <td colSpan={7} className="text-center py-12 text-zinc-400 font-bold">لم تقم بتسجيل أي فحوصات ثلاجات حتى الآن في هذه الجلسة.</td>
                     </tr>
                   )}
                 </tbody>
@@ -5158,6 +5209,301 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         <p>© شركة العربي للصناعات الهندسية • نظام توكيد جودة الثلاجات المتنقل</p>
         <p className="mt-1 font-medium">يتم مزامنة كافة الفحوصات والعمليات الحرجة فوراً مع قواعد البيانات المركزية للشركة.</p>
       </footer>
+
+      {/* 4. Active Full-detailed Report Preview Modal */}
+      {activeReport && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:h-auto">
+          {/* Printable Style Injection to override any page margins and display only the modal body during printing */}
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden;
+              }
+              #active-print-area, #active-print-area * {
+                visibility: visible;
+              }
+              #active-print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                background: white !important;
+              }
+              .no-print {
+                display: none !important;
+              }
+            }
+          `}</style>
+
+          <div 
+            id="active-print-area" 
+            className="bg-white border border-zinc-200 rounded-2xl w-full max-w-4xl p-6 md:p-8 shadow-xl space-y-6 print:rounded-none print:shadow-none print:border-none print:w-full print:p-0 print:m-0"
+          >
+            {/* Header / Brand */}
+            <div className="border-b border-zinc-300 pb-4 flex items-center justify-between">
+              <div className="text-right">
+                <h2 className="text-base font-black text-zinc-900 leading-normal">
+                  تقرير الفحص الفني المعتمد للثلاجات
+                </h2>
+                <p className="text-xs text-zinc-500 font-bold">إدارة توكيد الجودة بمجموعة العربي</p>
+              </div>
+              <div className="text-left text-[10px] text-zinc-500 font-mono">
+                <p>كود الوثيقة: QA-REP-AR-01</p>
+                <p>تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</p>
+                <p>خط الإنتاج: {getLineName(activeReport.lineId)}</p>
+              </div>
+            </div>
+
+            {/* Basic Info Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-zinc-50 p-4 rounded-xl border border-zinc-200 text-xs">
+              <div>
+                <span className="text-zinc-500 block font-bold">الرقم التسلسلي (Serial):</span>
+                <span className="font-mono font-black text-zinc-900 text-sm tracking-wider">{activeReport.serialNumber}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block font-bold">الموديل (Model):</span>
+                <span className="font-bold text-zinc-900">
+                  {models.find(m => m.id === activeReport.modelId)?.name || activeReport.modelId}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block font-bold">اسم المفتش الفني:</span>
+                <span className="font-bold text-zinc-900">{activeReport.inspectorName} ({activeReport.inspectorSap})</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block font-bold">تاريخ ووقت الفحص:</span>
+                <span className="font-mono font-bold text-zinc-900">
+                  {safeDateString(activeReport.timestamp)} - {safeTimeString(activeReport.timestamp)}
+                </span>
+              </div>
+            </div>
+
+            {/* Status Summary Banner */}
+            <div className={`p-4 rounded-xl border text-center font-black text-sm flex items-center justify-between ${
+              activeReport.status === 'PASS' 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                {activeReport.status === 'PASS' ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-rose-600" />
+                )}
+                <span>نتيجة فحص الجودة الإجمالية: {activeReport.status === 'PASS' ? 'مطابق ومقبول للشحن (PASS)' : 'مرفوض وموقوف للإصلاح (FAIL)'}</span>
+              </div>
+              {activeReport.recheckStatus && (
+                <span className="text-xs bg-white/80 px-3 py-1 rounded-full border">
+                  حالة إعادة الفحص: {
+                    activeReport.recheckStatus === 'APPROVED_AFTER_REPAIR' ? 'مقبول بعد الإصلاح' :
+                    activeReport.recheckStatus === 'SCRAPPED' ? 'تم تخريده' : 'قيد المعالجة والإصلاح'
+                  }
+                </span>
+              )}
+            </div>
+
+            {/* All items & data Details - Not Abbreviated */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-zinc-900 border-b border-zinc-150 pb-2">تفاصيل بنود الفحص الفنية والنتائج المسجلة بالكامل:</h3>
+              
+              {activeReport.factoryBData ? (
+                /* LINE B Custom Report Layout */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
+                    <h4 className="font-bold text-zinc-900 text-[11px] border-b pb-1">الفحص البصري والمظهر الخارجي:</h4>
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span>1. سلامة التعبئة والتغليف ومطابقتها:</span>
+                        <strong className={activeReport.factoryBData.data.packagingOk === 'NG' ? 'text-red-600' : 'text-emerald-600'}>
+                          {activeReport.factoryBData.data.packagingOk || 'OK'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>2. تطابق لون الهيكل مع الباركود:</span>
+                        <strong className={activeReport.factoryBData.data.colorMatch === 'NG' ? 'text-red-600' : 'text-emerald-600'}>
+                          {activeReport.factoryBData.data.colorMatch || 'OK'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>3. تموج صاج الجانبين الخارجي:</span>
+                        <strong className="text-zinc-900">
+                          {activeReport.factoryBData.data.wavinessValue || '0'} mm
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>4. خلو الهيكل من الخدوش والنقر:</span>
+                        <strong className={activeReport.factoryBData.data.noScratchDents === 'NG' ? 'text-red-600' : 'text-emerald-600'}>
+                          {activeReport.factoryBData.data.noScratchDents || 'OK'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>5. تركيب اللوجو واليد:</span>
+                        <strong className={activeReport.factoryBData.data.badgeAssemblyOk === 'NG' ? 'text-red-600' : 'text-emerald-600'}>
+                          {activeReport.factoryBData.data.badgeAssemblyOk || 'OK'}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
+                    <h4 className="font-bold text-zinc-900 text-[11px] border-b pb-1">الفحص الكهربائي وفحص الغاز والتسريب:</h4>
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <span>1. اختبار تيار بدء التشغيل (187V):</span>
+                        <strong className="text-zinc-900">{activeReport.factoryBData.data.elecStartCurrent || '0'} A</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>2. مقاومة اختبار الأرضي (25A, 5s):</span>
+                        <strong className="text-zinc-900">{activeReport.factoryBData.data.elecGroundRes || '0'} mΩ</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>3. مقاومة العزل الكهربائي:</span>
+                        <strong className="text-zinc-900">{activeReport.factoryBData.data.elecInsulRes || '0'} MΩ</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>4. فحص تسريب فريون الدائرة:</span>
+                        <strong className={activeReport.factoryBData.data.gasLeakTest === 'NG' ? 'text-red-600' : 'text-emerald-600'}>
+                          {activeReport.factoryBData.data.gasLeakTest || 'OK'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>5. غلق الأبواب ذاتياً وعزل الجوانات:</span>
+                        <strong className={activeReport.factoryBData.data.doorGasketOk === 'NG' ? 'text-red-600' : 'text-emerald-600'}>
+                          {activeReport.factoryBData.data.doorGasketOk || 'OK'}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2 md:col-span-2">
+                    <h4 className="font-bold text-zinc-900 text-[11px] border-b pb-1">القياسات الفيزيائية وعزوم الربط والأبعاد (ملم):</h4>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                      <div className="flex justify-between">
+                        <span>أبعاد العرض والعمق والارتفاع (A,B,C):</span>
+                        <strong className="text-zinc-950 font-mono">
+                          {activeReport.factoryBData.data.dimA || '0'} | {activeReport.factoryBData.data.dimB || '0'} | {activeReport.factoryBData.data.dimC || '0'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>مسافة فراغ الرف x بالضبعة:</span>
+                        <strong className="text-zinc-950 font-mono">{activeReport.factoryBData.data.shelfGapX || '0'} mm</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>عزوم مسامير المفصلة العلوية:</span>
+                        <strong className="text-zinc-950 font-mono">
+                          {activeReport.factoryBData.data.torqueA1 || '0'} | {activeReport.factoryBData.data.torqueA2 || '0'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>خلو مروحة الـ Louver من الضوضاء:</span>
+                        <strong className={activeReport.factoryBData.data.noAbnormalNoise === 'NG' ? 'text-red-600' : 'text-emerald-600'}>
+                          {activeReport.factoryBData.data.noAbnormalNoise || 'OK'}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* LINE A / C Standard Checklist Layout */
+                <div className="border border-zinc-250 rounded-xl overflow-hidden">
+                  <table className="w-full text-right text-xs">
+                    <thead>
+                      <tr className="bg-zinc-100 text-zinc-800 font-bold border-b border-zinc-250">
+                        <th className="py-2.5 px-4">البند وموضع الاختبار</th>
+                        <th className="py-2.5 px-4 text-center">نوع الفحص</th>
+                        <th className="py-2.5 px-4 text-center">النتيجة والامتثال</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200">
+                      {CHECKLIST_ITEMS.map((item) => {
+                        const isOk = activeReport.checkedItems[item.id] !== false;
+                        return (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="py-2.5 px-4">
+                              <p className="font-bold text-zinc-900">{item.label}</p>
+                              <p className="text-[10px] text-zinc-500">{item.description}</p>
+                            </td>
+                            <td className="py-2.5 px-4 text-center text-zinc-500 font-bold">
+                              {item.category === 'exterior' ? 'فحص بصري' :
+                               item.category === 'cooling' ? 'أجهزة قياس' :
+                               item.category === 'electrical' ? 'اختبار كهربائي' : 'أمن وسلامة'}
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                isOk ? 'bg-emerald-50 border border-emerald-250 text-emerald-800' : 'bg-red-50 border border-red-250 text-red-800'
+                              }`}>
+                                {isOk ? 'مطابق وممتاز (OK)' : 'مخالف وغير مطابق (NG)'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Defects Details Section */}
+            {activeReport.defects.length > 0 && (
+              <div className="bg-red-50/50 border border-red-200 p-4 rounded-xl space-y-2">
+                <h4 className="text-xs font-black text-red-900 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                  المخالفات والأعطال المرصودة بالوحدة:
+                </h4>
+                <ul className="list-disc list-inside space-y-1 text-xs text-red-800 font-bold pr-2">
+                  {activeReport.defects.map((def, idx) => {
+                    const option = DEFECT_OPTIONS.find(o => o.id === def.defectOptionId);
+                    return (
+                      <li key={idx}>
+                        {option ? option.label : def.defectOptionId} - {def.details || 'بدون تفاصيل إضافية'}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {/* Signatures & Accreditation Footer */}
+            <div className="border-t border-zinc-300 pt-6 grid grid-cols-2 gap-6 text-xs text-center">
+              <div className="space-y-4">
+                <p className="font-bold text-zinc-700">توقيع فني توكيد الجودة (QA Inspector)</p>
+                <div className="h-10 border-b border-dashed border-zinc-300 w-2/3 mx-auto"></div>
+                <p className="font-mono text-zinc-650 font-bold">{activeReport.inspectorName} ({activeReport.inspectorSap})</p>
+              </div>
+              <div className="space-y-4">
+                <p className="font-bold text-zinc-700">توقيع واعتماد مشرف النوبة والخط</p>
+                <div className="h-10 border-b border-dashed border-zinc-300 w-2/3 mx-auto"></div>
+                <p className="text-zinc-650 font-bold">
+                  {activeReport.supervisorApproved ? 'موافق ومعتمد إلكترونياً' : '___________'}
+                </p>
+              </div>
+            </div>
+
+            {/* Close & Action Buttons */}
+            <div className="no-print border-t border-zinc-200 pt-4 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="bg-zinc-900 hover:bg-zinc-950 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>طباعة التقرير الفورية (A4)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveReport(null)}
+                className="bg-zinc-100 hover:bg-zinc-200 text-zinc-805 font-extrabold px-5 py-2.5 rounded-xl text-xs cursor-pointer transition-colors"
+              >
+                إغلاق التقرير ومعاودة العمل
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

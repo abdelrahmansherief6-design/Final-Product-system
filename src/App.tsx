@@ -123,6 +123,10 @@ export default function App() {
     setInspections((prev) => [log, ...prev]);
   };
 
+  const handleDeleteInspection = (id: string) => {
+    setInspections((prev) => prev.filter((log) => log.id !== id));
+  };
+
   const handleUpdateInspection = (id: string, updates: Partial<QualityInspectionLog>) => {
     setInspections((prev) =>
       prev.map((log) => (log.id === id ? { ...log, ...updates } : log))
@@ -144,6 +148,7 @@ export default function App() {
           onLogout={handleLogout}
           inspections={inspections}
           onAddInspection={handleAddInspection}
+          onDeleteInspection={handleDeleteInspection}
           models={models}
         />
       ) : currentUser.role === 'SUPERVISOR' ? (
