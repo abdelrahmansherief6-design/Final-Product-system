@@ -397,9 +397,19 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
       {/* Printable Style Injection */}
       <style>{`
         @media print {
-          body {
+          html, body {
             visibility: hidden !important;
+            height: auto !important;
+            overflow: visible !important;
             background: white !important;
+          }
+          /* Reset parent containers so they do not hide or clip the printable area */
+          #root, main, .fixed, .absolute, .relative, div {
+            overflow: visible !important;
+            position: static !important;
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
           }
           #active-print-area, #active-print-area * {
             visibility: visible !important;
@@ -415,7 +425,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             border: none !important;
             padding: 0 !important;
             background: white !important;
-            z-index: 99999 !important;
+            z-index: 9999999 !important;
           }
           .print-page {
             page-break-after: always !important;

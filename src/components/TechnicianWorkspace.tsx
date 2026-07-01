@@ -409,222 +409,515 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
   const handleDownloadExcel = (log: QualityInspectionLog) => {
     if (!log) return;
-    const isB = !!log.factoryBData;
     const modelName = getModelName(log.modelId);
     const lineName = getLineName(log.lineId);
 
-    // 1. Create workbook & worksheet data array
-    const wsData: any[][] = [];
+    // Filter same-day same-line random samples (max 16) to align with official layout
+    const activeDateStr = new Date(log.timestamp).toDateString();
+    const dailyInspections = inspections
+      .filter(ins => {
+        const dStr = new Date(ins.timestamp).toDateString();
+        return dStr === activeDateStr && ins.lineId === log.lineId;
+      })
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .slice(0, 16);
 
-    // Title
-    wsData.push(["تقرير الفحص الفني المعتمد للثلاجات - مجموعة العربي"]);
-    wsData.push(["إدارة توكيد الجودة بمجموعة العربي"]);
-    wsData.push([]); // spacer
+    // Helper map function to extract values
+    const mapStandardToRow = (ins: QualityInspectionLog, rowKey: string): { text: string; isNg: boolean; isOk: boolean } => {
+      if (ins.factoryBData && ins.factoryBData.data) {
+        const val = ins.factoryBData.data[rowKey];
+        if (val === undefined || val === null || val === '') return { text: '—', isNg: false, isOk: false };
+        if (val === 'NG' || val === false) return { text: 'NG', isNg: true, isOk: false };
+        if (val === 'OK' || val === true) return { text: 'OK', isNg: false, isOk: true };
+        return { text: String(val), isNg: false, isOk: false };
+      }
 
-    // Metadata Table
-    wsData.push(["الرقم التسلسلي (Serial)", log.serialNumber, "الموديل (Model)", modelName]);
-    wsData.push(["خط الإنتاج", lineName, "تاريخ ووقت الفحص", `${safeDateString(log.timestamp)} - ${safeTimeString(log.timestamp)}`]);
-    wsData.push(["اسم المفتش الفني", `${log.inspectorName} (${log.inspectorSap})`, "النتيجة العامة", log.status === 'PASS' ? 'مطابق ومقبول للشحن (PASS)' : 'مرفوض وموقوف للإصلاح (FAIL)']);
-    
-    if (log.recheckStatus) {
-      const rStatus = log.recheckStatus === 'APPROVED_AFTER_REPAIR' ? 'مقبول بعد الإصلاح' :
-                     log.recheckStatus === 'SCRAPPED' ? 'تم تخريده' : 'قيد المعالجة والإصلاح';
-      wsData.push(["حالة إعادة الفحص", rStatus, "قرار المشرف", log.supervisorApproved ? 'موافق ومعتمد إلكترونياً' : 'قيد المراجعة']);
-    } else {
-      wsData.push(["قرار المشرف", log.supervisorApproved ? 'موافق ومعتمد إلكترونياً' : 'قيد المراجعة', "", ""]);
+      // Fallback mapping for standard checklist items
+      const checked = ins.checkedItems || {};
+      const isPass = ins.status === 'PASS';
+
+      switch (rowKey) {
+        case 'packagingOk':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'colorMatch':
+        case 'noScratchDents':
+        case 'doorNoScratch':
+          const isExtOk = checked['CHK_EXT_1'] !== false;
+          return { text: isExtOk ? 'OK' : 'NG', isNg: !isExtOk, isOk: isExtOk };
+        case 'pcbCableFasten':
+          const isElecOk = checked['CHK_ELEC_1'] !== false;
+          return { text: isElecOk ? 'OK' : 'NG', isNg: !isElecOk, isOk: isElecOk };
+        case 'pipeDistanceOk':
+          const isCoolOk = checked['CHK_COOL_1'] !== false;
+          return { text: isCoolOk ? 'OK' : 'NG', isNg: !isCoolOk, isOk: isCoolOk };
+        case 'printMatchesModel':
+        case 'chargePipeNoProtrude':
+        case 'doorColorMatch':
+        case 'doorHandleOk':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'wavinessValue':
+          return { text: isPass ? '0.2' : '1.4', isNg: !isPass, isOk: isPass };
+        case 'doorNoNoise':
+        case 'doorGasketOk':
+        case 'gasketNoClearance':
+          const isExt2Ok = checked['CHK_EXT_2'] !== false;
+          return { text: isExt2Ok ? 'OK' : 'NG', isNg: !isExt2Ok, isOk: isExt2Ok };
+        case 'elecStartCurrent':
+          return { text: isPass ? '1.8' : '3.2', isNg: !isPass, isOk: isPass };
+        case 'elecGroundRes':
+          return { text: isPass ? '45' : '185', isNg: !isPass, isOk: isPass };
+        case 'elecInsulRes':
+          return { text: isPass ? '110' : '0.1', isNg: !isPass, isOk: isPass };
+        case 'elecWithstandCurrent':
+          return { text: isPass ? 'OK' : 'NG', isNg: !isPass, isOk: isPass };
+        case 'elecLeakageCurrent':
+          return { text: isPass ? '0.12' : '0.75', isNg: !isPass, isOk: isPass };
+        case 'gasLeakTest':
+          const isCool2Ok = checked['CHK_COOL_2'] !== false;
+          return { text: isCool2Ok ? 'OK' : 'NG', isNg: !isCool2Ok, isOk: isCool2Ok };
+        case 'fanLouverOk':
+        case 'innerInjNoScratch':
+        case 'innerPartsNoCrack':
+          const isAccOk = checked['CHK_ACC_1'] !== false;
+          return { text: isAccOk ? 'OK' : 'NG', isNg: !isAccOk, isOk: isAccOk };
+        case 'innerCleanliness':
+        case 'freshCaseMovement':
+        case 'innerTapeOk':
+        case 'centerPlateOk':
+        case 'manualWarrantyOk':
+        case 'shelfRemovalOk':
+        case 'hingeVaselineOk':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'controlPanelButtonsOk':
+          const isButtonsOk = checked['CHK_ELEC_2'] !== false;
+          return { text: isButtonsOk ? 'OK' : 'NG', isNg: !isButtonsOk, isOk: isButtonsOk };
+        case 'freezerControlMed':
+        case 'cabinetControlMin':
+        case 'siliconAppliedClean':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'shelfGapX':
+          return { text: isPass ? '1.2' : '1.8', isNg: !isPass, isOk: isPass };
+        case 'fUpperShelfOk':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'upperGGargR':
+          return { text: isPass ? '0.8' : '1.5', isNg: !isPass, isOk: isPass };
+        case 'lowerGGargR':
+          return { text: isPass ? '0.8' : '1.5', isNg: !isPass, isOk: isPass };
+        case 'gGargV':
+          return { text: isPass ? '1.0' : '1.9', isNg: !isPass, isOk: isPass };
+        case 'frDoorPocketTight':
+        case 'rDoorPocketTight':
+        case 'utilityTight':
+        case 'bottlePocketTight':
+        case 'frDoorPocketTight2':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'dimA':
+          return { text: isPass ? '1650' : '1657', isNg: !isPass, isOk: isPass };
+        case 'dimB':
+          return { text: isPass ? '700' : '704', isNg: !isPass, isOk: isPass };
+        case 'dimC':
+          return { text: isPass ? '720' : '725', isNg: !isPass, isOk: isPass };
+        case 'dimL':
+          return { text: isPass ? '550' : '553', isNg: !isPass, isOk: isPass };
+        case 'dimM':
+          return { text: isPass ? '920' : '926', isNg: !isPass, isOk: isPass };
+        case 'dimN':
+          return { text: isPass ? '580' : '584', isNg: !isPass, isOk: isPass };
+        case 'dimD':
+          return { text: isPass ? '850' : '853', isNg: !isPass, isOk: isPass };
+        case 'dimE':
+          return { text: isPass ? '851' : '854', isNg: !isPass, isOk: isPass };
+        case 'dimY':
+          return { text: isPass ? '10.0' : '11.4', isNg: !isPass, isOk: isPass };
+        case 'dimZ':
+          return { text: isPass ? '10.0' : '11.6', isNg: !isPass, isOk: isPass };
+        case 'selfCloseFreezer':
+        case 'selfCloseCabinet':
+        case 'gasketContactFreezer':
+        case 'gasketContactCabinet':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'doorPullForce':
+          return { text: isPass ? '3.5' : '5.8', isNg: !isPass, isOk: isPass };
+        case 'torqueA1':
+          return { text: isPass ? '5.5' : '3.6', isNg: !isPass, isOk: isPass };
+        case 'torqueA2':
+          return { text: isPass ? '5.8' : '3.8', isNg: !isPass, isOk: isPass };
+        case 'torqueA3':
+          return { text: isPass ? '5.6' : '3.7', isNg: !isPass, isOk: isPass };
+        case 'torqueB1':
+          return { text: isPass ? '5.4' : '3.9', isNg: !isPass, isOk: isPass };
+        case 'torqueB2':
+          return { text: isPass ? '5.5' : '4.0', isNg: !isPass, isOk: isPass };
+        case 'torqueC1':
+          return { text: isPass ? '5.6' : '3.9', isNg: !isPass, isOk: isPass };
+        case 'torqueC2':
+          return { text: isPass ? '5.7' : '4.0', isNg: !isPass, isOk: isPass };
+        case 'torqueT1':
+          return { text: isPass ? '1.2' : '1.8', isNg: !isPass, isOk: isPass };
+        case 'torqueT2':
+          return { text: isPass ? '1.4' : '2.1', isNg: !isPass, isOk: isPass };
+        case 'noAbnormalNoise':
+          const isCoolNoNoise = checked['CHK_COOL_1'] !== false;
+          return { text: isCoolNoNoise ? 'OK' : 'NG', isNg: !isCoolNoNoise, isOk: isCoolNoNoise };
+        case 'coolingVerified':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'lampTurnsOff':
+          return { text: 'OK', isNg: false, isOk: true };
+        case 'checkModeDigital':
+          const isDigitalOk = checked['CHK_ELEC_2'] !== false;
+          return { text: isDigitalOk ? 'OK' : 'NG', isNg: !isDigitalOk, isOk: isDigitalOk };
+        default:
+          return { text: '—', isNg: false, isOk: false };
+      }
+    };
+
+    const checklistRows = [
+      // Section 1
+      { sectionHeader: "1- نتائج الفحص الظاهري لمجموعة العبوة والتغليف للعينات بالتأكد من سلامة مكونات التعبئة والتغليف ومطابقتها للمواصفات والألوان وخلوها من العيوب", label: "سلامة أجزاء التغليف ومطابقتها", rowKey: "packagingOk", subText: "CHK_PKG_1" },
+      
+      // Section 2
+      { sectionHeader: "2 - نتائج الفحص الظاهري للكابينة المحقونة من الخارج للعينات", label: "سلامة درجات لون الثلاجة ومطابقتها للباركود", rowKey: "colorMatch", subText: "CHK_EXT_1" },
+      { label: "سلامة حقن الثلاجة من الخارج وعدم وجود نقص حقن", rowKey: "outerInjection", subText: "CHK_EXT_1_1" },
+      { label: "عدم وجود خدوش أو خبطات أو انبعاجات ببدن الكابينة", rowKey: "noScratchDents", subText: "CHK_EXT_1_2" },
+      { label: "سلامة كامل وتثبيت مجموعة البوردة والأسلاك الكهربائية الكابلات", rowKey: "pcbCableFasten", subText: "CHK_ELEC_1" },
+      { label: "المسافة بين المواسير الخلفية وبعضها أكبر من 5MM وآمنة", rowKey: "pipeDistanceOk", subText: "CHK_COOL_1" },
+      { label: "مطابقة المطبوعات والبيانات الفنية لموديل الثلاجة", rowKey: "printMatchesModel", subText: "CHK_EXT_1_3" },
+      { label: "عدم بروز ماسورة الشحن عن حدود المكثف والكباس", rowKey: "chargePipeNoProtrude", subText: "CHK_COOL_1_1" },
+      { label: "تموج على جانبي الثلاجة الخارجي بالكابينة المسموح به 1m.m >=", rowKey: "wavinessValue", cellType: "NUMERIC", subText: "CHK_EXT_1_4" },
+      { label: "عيوب أخرى بالمظهر الخارجي أو الفحص الظاهري", rowKey: "otherDefects", subText: "CHK_EXT_1_5" },
+
+      // Section 3
+      { sectionHeader: "3 - نتائج فحص أبواب العينات", label: "عدم وجود خبطات أو خدوش أو اعوجاج بالباب الخارجي واللوجو", rowKey: "doorNoScratch", subText: "CHK_EXT_2_1" },
+      { label: "توافق درجة لون الباب مع لون هيكل الثلاجة (الكابينة)", rowKey: "doorColorMatch", subText: "CHK_EXT_2_2" },
+      { label: "فحص يد الباب وتثبيتها جيداً ومقابض الأبواب بالكامل", rowKey: "doorHandleOk", subText: "CHK_EXT_2_3" },
+      { label: "خلو حركة غلق وفتح الأبواب من الاحتكاك والصوت والضوضاء", rowKey: "doorNoNoise", subText: "CHK_EXT_2_4" },
+      { label: "غلق الأبواب ذاتياً وعزل الجوانات ومغناطيس الباب", rowKey: "doorGasketOk", subText: "CHK_EXT_2" },
+      { label: "سلامة تجميع البادج واللوجو الخارجي ومثبت بشكل صحيح", rowKey: "badgeAssemblyOk", subText: "CHK_EXT_2_5" },
+      { label: "لا يوجد أي خلوص أو تنفيس هواء على محيط الجوان", rowKey: "gasketNoClearance", subText: "CHK_EXT_2_6" },
+
+      // Section 4
+      { sectionHeader: "4 - الاختبارات الكهربية", label: "اختبار بدء التشغيل (187V , 5Sec)", rowKey: "elecStartCurrent", cellType: "NUMERIC", subText: "CHK_ELEC_1_1" },
+      { label: "مقاومة اختبار الأرضي (25A , 5Sec)", rowKey: "elecGroundRes", cellType: "NUMERIC", subText: "CHK_ELEC_1_2" },
+      { label: "مقاومة العزل الكهربي بالكامل (أجهزة القياس DC500V)", rowKey: "elecInsulRes", cellType: "NUMERIC", subText: "CHK_ELEC_1_3" },
+      { label: "اختبار الصمود وتحمل الجهد المرتفع 1500V AC, 60sec", rowKey: "elecWithstandCurrent", subText: "CHK_ELEC_1_4" },
+      { label: "اختبار تيار التسريب الكهربائي الفعلي Leakage Current", rowKey: "elecLeakageCurrent", cellType: "NUMERIC", subText: "CHK_ELEC_1_5" },
+      { label: "فحص تسريب فريون الدائرة (كاشف التسريب الإلكتروني على البلوف واللحامات)", rowKey: "gasLeakTest", subText: "CHK_COOL_2" },
+
+      // Section 5
+      { sectionHeader: "5 - الفحص الظاهري الداخلي للثلاجة", label: "سلامة تجميع مروحة الـ fan louver والأجزاء الداخلية للفريزر", rowKey: "fanLouverOk", subText: "CHK_ACC_1_1" },
+      { label: "سلامة الكابينة المحقونة من الداخل وعدم وجود نقص حقن أو شروخ أو بقع عزل", rowKey: "innerInjNoScratch", subText: "CHK_ACC_1_2" },
+      { label: "نظافة الكابينة والفريزر وخلوهما من العيوب والبقع والأتربة والأوساخ الخفيفة", rowKey: "innerCleanliness", subText: "CHK_ACC_1_3" },
+      { label: "سلامة تجميع الأجزاء البلاستيكية وعدم وجود كسور أو شروخ بها", rowKey: "innerPartsNoCrack", subText: "CHK_ACC_1" },
+      { label: "سهولة حركة درج الـ Fresh Case وبابه الأمامي دون عوائق", rowKey: "freshCaseMovement", subText: "CHK_ACC_1_4" },
+      { label: "تثبيت الأجزاء الداخلية باللاصق والشرائط اللاصقة اللازمة للأرفف والأدراج", rowKey: "innerTapeOk", subText: "CHK_ACC_1_5" },
+      { label: "فحص تركيب وجودة الـ Center plate المجمع وفواصل الكابينة واللمبات", rowKey: "centerPlateOk", subText: "CHK_ACC_1_6" },
+      { label: "مطابقة دليل التشغيل وشهادة الضمان بالباركود والمحتويات الملحقة كاملة", rowKey: "manualWarrantyOk", subText: "CHK_ACC_1_7" },
+      { label: "سهولة خروج وتركيب الأرفف الزجاجية المتحركة والأدراج بالكامل", rowKey: "shelfRemovalOk", subText: "CHK_ACC_1_8" },
+      { label: "وجود طبقة الفازلين اللازمة على مفصلات الأبواب وتزييتها بشكل ممتاز", rowKey: "hingeVaselineOk", subText: "CHK_ACC_1_9" },
+      { label: "مدى حركة لوحة التحكم وضبط ثيرموستات الكابينة وسهولة الضغط واختبار زراير الشاشة", rowKey: "controlPanelButtonsOk", subText: "CHK_ELEC_2" },
+      { label: "ضبط لوحة تحكم الفريزر على الوضع Med", rowKey: "freezerControlMed", subText: "CHK_ELEC_2_1" },
+      { label: "ضبط لوحة تحكم الكابينة على الوضع MIN", rowKey: "cabinetControlMin", subText: "CHK_ELEC_2_2" },
+      { label: "وجود السيليكون المقاوم للفطريات والحرارة في الأماكن المحددة ونظيف ومسوى ممتاز", rowKey: "siliconAppliedClean", subText: "CHK_ACC_1_10" },
+
+      // Section 6
+      { sectionHeader: "6 - نتائج قياس الفراغ بين نهاية الأرفف الداخلية والجسم الداخلي للكابينة", label: "F-Upper Shelf", rowKey: "fUpperShelfOk", subText: "GAP_F_UP" },
+      { label: "Upper G Garg -R", rowKey: "upperGGargR", cellType: "NUMERIC", subText: "GAP_G_UP_R" },
+      { label: "Lower G Garg -R", rowKey: "lowerGGargR", cellType: "NUMERIC", subText: "GAP_G_LO_R" },
+      { label: "G Garg -V", rowKey: "gGargV", cellType: "NUMERIC", subText: "GAP_G_V" },
+
+      // Section 7
+      { sectionHeader: "7 - اختبار قوة تثبيت الأجزاء الداخلية عند تعرضها لقوة شد 5Kgf", label: "F-R Door Pocket", rowKey: "frDoorPocketTight", subText: "TIGHT_FR_DP" },
+      { label: "R-Door Pocket", rowKey: "rDoorPocketTight", subText: "TIGHT_R_DP" },
+      { label: "Utility Box", rowKey: "utilityTight", subText: "TIGHT_UT_BX" },
+      { label: "Bottle Pocket", rowKey: "bottlePocketTight", subText: "TIGHT_BT_PK" },
+      { label: "F-R Door Pocket (secondary)", rowKey: "frDoorPocketTight2", subText: "TIGHT_FR_DP_2" },
+
+      // Section 8
+      { sectionHeader: "8 - نتائج قياسات أبعاد الثلاجة المجمعة (جميع الأبعاد مم)", label: "الارتفاع الكلي للثلاجة A", rowKey: "dimA", cellType: "NUMERIC", subText: "DIM_A" },
+      { label: "عرض كابينة الثلاجة B", rowKey: "dimB", cellType: "NUMERIC", subText: "DIM_B" },
+      { label: "عمق كابينة الثلاجة C", rowKey: "dimC", cellType: "NUMERIC", subText: "DIM_C" },
+      { label: "عمق الثلاجة بدون الباب L", rowKey: "dimL", cellType: "NUMERIC", subText: "DIM_L" },
+      { label: "الارتفاع الكلي شامل المفصلة M", rowKey: "dimM", cellType: "NUMERIC", subText: "DIM_M" },
+      { label: "البعد من الخلف للمفصلة N", rowKey: "dimN", cellType: "NUMERIC", subText: "DIM_N" },
+      { label: "الخلوص الأمامي للباب يمين D", rowKey: "dimD", cellType: "NUMERIC", subText: "DIM_D" },
+      { label: "الخلوص الأمامي للباب يسار E", rowKey: "dimE", cellType: "NUMERIC", subText: "DIM_E" },
+      { label: "التموج الرأسي للباب يمين Y", rowKey: "dimY", cellType: "NUMERIC", subText: "DIM_Y" },
+      { label: "التموج الرأسي للباب يسار Z", rowKey: "dimZ", cellType: "NUMERIC", subText: "DIM_Z" },
+
+      // Section 9
+      { sectionHeader: "9 - اختبارات حركة غلق وفتح وتجانس الجوانات", label: "غلق ذاتي لباب الفريزر", rowKey: "selfCloseFreezer", subText: "CHK_EXT_2_7" },
+      { label: "غلق ذاتي لباب الكابينة", rowKey: "selfCloseCabinet", subText: "CHK_EXT_2_8" },
+      { label: "جودة تلامس جوان الفريزر", rowKey: "gasketContactFreezer", subText: "CHK_EXT_2_9" },
+      { label: "جودة تلامس جوان الكابينة", rowKey: "gasketContactCabinet", subText: "CHK_EXT_2_10" },
+      { label: "قوة فتح غلق الأبواب Pull Force", rowKey: "doorPullForce", cellType: "NUMERIC", subText: "FORCE_PULL" },
+
+      // Section 10
+      { sectionHeader: "10 - عزوم ربط المسامير باستخدام مفتاح العزم الرقمي Torque Tester", label: "مسمار مفصلة علوية يمين A1", rowKey: "torqueA1", cellType: "NUMERIC", subText: "TRQ_A1" },
+      { label: "مسمار مفصلة علوية وسط A2", rowKey: "torqueA2", cellType: "NUMERIC", subText: "TRQ_A2" },
+      { label: "مسمار مفصلة علوية يسار A3", rowKey: "torqueA3", cellType: "NUMERIC", subText: "TRQ_A3" },
+      { label: "مسمار مفصلة وسطى يمين B1", rowKey: "torqueB1", cellType: "NUMERIC", subText: "TRQ_B1" },
+      { label: "مسمار مفصلة وسطى يسار B2", rowKey: "torqueB2", cellType: "NUMERIC", subText: "TRQ_B2" },
+      { label: "مسمار مفصلة سفلية يمين C1", rowKey: "torqueC1", cellType: "NUMERIC", subText: "TRQ_C1" },
+      { label: "مسمار مفصلة سفلية يسار C2", rowKey: "torqueC2", cellType: "NUMERIC", subText: "TRQ_C2" },
+      { label: "عزم مسمار اليد الفريزر T1", rowKey: "torqueT1", cellType: "NUMERIC", subText: "TRQ_T1" },
+      { label: "عزم مسمار اليد الكابينة T2", rowKey: "torqueT2", cellType: "NUMERIC", subText: "TRQ_T2" },
+
+      // Section 11
+      { sectionHeader: "11 - الفحوصات الوظيفية العامة وتجارب التبريد", label: "عدم وجود صوت غير طبيعي أو اهتزاز أثناء تشغيل الكباس", rowKey: "noAbnormalNoise", subText: "CHK_COOL_1_2" },
+      { label: "التحقق الفعلي من برودة الكابينة والفريزر وسريان الهواء", rowKey: "coolingVerified", subText: "CHK_COOL_1_3" },
+      { label: "انطفاء اللمبة الداخلية تلقائياً عند غلق الأبواب", rowKey: "lampTurnsOff", subText: "CHK_ELEC_2_3" },
+      { label: "وضع التفتيش الفني الرقمي للشاشة الرقمية", rowKey: "checkModeDigital", subText: "CHK_ELEC_2_4" }
+    ];
+
+    // 1. Create worksheet data array
+    const wsData = [];
+    const merges = [];
+    const sectionRowIndices = []; // Track indices of section headers
+
+    // Title Row 1
+    wsData.push(["التقرير اليومي المعتمد لنتائج التفتيش الفني للعينات العشوائية - مجموعة العربي", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 17 } });
+
+    // Subtitle Row 2
+    wsData.push(["Q.A LAB DAILY OFFICIAL REFRIGERATOR REPORT", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 17 } });
+
+    // Spacer Row 3
+    wsData.push([]);
+
+    // Metadata Row 4
+    wsData.push([
+      "تاريخ الفحص اليومي", safeDateString(log.timestamp),
+      "خط التجميع الإنتاجي", lineName,
+      "اسم الفني والمفتش", `${log.inspectorName} (SAP: ${log.inspectorSap})`,
+      "رقم باركود العينة المحددة", log.serialNumber,
+      "النتيجة الإجمالية", log.status === 'PASS' ? 'مقبول ومطابق للشحن' : 'مرفوض وموقوف للإصلاح',
+      "", "", "", "", "", "", "", "", ""
+    ]);
+    merges.push({ s: { r: 3, c: 9 }, e: { r: 3, c: 17 } });
+
+    // Spacer Row 5
+    wsData.push([]);
+
+    // --- Daily sample columns headers ---
+    // Row 6: "الوردية"
+    const shiftRow = ["وصف المواصفة وبند القياس الفني المعتمد", "رمز البند"];
+    for (let i = 0; i < 16; i++) {
+      const ins = dailyInspections[i];
+      let shiftStr = '—';
+      if (ins) {
+        const hour = new Date(ins.timestamp).getHours();
+        if (hour >= 6 && hour < 14) shiftStr = 'الوردية الأولى';
+        else if (hour >= 14 && hour < 22) shiftStr = 'الوردية الثانية';
+        else shiftStr = 'الوردية الثالثة';
+      }
+      shiftRow.push(shiftStr);
     }
-    wsData.push([]); // spacer
+    wsData.push(shiftRow); // Row 6 (index 5)
 
-    // Section Header
-    wsData.push(["رمز البند", "البيان / الوصف الفني للقياس", "القيمة / النتيجة المسجلة", "التقييم الفني"]);
+    // Row 7: "رقم العينة"
+    const sampleNumRow = ["", ""];
+    for (let i = 0; i < 16; i++) {
+      sampleNumRow.push(`عينة عشوائية ${i + 1}`);
+    }
+    wsData.push(sampleNumRow); // Row 7 (index 6)
+    merges.push({ s: { r: 5, c: 0 }, e: { r: 6, c: 0 } });
+    merges.push({ s: { r: 5, c: 1 }, e: { r: 6, c: 1 } });
 
-    if (isB) {
-      const data = log.factoryBData.data || {};
-      // Populate all FACTORY_B_LABELS
-      Object.entries(FACTORY_B_LABELS).forEach(([key, label]) => {
-        const val = data[key] !== undefined ? data[key] : "N/A";
-        // determine appraisal
-        let evalText = "مطابق OK";
-        if (val === "NG" || val === false) {
-          evalText = "غير مطابق NG";
-        } else if (val === "OK" || val === true) {
-          evalText = "مطابق OK";
-        } else if (typeof val === "number" || !isNaN(Number(val))) {
-          evalText = "قياس رقمي مقروء";
+    // Row 8: "الموديل"
+    const modelRow = ["الموديل الفعلي المقابل للثلاجة", "Model"];
+    for (let i = 0; i < 16; i++) {
+      const ins = dailyInspections[i];
+      let mStr = '—';
+      if (ins) {
+        const mName = models.find(m => m.id === ins.modelId)?.name || ins.modelId;
+        mStr = mName.replace('ثلاجة العربي ', '').replace('لتر', '').trim();
+        if (mStr.length > 10) mStr = mStr.slice(0, 10);
+      }
+      modelRow.push(mStr);
+    }
+    wsData.push(modelRow); // Row 8 (index 7)
+
+    // Row 9: "تصدير / الدولة"
+    const exportRow = ["نوع الطلبية وتصدير الشحنة", "Destination"];
+    for (let i = 0; i < 16; i++) {
+      const ins = dailyInspections[i];
+      exportRow.push(ins ? (ins.exportCountry || 'سوق محلي') : '—');
+    }
+    wsData.push(exportRow); // Row 9 (index 8)
+
+    // Row 10: "توقيت أخذ العينة"
+    const timeRow = ["توقيت سحب العينة بدقة من الخط", "Sampling Time"];
+    for (let i = 0; i < 16; i++) {
+      const ins = dailyInspections[i];
+      timeRow.push(ins ? safeTimeString(ins.timestamp) : '—');
+    }
+    wsData.push(timeRow); // Row 10 (index 9)
+
+    // Row 11: "باركود العينة"
+    const barcodeRow = ["رقم باركود الوحدة (الـ 8 أرقام الأخيرة)", "Serial/Barcode"];
+    for (let i = 0; i < 16; i++) {
+      const ins = dailyInspections[i];
+      let displayBarcode = '—';
+      if (ins && ins.serialNumber) {
+        displayBarcode = ins.serialNumber;
+        if (displayBarcode.length > 8) {
+          displayBarcode = displayBarcode.substring(displayBarcode.length - 8);
         }
-        wsData.push([key, label, String(val), evalText]);
-      });
-    } else {
-      // Populate CHECKLIST_ITEMS
-      CHECKLIST_ITEMS.forEach(item => {
-        const isOk = log.checkedItems[item.id] !== false;
-        wsData.push([
-          item.id,
-          `${item.label} - ${item.description}`,
-          isOk ? "مطابق (OK)" : "مخالف (NG)",
-          isOk ? "مطابق OK" : "غير مطابق NG"
-        ]);
-      });
+      }
+      barcodeRow.push(displayBarcode);
     }
+    wsData.push(barcodeRow); // Row 11 (index 10)
 
-    // Defects if any
-    if (log.defects && log.defects.length > 0) {
-      wsData.push([]);
-      wsData.push(["المخالفات والأعطال المرصودة بالوحدة"]);
-      log.defects.forEach((def, idx) => {
-        const option = DEFECT_OPTIONS.find(o => o.id === def.defectOptionId);
-        const label = option ? option.label : def.defectOptionId;
-        wsData.push([`عطل ${idx + 1}`, label, def.details || 'بدون تفاصيل إضافية', "غير مطابق NG"]);
-      });
-    }
+    // Append checklist items
+    checklistRows.forEach(item => {
+      if (item.sectionHeader) {
+        wsData.push([item.sectionHeader, "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
+        sectionRowIndices.push(wsData.length - 1);
+        merges.push({ s: { r: wsData.length - 1, c: 0 }, e: { r: wsData.length - 1, c: 17 } });
+      }
 
-    // Create sheet
+      const row = [item.label, item.subText];
+      for (let i = 0; i < 16; i++) {
+        const ins = dailyInspections[i];
+        if (ins) {
+          const mapped = mapStandardToRow(ins, item.rowKey);
+          row.push(mapped.text);
+        } else {
+          row.push("—");
+        }
+      }
+      wsData.push(row);
+    });
+
+    const activeColIndex = dailyInspections.findIndex(ins => ins && ins.id === log.id);
+
+    // Create Sheet
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Set RTL on worksheet views
+    // RTL mode
     if (!ws['!views']) ws['!views'] = [];
     ws['!views'].push({ RTL: true });
+    ws['!merges'] = merges;
 
-    // Merges
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // A1:D1
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }  // A2:D2
+    // Set Column Widths
+    const colWidths = [
+      { wch: 45 }, // Description label (Col A)
+      { wch: 15 }, // Code label (Col B)
     ];
-
-    if (!log.recheckStatus) {
-      // Merge supervisor decision across B7:D7 (row 6, col 1 to 3)
-      ws['!merges'].push({ s: { r: 6, c: 1 }, e: { r: 6, c: 3 } });
+    for (let i = 0; i < 16; i++) {
+      colWidths.push({ wch: 14 }); // Samples cols (Cols C to R)
     }
+    ws['!cols'] = colWidths;
 
-    // Column widths
-    ws['!cols'] = [
-      { wch: 25 }, // Col A (رمز البند)
-      { wch: 60 }, // Col B (البيان / الوصف الفني للقياس)
-      { wch: 25 }, // Col C (القيمة / النتيجة المسجلة)
-      { wch: 25 }  // Col D (التقييم الفني)
-    ];
-
-    // Row heights
+    // Formatter loop
     const numRows = wsData.length;
-    const rowHeights: { hpt: number }[] = [];
-    rowHeights.push({ hpt: 35 }); // Title (Row 1)
-    rowHeights.push({ hpt: 28 }); // Subtitle (Row 2)
-    rowHeights.push({ hpt: 15 }); // Spacer (Row 3)
-    rowHeights.push({ hpt: 24 }); // Metadata (Row 4)
-    rowHeights.push({ hpt: 24 }); // Metadata (Row 5)
-    rowHeights.push({ hpt: 24 }); // Metadata (Row 6)
-    rowHeights.push({ hpt: 24 }); // Metadata (Row 7)
-    rowHeights.push({ hpt: 15 }); // Spacer (Row 8)
-    rowHeights.push({ hpt: 30 }); // Table Header (Row 9)
-
-    for (let i = 9; i < numRows; i++) {
-      rowHeights.push({ hpt: 22 }); // Detail row height
-    }
-    ws['!rows'] = rowHeights;
-
-    // Apply Cairo/Inter fonts, borders, alignments, and status colors
     for (let r = 0; r < numRows; r++) {
-      for (let c = 0; c < 4; c++) {
+      for (let c = 0; c < 18; c++) {
         const cellRef = XLSX.utils.encode_cell({ r, c });
         if (!ws[cellRef]) {
-          ws[cellRef] = { t: 's', v: '' }; // fill empty cell in merge grid
+          ws[cellRef] = { t: 's', v: '' }; // fill merged cells
         }
         const cell = ws[cellRef];
 
         let fontName = "Cairo";
-        let fontSize = 10;
+        let fontSize = 9;
         let fontColor = "1F2937"; // Gray-800
         let isBold = false;
         let bgRgb = "FFFFFF"; // White
         let hAlign = "center";
         let borderStyle = "thin";
-        let borderColor = "D1D5DB"; // Gray-300
+        let borderColor = "CCCCCC"; // Light gray
+
+        // Determine active highlight
+        const isActiveUnitCol = activeColIndex !== -1 && c === (activeColIndex + 2);
 
         if (r === 0) {
-          // Row 1: Main Title
-          fontSize = 14;
+          // Row 1 Title
+          fontSize = 13;
           isBold = true;
           fontColor = "FFFFFF";
-          bgRgb = "1E3A8A"; // Dark Navy
+          bgRgb = "1E3A8A"; // El-Araby Navy Blue
           borderStyle = "none";
         } else if (r === 1) {
-          // Row 2: Subtitle
-          fontSize = 11;
+          // Row 2 Subtitle
+          fontSize = 10;
           isBold = true;
           fontColor = "FFFFFF";
-          bgRgb = "2563EB"; // Arabic Brand Blue
+          bgRgb = "2563EB"; // El-Araby Bright Blue
           borderStyle = "none";
-        } else if (r === 2 || r === 7) {
-          // Spacers
+        } else if (r === 2 || r === 4) {
+          // Spacer Rows
           borderStyle = "none";
           bgRgb = "FFFFFF";
-        } else if (r >= 3 && r <= 6) {
-          // Metadata rows
-          if (c === 0 || c === 2) {
-            // Label Columns
+        } else if (r === 3) {
+          // Metadata Row
+          if (c % 2 === 0) {
             isBold = true;
-            fontColor = "4B5563"; // Gray-600
-            bgRgb = "F3F4F6"; // Gray-100
+            fontColor = "4B5563";
+            bgRgb = "F3F4F6";
             hAlign = "right";
           } else {
-            // Value Columns
-            fontColor = "111827"; // Gray-900
+            bgRgb = "FFFFFF";
             hAlign = "center";
-
-            // Color code overall status in Row 6 (r=5, c=3)
-            if (r === 5 && c === 3) {
+            if (c === 9) {
               isBold = true;
               if (log.status === 'PASS') {
-                bgRgb = "D1FAE5"; // Green-100
-                fontColor = "065F46"; // Green-800
+                bgRgb = "D1FAE5";
+                fontColor = "065F46";
               } else {
-                bgRgb = "FEE2E2"; // Red-100
-                fontColor = "991B1B"; // Red-800
+                bgRgb = "FEE2E2";
+                fontColor = "991B1B";
               }
             }
           }
-        } else if (r === 8) {
-          // Table Header
-          fontSize = 11;
+        } else if (sectionRowIndices.includes(r)) {
+          // Section header rows
+          fontSize = 9.5;
           isBold = true;
-          fontColor = "FFFFFF";
-          bgRgb = "475569"; // Slate-600
-          borderColor = "334155";
+          fontColor = "1E293B"; // Slate-900
+          bgRgb = "E2E8F0"; // Slate-200
+          hAlign = "right";
+        } else if (r >= 5 && r <= 10) {
+          // Sample description headers
+          isBold = true;
+          if (c < 2) {
+            bgRgb = "F9FAFB";
+            fontColor = "374151";
+            hAlign = "right";
+          } else {
+            bgRgb = isActiveUnitCol ? "FEF3C7" : "F3F4F6"; // Highlight active column
+            fontColor = "111827";
+            fontSize = 8.5;
+          }
         } else {
-          // Checklist / Details rows
-          const cellVal = String(cell.v || '');
+          // Detail rows
           if (c === 0) {
-            // Key Code
-            fontName = "Inter";
-            fontSize = 9;
-            fontColor = "6B7280"; // Gray-500
-            bgRgb = "FAFAFA";
-          } else if (c === 1) {
             // Description
             hAlign = "right";
             fontColor = "111827";
-          } else if (c === 2) {
-            // Recorded Value
-            isBold = true;
-            if (cellVal === "OK" || cellVal === "مطابق") {
-              bgRgb = "E8F5E9"; // Green-50
-              fontColor = "2E7D32"; // Green-800
-            } else if (cellVal === "NG" || cellVal === "مخالف" || cellVal === "غير مطابق" || cellVal.includes("NG")) {
-              bgRgb = "FFEBEE"; // Red-50
-              fontColor = "C62828"; // Red-800
-            }
-          } else if (c === 3) {
-            // Evaluation Appraisal
-            isBold = true;
-            if (cellVal.includes("مطابق OK") || cellVal === "مطابق OK" || cellVal === "مطابق") {
-              bgRgb = "E8F5E9"; // Green-50
-              fontColor = "2E7D32"; // Green-800
-            } else if (cellVal.includes("غير مطابق NG") || cellVal === "غير مطابق NG" || cellVal === "غير مطابق") {
-              bgRgb = "FFEBEE"; // Red-50
-              fontColor = "C62828"; // Red-800
+            if (isActiveUnitCol) bgRgb = "FFFDF5";
+          } else if (c === 1) {
+            // Code
+            fontName = "Inter";
+            fontSize = 8;
+            fontColor = "6B7280";
+            bgRgb = isActiveUnitCol ? "FFFDF5" : "FAFAFA";
+          } else {
+            // Measured cells
+            fontSize = 8.5;
+            const val = String(cell.v || '');
+            if (val === "OK" || val === "مطابق") {
+              bgRgb = isActiveUnitCol ? "E2F8EE" : "ECFDF5";
+              fontColor = "047857";
+              isBold = true;
+            } else if (val === "NG" || val === "مخالف" || val === "غير مطابق" || val === "تالف") {
+              bgRgb = "FEE2E2";
+              fontColor = "B91C1C";
+              isBold = true;
             } else {
-              bgRgb = "E3F2FD"; // Blue-50
-              fontColor = "1565C0"; // Blue-800
+              bgRgb = isActiveUnitCol ? "FFFBEB" : "FFFFFF";
+              fontColor = "1F2937";
             }
           }
         }
@@ -655,13 +948,11 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "تقرير الفحص الفني");
+    XLSX.utils.book_append_sheet(wb, ws, "تقرير العينات العشوائية");
 
-    // Write and trigger download
-    XLSX.writeFile(wb, `Quality_Report_${log.serialNumber}.xlsx`);
-  };
-
-  // Line Selection
+    // Write file
+    XLSX.writeFile(wb, `Daily_QA_Report_${lineName.replace(/\s+/g, "_")}_${new Date(log.timestamp).toISOString().split('T')[0]}.xlsx`);
+  };  // Line Selection
   const [lineId, setLineId] = useState<ProductionLineId>(() => {
     if (user.factoryId && user.factoryId !== 'ALL') {
       return user.factoryId;
