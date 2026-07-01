@@ -393,51 +393,70 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:h-auto">
+    <div id="report-modal-overlay" className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:h-auto">
       {/* Printable Style Injection */}
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 8mm 8mm 8mm 8mm;
+        }
         @media print {
           html, body {
             visibility: hidden !important;
             height: auto !important;
             overflow: visible !important;
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           /* Reset parent containers so they do not hide or clip the printable area */
-          #root, main, .fixed, .absolute, .relative, div {
+          #root, main, #report-modal-overlay {
+            visibility: hidden !important;
             overflow: visible !important;
             position: static !important;
+            display: block !important;
             height: auto !important;
             min-height: auto !important;
             max-height: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          /* Hide other print areas like daily inspection details in the background */
+          #print-area, #print-area * {
+            display: none !important;
+            visibility: hidden !important;
           }
           #active-print-area, #active-print-area * {
             visibility: visible !important;
           }
           #active-print-area {
             display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: relative !important;
             width: 100% !important;
             height: auto !important;
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
+            margin: 0 !important;
             background: white !important;
-            z-index: 9999999 !important;
+            overflow: visible !important;
           }
           .print-page {
             page-break-after: always !important;
             page-break-inside: avoid !important;
             break-after: page !important;
             border: 2px solid black !important;
-            margin: 0 0 20px 0 !important;
-            padding: 15px !important;
+            margin: 0 0 10px 0 !important;
+            padding: 12px !important;
             width: 100% !important;
             box-sizing: border-box !important;
             background: white !important;
-            height: 292mm !important; /* Forces perfect standard A4 page layout */
+            height: 272mm !important; /* Forces perfect standard A4 page layout matching 8mm page margins */
+            min-height: 272mm !important;
+            max-height: 272mm !important;
+            overflow: hidden !important;
           }
           .no-print {
             display: none !important;

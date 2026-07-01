@@ -387,36 +387,46 @@ export default function DailyInspectionPVGV({ onBack, onSave, user }: DailyInspe
       
       {/* 1. Header with Printable Style Injection */}
       <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 10mm;
+        }
         @media print {
           html, body {
             visibility: hidden !important;
             height: auto !important;
             overflow: visible !important;
             background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
-          /* Reset parent containers so they do not hide or clip the printable area */
-          #root, main, .fixed, .absolute, .relative, div {
+          /* Reset specific parent containers without breaking interior div layout */
+          #root, main {
+            visibility: hidden !important;
             overflow: visible !important;
             position: static !important;
+            display: block !important;
             height: auto !important;
             min-height: auto !important;
             max-height: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           #print-area, #print-area * {
             visibility: visible !important;
           }
           #print-area {
             display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: relative !important;
             width: 100% !important;
             height: auto !important;
             direction: rtl !important;
             background: white !important;
             color: black !important;
-            padding: 20px !important;
-            z-index: 9999999 !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
           .no-print {
             display: none !important;
