@@ -238,10 +238,9 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
         </div>
 
         {/* Center part: Central Title */}
-        <div className="w-[40%] flex flex-col items-center justify-center py-1 text-center border-l border-black">
-          <h1 className="text-[11px] font-black text-black tracking-tight leading-none">التقرير اليومي لنتائج التفتيش للعينات العشوائية</h1>
-          <h2 className="text-[9px] font-extrabold text-black mt-1">Q.A LAB DAILY REPORT for</h2>
-          <h3 className="text-[8.5px] font-bold text-black font-mono mt-0.5 leading-none">(48C/A/T & 58C/A/T & 580/480A/T)</h3>
+        <div className="w-[40%] flex flex-col items-center justify-center py-1.5 text-center border-l border-black">
+          <h1 className="text-[12.5px] font-black text-black tracking-tight leading-none">التقرير اليومي لنتائج التفتيش للعينات العشوائية</h1>
+          <h2 className="text-[10px] font-black text-black mt-1.5 leading-none font-sans">Q.A LAB DAILY REPORT SJ-GV & SJ-PV</h2>
         </div>
 
         {/* Right part: Group logo and manufacturer info */}
@@ -262,20 +261,20 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
   const renderSmallSampleGrid = () => {
     const cols = Array.from({ length: 16 });
     return (
-      <div className="border border-t-0 border-black overflow-hidden text-[7.5px]" style={{ direction: 'rtl' }}>
+      <div className="border border-t-0 border-black overflow-hidden text-[8.5px]" style={{ direction: 'rtl' }}>
         <table className="w-full border-collapse text-center">
           <tbody>
             {/* رقم العينة */}
             <tr className="border-b border-black">
-              <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">رقم العينة</td>
+              <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">رقم العينة</td>
               {cols.map((_, i) => {
                 const ins = dailyInspections[i];
                 const isActive = ins && ins.id === activeReport.id;
                 return (
                   <td 
                     key={i} 
-                    className={`border-l border-black font-mono font-bold w-[5%] p-0.5 ${
-                      isActive ? 'bg-amber-100 text-amber-950 font-extrabold' : 'bg-white'
+                    className={`border-l border-black font-mono font-bold w-[5%] py-1 px-0.5 ${
+                      isActive ? 'bg-amber-150 text-amber-950 font-extrabold border-x border-amber-400 shadow-inner' : 'bg-white'
                     }`}
                   >
                     {i + 1}
@@ -285,7 +284,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </tr>
             {/* الموديل */}
             <tr className="border-b border-black">
-              <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">الموديل</td>
+              <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">الموديل</td>
               {cols.map((_, i) => {
                 const ins = dailyInspections[i];
                 const isActive = ins && ins.id === activeReport.id;
@@ -298,8 +297,8 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                 return (
                   <td 
                     key={i} 
-                    className={`border-l border-black font-bold text-[6.5px] w-[5%] p-0.5 leading-tight ${
-                      isActive ? 'bg-amber-50 text-amber-950' : 'bg-white'
+                    className={`border-l border-black font-bold text-[7.5px] w-[5%] py-1 px-0.5 leading-tight ${
+                      isActive ? 'bg-amber-50 text-amber-950 font-extrabold' : 'bg-white'
                     }`}
                   >
                     {mStr || '—'}
@@ -309,15 +308,15 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </tr>
             {/* تصدير / الدولة */}
             <tr>
-              <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">تصدير / الدولة</td>
+              <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">تصدير / الدولة</td>
               {cols.map((_, i) => {
                 const ins = dailyInspections[i];
                 const isActive = ins && ins.id === activeReport.id;
                 return (
                   <td 
                     key={i} 
-                    className={`border-l border-black text-[6.5px] w-[5%] p-0.5 ${
-                      isActive ? 'bg-amber-50 text-amber-950' : 'bg-white'
+                    className={`border-l border-black text-[7.5px] w-[5%] py-1 px-0.5 ${
+                      isActive ? 'bg-amber-50 text-amber-950 font-extrabold' : 'bg-white'
                     }`}
                   >
                     {ins ? (ins.exportCountry || 'محلي') : '—'}
@@ -353,13 +352,13 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
   ) => {
     const cols = Array.from({ length: 16 });
     return (
-      <tr className="border-b border-black text-center text-[7px] hover:bg-zinc-50/50">
+      <tr className="border-b border-black text-center text-[8.5px] hover:bg-zinc-50/50">
         {cols.map((_, i) => {
           const ins = dailyInspections[i];
           const isActive = ins && ins.id === activeReport.id;
           
           let displayVal = '—';
-          let cellClass = "border-l border-black p-0.5 w-[5%] font-mono font-bold";
+          let cellClass = "border-l border-black py-1 px-[2px] w-[5%] font-mono font-bold text-[8px]";
           
           if (ins) {
             const mapped = mapStandardToRow(ins, rowKey);
@@ -382,10 +381,10 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
           );
         })}
         {/* Right label column */}
-        <td className="p-1 w-[20%] text-right font-semibold text-black border-l border-black bg-zinc-50 leading-tight">
-          <div className="flex justify-between items-center px-1">
-            {subText && <span className="text-[6px] text-zinc-500 font-mono pr-1">{subText}</span>}
-            <span>{label}</span>
+        <td className="py-1 px-2 w-[20%] text-right font-semibold text-black border-l border-black bg-zinc-50 leading-tight">
+          <div className="flex justify-between items-center px-0.5">
+            {subText && <span className="text-[7px] text-zinc-500 font-mono pr-1 leading-none">{subText}</span>}
+            <span className="text-right text-[8.5px] font-bold text-zinc-900 leading-normal">{label}</span>
           </div>
         </td>
       </tr>
@@ -398,7 +397,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
       <style>{`
         @page {
           size: A4 portrait;
-          margin: 8mm 8mm 8mm 8mm;
+          margin: 6mm 6mm 6mm 6mm !important;
         }
         @media print {
           html, body {
@@ -447,16 +446,19 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             page-break-after: always !important;
             page-break-inside: avoid !important;
             break-after: page !important;
-            border: 2px solid black !important;
-            margin: 0 0 10px 0 !important;
-            padding: 12px !important;
+            border: 3px solid black !important;
+            margin: 0 !important;
+            padding: 6mm !important;
             width: 100% !important;
             box-sizing: border-box !important;
             background: white !important;
-            height: 272mm !important; /* Forces perfect standard A4 page layout matching 8mm page margins */
-            min-height: 272mm !important;
-            max-height: 272mm !important;
+            height: 284mm !important; /* Forces perfect standard A4 page layout matching 6mm page margins */
+            min-height: 284mm !important;
+            max-height: 284mm !important;
             overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
           }
           .no-print {
             display: none !important;
@@ -516,24 +518,24 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 1 */}
-            <div className="print-page bg-white border-2 border-black p-5 shadow-md flex flex-col justify-between" style={{ minHeight: '290mm' }}>
+            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
               <div className="space-y-2">
                 {/* Header */}
                 {renderOfficialHeader(1)}
                 
                 {/* Date details above grid */}
-                <div className="flex justify-between items-center px-2 py-1 text-[8px] font-bold text-black border border-t-0 border-black" style={{ direction: 'rtl' }}>
+                <div className="flex justify-between items-center px-2 py-1 text-[8.5px] font-bold text-black border border-t-0 border-black" style={{ direction: 'rtl' }}>
                   <span>التاريخ : {new Date(activeReport.timestamp).toLocaleDateString('ar-EG', { year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
                   <span>اسم خط التجميع: {getLineName(activeReport.lineId)}</span>
                 </div>
 
                 {/* Page 1 Sample Grid (Fully Detailed Header) */}
-                <div className="border border-t-0 border-black overflow-hidden text-[7.5px]" style={{ direction: 'rtl' }}>
+                <div className="border border-t-0 border-black overflow-hidden text-[8.5px]" style={{ direction: 'rtl' }}>
                   <table className="w-full border-collapse text-center">
                     <tbody>
                       {/* الوردية */}
                       <tr className="border-b border-black">
-                        <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">الوردية</td>
+                        <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">الوردية</td>
                         {Array.from({ length: 16 }).map((_, i) => {
                           const ins = dailyInspections[i];
                           const isActive = ins && ins.id === activeReport.id;
@@ -545,7 +547,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                             else shiftStr = 'الثالثة';
                           }
                           return (
-                            <td key={i} className={`border-l border-black text-[6.5px] w-[5%] p-0.5 ${isActive ? 'bg-amber-50 text-amber-950 font-bold' : 'bg-white'}`}>
+                            <td key={i} className={`border-l border-black text-[7.5px] w-[5%] py-1 px-0.5 ${isActive ? 'bg-amber-150 text-amber-950 font-black' : 'bg-white'}`}>
                               {shiftStr}
                             </td>
                           );
@@ -553,12 +555,12 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                       </tr>
                       {/* رقم العينة */}
                       <tr className="border-b border-black">
-                        <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">رقم العينة</td>
+                        <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">رقم العينة</td>
                         {Array.from({ length: 16 }).map((_, i) => {
                           const ins = dailyInspections[i];
                           const isActive = ins && ins.id === activeReport.id;
                           return (
-                            <td key={i} className={`border-l border-black font-mono font-bold w-[5%] p-0.5 ${isActive ? 'bg-amber-100 text-amber-950 font-extrabold' : 'bg-white'}`}>
+                            <td key={i} className={`border-l border-black font-mono font-bold w-[5%] py-1 px-0.5 ${isActive ? 'bg-amber-150 text-amber-950 font-black border-x border-amber-400' : 'bg-white'}`}>
                               {i + 1}
                             </td>
                           );
@@ -566,7 +568,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                       </tr>
                       {/* الموديل */}
                       <tr className="border-b border-black">
-                        <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">الموديل</td>
+                        <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">الموديل</td>
                         {Array.from({ length: 16 }).map((_, i) => {
                           const ins = dailyInspections[i];
                           const isActive = ins && ins.id === activeReport.id;
@@ -577,7 +579,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                             if (mStr.length > 5) mStr = mStr.slice(0, 5);
                           }
                           return (
-                            <td key={i} className={`border-l border-black font-bold text-[6.5px] w-[5%] p-0.5 leading-tight ${isActive ? 'bg-amber-50 text-amber-950 font-extrabold' : 'bg-white'}`}>
+                            <td key={i} className={`border-l border-black font-bold text-[7.5px] w-[5%] py-1 px-0.5 leading-tight ${isActive ? 'bg-amber-50 text-amber-950 font-black' : 'bg-white'}`}>
                               {mStr || '—'}
                             </td>
                           );
@@ -585,12 +587,12 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                       </tr>
                       {/* تصدير / الدولة */}
                       <tr className="border-b border-black">
-                        <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">تصدير / الدولة</td>
+                        <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">تصدير / الدولة</td>
                         {Array.from({ length: 16 }).map((_, i) => {
                           const ins = dailyInspections[i];
                           const isActive = ins && ins.id === activeReport.id;
                           return (
-                            <td key={i} className={`border-l border-black text-[6.5px] w-[5%] p-0.5 ${isActive ? 'bg-amber-50 text-amber-950' : 'bg-white'}`}>
+                            <td key={i} className={`border-l border-black text-[7.5px] w-[5%] py-1 px-0.5 ${isActive ? 'bg-amber-50 text-amber-950 font-black' : 'bg-white'}`}>
                               {ins ? (ins.exportCountry || 'محلي') : '—'}
                             </td>
                           );
@@ -598,12 +600,12 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                       </tr>
                       {/* توقيت أخذ العينة */}
                       <tr className="border-b border-black">
-                        <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">توقيت أخذ العينة</td>
+                        <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">توقيت أخذ العينة</td>
                         {Array.from({ length: 16 }).map((_, i) => {
                           const ins = dailyInspections[i];
                           const isActive = ins && ins.id === activeReport.id;
                           return (
-                            <td key={i} className={`border-l border-black font-mono text-[6.5px] w-[5%] p-0.5 ${isActive ? 'bg-amber-50 text-amber-950 font-bold' : 'bg-white'}`}>
+                            <td key={i} className={`border-l border-black font-mono text-[7.5px] w-[5%] py-1 px-0.5 ${isActive ? 'bg-amber-50 text-amber-950 font-black' : 'bg-white'}`}>
                               {ins ? safeTimeString(ins.timestamp) : '—'}
                             </td>
                           );
@@ -611,7 +613,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                       </tr>
                       {/* باركود العينة */}
                       <tr>
-                        <td className="border-l border-black font-bold p-0.5 w-[20%] text-right bg-zinc-50">باركود العينة</td>
+                        <td className="border-l border-black font-bold py-1 px-1.5 w-[20%] text-right bg-zinc-50">باركود العينة</td>
                         {Array.from({ length: 16 }).map((_, i) => {
                           const ins = dailyInspections[i];
                           const isActive = ins && ins.id === activeReport.id;
@@ -623,7 +625,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                             }
                           }
                           return (
-                            <td key={i} className={`border-l border-black font-mono text-[5.5px] w-[5%] p-0.5 break-all leading-none ${isActive ? 'bg-amber-100 text-amber-950 font-bold' : 'bg-white'}`}>
+                            <td key={i} className={`border-l border-black font-mono text-[6.5px] w-[5%] py-1 px-0.5 break-all leading-none ${isActive ? 'bg-amber-100 text-amber-950 font-black border-x border-amber-400' : 'bg-white'}`}>
                               {displayBarcode}
                             </td>
                           );
@@ -696,7 +698,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 2 */}
-            <div className="print-page bg-white border-2 border-black p-5 shadow-md flex flex-col justify-between" style={{ minHeight: '290mm' }}>
+            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
               <div className="space-y-2">
                 {renderOfficialHeader(2)}
                 {renderSmallSampleGrid()}
@@ -782,7 +784,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 3 */}
-            <div className="print-page bg-white border-2 border-black p-5 shadow-md flex flex-col justify-between" style={{ minHeight: '290mm' }}>
+            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
               <div className="space-y-2">
                 {renderOfficialHeader(3)}
                 {renderSmallSampleGrid()}
@@ -877,7 +879,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 4 */}
-            <div className="print-page bg-white border-2 border-black p-5 shadow-md flex flex-col justify-between" style={{ minHeight: '290mm' }}>
+            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
               <div className="space-y-4">
                 {renderOfficialHeader(4)}
                 
@@ -904,60 +906,60 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
 
                   const renderAcceptanceTableInner = (tableTitle: string) => (
                     <div className="border border-black overflow-hidden rounded-sm" style={{ direction: 'rtl' }}>
-                      <div className="bg-zinc-100 text-center font-bold py-1 border-b border-black text-[8.5px] text-black leading-none">
+                      <div className="bg-zinc-100 text-center font-bold py-1 border-b border-black text-[9.5px] text-black leading-none">
                         {tableTitle}
                       </div>
-                      <table className="w-full border-collapse text-center text-[7px]">
+                      <table className="w-full border-collapse text-center text-[8.5px]">
                         <thead>
                           <tr className="bg-zinc-50 border-b border-black font-bold">
-                            <th className="border-l border-black p-0.5">رقم العينة</th>
-                            <th className="border-l border-black p-0.5">عدد العينات</th>
-                            <th className="border-l border-black p-0.5">المقبول</th>
-                            <th className="border-l border-black p-0.5">المرفوض</th>
-                            <th className="border-l border-black p-0.5 bg-red-50/50" colSpan={3}>عيوب حرجة</th>
-                            <th className="border-l border-black p-0.5 bg-amber-50/50" colSpan={4}>عيوب رئيسية</th>
-                            <th className="border-l border-black p-0.5 bg-blue-50/50" colSpan={3}>عيوب ثانوية</th>
-                            <th className="p-0.5">الحكم على العينة</th>
+                            <th className="border-l border-black py-1 px-0.5">رقم العينة</th>
+                            <th className="border-l border-black py-1 px-0.5">عدد العينات</th>
+                            <th className="border-l border-black py-1 px-0.5">المقبول</th>
+                            <th className="border-l border-black py-1 px-0.5">المرفوض</th>
+                            <th className="border-l border-black py-1 px-0.5 bg-red-50/50" colSpan={3}>عيوب حرجة</th>
+                            <th className="border-l border-black py-1 px-0.5 bg-amber-50/50" colSpan={4}>عيوب رئيسية</th>
+                            <th className="border-l border-black py-1 px-0.5 bg-blue-50/50" colSpan={3}>عيوب ثانوية</th>
+                            <th className="py-1 px-0.5">الحكم على العينة</th>
                           </tr>
-                          <tr className="bg-zinc-50 border-b border-black text-[6.5px]">
-                            <th className="border-l border-black py-0.5"></th>
-                            <th className="border-l border-black py-0.5"></th>
-                            <th className="border-l border-black py-0.5"></th>
-                            <th className="border-l border-black py-0.5"></th>
-                            <th className="border-l border-black py-0.5 bg-red-50/20">الأمان</th>
-                            <th className="border-l border-black py-0.5 bg-red-50/20">اختبار العزل</th>
-                            <th className="border-l border-black py-0.5 bg-red-50/20">أخرى</th>
-                            <th className="border-l border-black py-0.5 bg-amber-50/20">عيوب حقن</th>
-                            <th className="border-l border-black py-0.5 bg-amber-50/20">كسر/شروخ</th>
-                            <th className="border-l border-black py-0.5 bg-amber-50/20">العزوم</th>
-                            <th className="border-l border-black py-0.5 bg-amber-50/20">أخرى</th>
-                            <th className="border-l border-black py-0.5 bg-blue-50/20">فحص ظاهري</th>
-                            <th className="border-l border-black py-0.5 bg-blue-50/20">أبعاد</th>
-                            <th className="border-l border-black py-0.5 bg-blue-50/20">أخرى</th>
+                          <tr className="bg-zinc-50 border-b border-black text-[7.5px]">
+                            <th className="border-l border-black py-1"></th>
+                            <th className="border-l border-black py-1"></th>
+                            <th className="border-l border-black py-1"></th>
+                            <th className="border-l border-black py-1"></th>
+                            <th className="border-l border-black py-1 bg-red-50/20">الأمان</th>
+                            <th className="border-l border-black py-1 bg-red-50/20">اختبار العزل</th>
+                            <th className="border-l border-black py-1 bg-red-50/20">أخرى</th>
+                            <th className="border-l border-black py-1 bg-amber-50/20">عيوب حقن</th>
+                            <th className="border-l border-black py-1 bg-amber-50/20">كسر/شروخ</th>
+                            <th className="border-l border-black py-1 bg-amber-50/20">العزوم</th>
+                            <th className="border-l border-black py-1 bg-amber-50/20">أخرى</th>
+                            <th className="border-l border-black py-1 bg-blue-50/20">فحص ظاهري</th>
+                            <th className="border-l border-black py-1 bg-blue-50/20">أبعاد</th>
+                            <th className="border-l border-black py-1 bg-blue-50/20">أخرى</th>
                             <th></th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr className="font-mono text-zinc-900">
-                            <td className="border-l border-black py-1 font-bold">1 ~ {totalInspected || 16}</td>
-                            <td className="border-l border-black py-1 font-bold">{totalInspected || '—'}</td>
-                            <td className="border-l border-black py-1 font-bold text-emerald-600">{passedCount || '—'}</td>
-                            <td className="border-l border-black py-1 font-bold text-red-600">{failedCount || '—'}</td>
+                            <td className="border-l border-black py-1.5 font-bold">1 ~ {totalInspected || 16}</td>
+                            <td className="border-l border-black py-1.5 font-bold">{totalInspected || '—'}</td>
+                            <td className="border-l border-black py-1.5 font-bold text-emerald-600">{passedCount || '—'}</td>
+                            <td className="border-l border-black py-1.5 font-bold text-red-600">{failedCount || '—'}</td>
                             {/* Critical */}
-                            <td className="border-l border-black py-1 text-red-600 font-bold">{criticalCount > 0 ? '1' : '0'}</td>
-                            <td className="border-l border-black py-1 text-red-600 font-bold">0</td>
-                            <td className="border-l border-black py-1 text-red-600 font-bold">0</td>
+                            <td className="border-l border-black py-1.5 text-red-600 font-bold">{criticalCount > 0 ? '1' : '0'}</td>
+                            <td className="border-l border-black py-1.5 text-red-600 font-bold">0</td>
+                            <td className="border-l border-black py-1.5 text-red-600 font-bold">0</td>
                             {/* Major */}
-                            <td className="border-l border-black py-1 text-amber-600 font-bold">{majorCount > 0 ? '1' : '0'}</td>
-                            <td className="border-l border-black py-1 text-amber-600 font-bold">0</td>
-                            <td className="border-l border-black py-1 text-amber-600 font-bold">0</td>
-                            <td className="border-l border-black py-1 text-amber-600 font-bold">0</td>
+                            <td className="border-l border-black py-1.5 text-amber-600 font-bold">{majorCount > 0 ? '1' : '0'}</td>
+                            <td className="border-l border-black py-1.5 text-amber-600 font-bold">0</td>
+                            <td className="border-l border-black py-1.5 text-amber-600 font-bold">0</td>
+                            <td className="border-l border-black py-1.5 text-amber-600 font-bold">0</td>
                             {/* Minor */}
-                            <td className="border-l border-black py-1 text-blue-600 font-bold">{minorCount > 0 ? '1' : '0'}</td>
-                            <td className="border-l border-black py-1 text-blue-600 font-bold">0</td>
-                            <td className="border-l border-black py-1 text-blue-600 font-bold">0</td>
+                            <td className="border-l border-black py-1.5 text-blue-600 font-bold">{minorCount > 0 ? '1' : '0'}</td>
+                            <td className="border-l border-black py-1.5 text-blue-600 font-bold">0</td>
+                            <td className="border-l border-black py-1.5 text-blue-600 font-bold">0</td>
                             {/* Judgment */}
-                            <td className={`font-bold font-sans py-1 ${activeReport.status === 'PASS' ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'}`}>
+                            <td className={`font-bold font-sans py-1.5 text-[9px] ${activeReport.status === 'PASS' ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'}`}>
                               {activeReport.status === 'PASS' ? 'مقبول' : 'مرفوض'}
                             </td>
                           </tr>
@@ -978,27 +980,27 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                       {/* Section Notes and decisions */}
                       <div className="space-y-3" style={{ direction: 'rtl' }}>
                         {/* Notes Box */}
-                        <div className="border border-black p-2 rounded-sm text-right">
-                          <span className="font-bold text-[8.5px] text-black">ملاحظات وقرارات الجودة:</span>
-                          <div className="mt-1 text-[7.5px] text-zinc-700 leading-relaxed font-bold bg-yellow-50/25 p-2 rounded min-h-[40px] border border-dashed border-zinc-200">
+                        <div className="border border-black p-2.5 rounded-sm text-right">
+                          <span className="font-bold text-[9.5px] text-black">ملاحظات وقرارات الجودة:</span>
+                          <div className="mt-1 text-[8.5px] text-zinc-800 leading-relaxed font-bold bg-yellow-50/25 p-2 rounded min-h-[50px] border border-dashed border-zinc-200">
                             {defectsList ? `تم رصد المخالفات الفنية التالية في العينات العشوائية: ${defectsList}` : 'لا توجد ملاحظات فنية؛ العينة مطابقة تماماً للمواصفات القياسية للجودة وجدول الحدود المعتمد.'}
                           </div>
                         </div>
 
                         {/* Decisions Banner */}
-                        <div className="border border-black p-2 flex items-center justify-between text-[8px] bg-zinc-50 font-bold text-black">
+                        <div className="border border-black p-2.5 flex items-center justify-between text-[9px] bg-zinc-50 font-bold text-black">
                           <span>نتائج الفحص والإختبار للعينات العشوائية اليومية للخط:</span>
                           <div className="flex gap-4">
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input type="checkbox" checked={activeReport.status === 'PASS'} readOnly className="accent-emerald-600" />
+                              <input type="checkbox" checked={activeReport.status === 'PASS'} readOnly className="accent-emerald-600 w-3.5 h-3.5" />
                               <span>مقبول لشحن الدفعات (دخول)</span>
                             </label>
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input type="checkbox" checked={activeReport.recheckStatus === 'APPROVED_AFTER_REPAIR'} readOnly className="accent-amber-500" />
+                              <input type="checkbox" checked={activeReport.recheckStatus === 'APPROVED_AFTER_REPAIR'} readOnly className="accent-amber-500 w-3.5 h-3.5" />
                               <span>تحت التحفظ (إعادة صيانة)</span>
                             </label>
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input type="checkbox" checked={activeReport.status === 'FAIL' && !activeReport.recheckStatus} readOnly className="accent-red-600" />
+                              <input type="checkbox" checked={activeReport.status === 'FAIL' && !activeReport.recheckStatus} readOnly className="accent-red-600 w-3.5 h-3.5" />
                               <span>مرفوض وموقوف بالكامل</span>
                             </label>
                           </div>
@@ -1011,28 +1013,28 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                       
                       {/* Dotted note area similar to photos */}
                       <div className="border border-black p-2.5 rounded-sm text-right" style={{ direction: 'rtl' }}>
-                        <span className="font-bold text-[8.5px] text-zinc-900 block border-b border-zinc-200 pb-1 mb-1">ملاحظات وقرارات المتابعة الهندسية:</span>
-                        <div className="text-[7.5px] text-zinc-400 space-y-1.5 font-mono">
+                        <span className="font-bold text-[9.5px] text-zinc-900 block border-b border-zinc-200 pb-1 mb-1">ملاحظات وقرارات المتابعة الهندسية:</span>
+                        <div className="text-[8.5px] text-zinc-400 space-y-1.5 font-mono">
                           <p>............................................................................................................................................................................................................</p>
                           <p>............................................................................................................................................................................................................</p>
                         </div>
                       </div>
 
                       {/* Signatures */}
-                      <div className="grid grid-cols-2 gap-4 pt-2 text-center text-[8px] font-bold">
-                        <div className="border border-black p-3 bg-white space-y-3">
+                      <div className="grid grid-cols-2 gap-4 pt-2 text-center text-[9px] font-bold">
+                        <div className="border border-black p-4 bg-white space-y-4">
                           <p className="text-zinc-700 border-b pb-1">مشرف توكيد جودة المنتج النهائي</p>
-                          <div className="h-6 flex items-center justify-center">
-                            <span className="font-mono text-[7px] text-zinc-400 bg-zinc-50 px-2 py-1 rounded border">موافق ومعتمد رقمياً</span>
+                          <div className="h-10 flex items-center justify-center">
+                            <span className="font-mono text-[8px] text-zinc-400 bg-zinc-50 px-3 py-1.5 rounded border">موافق ومعتمد رقمياً</span>
                           </div>
-                          <p className="font-mono text-zinc-500 text-[7px]">{activeReport.inspectorName}</p>
+                          <p className="font-mono text-zinc-500 text-[8px]">{activeReport.inspectorName}</p>
                         </div>
-                        <div className="border border-black p-3 bg-white space-y-3">
+                        <div className="border border-black p-4 bg-white space-y-4">
                           <p className="text-zinc-700 border-b pb-1">مدير إدارة توكيد جودة المنتج النهائي</p>
-                          <div className="h-6 flex items-center justify-center">
-                            <span className="font-mono text-[7px] text-zinc-400">________________________</span>
+                          <div className="h-10 flex items-center justify-center">
+                            <span className="font-mono text-[8px] text-zinc-400">________________________</span>
                           </div>
-                          <p className="text-zinc-500 text-[7px]">م. مصطفى الشريف</p>
+                          <p className="text-zinc-500 text-[8px]">م. مصطفى الشريف</p>
                         </div>
                       </div>
                     </div>
