@@ -3716,6 +3716,22 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       data['L2 قوة ربط حزام التغليف'] || data['ptStrapTightL2'] || '',
       "الموقع"
     ]);
+  } else {
+    // معالجة عامة ديناميكية لتقارير الفحص اليومي (PVGV & Factory B) لتكون الأسئلة أعمدة والأجوبة صفوف تلقائياً
+    var keys = [];
+    var values = [];
+    for (var k in data) {
+      if (k !== 'tabId' && k !== 'id') {
+        keys.push(k);
+        values.push(data[k] === undefined || data[k] === null ? '' : data[k]);
+      }
+    }
+    if (keys.length > 0) {
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow(keys);
+      }
+      sheet.appendRow(values);
+    }
   }
   
   return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);

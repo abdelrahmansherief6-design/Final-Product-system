@@ -395,37 +395,47 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
     <div id="report-modal-overlay" className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:h-auto">
       {/* Printable Style Injection */}
       <style>{`
+        /* Screen view (Default) */
+        .print-page {
+          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+          border: 3px solid black !important;
+          padding: 24px !important;
+          width: 100% !important;
+          max-width: 210mm !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          aspect-ratio: 210 / 297 !important;
+          box-sizing: border-box !important;
+          background: white !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: space-between !important;
+        }
+        
         @page {
           size: A4 portrait;
-          margin: 6mm 6mm 6mm 6mm !important;
+          margin: 0 !important;
         }
+        
         @media print {
           html, body {
             visibility: hidden !important;
-            height: auto !important;
+            height: 297mm !important;
             overflow: visible !important;
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
           }
-          /* Reset parent containers so they do not hide or clip the printable area */
           #root, main, #report-modal-overlay {
             visibility: hidden !important;
             overflow: visible !important;
             position: static !important;
             display: block !important;
-            height: auto !important;
-            min-height: auto !important;
-            max-height: none !important;
+            height: 297mm !important;
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
             box-shadow: none !important;
-          }
-          /* Hide other print areas like daily inspection details in the background */
-          #print-area, #print-area * {
-            display: none !important;
-            visibility: hidden !important;
           }
           #active-print-area, #active-print-area * {
             visibility: visible !important;
@@ -433,7 +443,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
           #active-print-area {
             display: block !important;
             position: relative !important;
-            width: 100% !important;
+            width: 210mm !important;
             height: auto !important;
             box-shadow: none !important;
             border: none !important;
@@ -446,15 +456,16 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             page-break-after: always !important;
             page-break-inside: avoid !important;
             break-after: page !important;
-            border: 3px solid black !important;
+            border: 4px solid black !important; /* Thick, clear border */
             margin: 0 !important;
-            padding: 6mm !important;
-            width: 100% !important;
+            padding: 10mm !important;
+            width: 210mm !important;
+            max-width: 210mm !important;
+            height: 297mm !important; /* Perfect standard A4 page layout */
+            min-height: 297mm !important;
+            max-height: 297mm !important;
             box-sizing: border-box !important;
             background: white !important;
-            height: 284mm !important; /* Forces perfect standard A4 page layout matching 6mm page margins */
-            min-height: 284mm !important;
-            max-height: 284mm !important;
             overflow: hidden !important;
             display: flex !important;
             flex-direction: column !important;
@@ -518,7 +529,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 1 */}
-            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
+            <div className="print-page bg-white shadow-md">
               <div className="space-y-2">
                 {/* Header */}
                 {renderOfficialHeader(1)}
@@ -698,7 +709,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 2 */}
-            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
+            <div className="print-page bg-white shadow-md">
               <div className="space-y-2">
                 {renderOfficialHeader(2)}
                 {renderSmallSampleGrid()}
@@ -784,7 +795,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 3 */}
-            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
+            <div className="print-page bg-white shadow-md">
               <div className="space-y-2">
                 {renderOfficialHeader(3)}
                 {renderSmallSampleGrid()}
@@ -879,7 +890,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
             </div>
 
             {/* PAGE 4 */}
-            <div className="print-page bg-white border-[3px] border-black p-6 shadow-md flex flex-col justify-between w-full max-w-[210mm] mx-auto aspect-[210/297] print:aspect-none print:w-full print:max-w-none print:p-0">
+            <div className="print-page bg-white shadow-md">
               <div className="space-y-4">
                 {renderOfficialHeader(4)}
                 

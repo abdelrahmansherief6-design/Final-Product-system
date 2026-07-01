@@ -41,7 +41,7 @@ export default function DailyInspectionFactoryB({ onBack, onSave, user }: DailyI
   const [pipeDistanceOk, setPipeDistanceOk] = useState<'OK' | 'NG'>('OK');
   const [printMatchesModel, setPrintMatchesModel] = useState<'OK' | 'NG'>('OK');
   const [chargePipeNoProtrude, setChargePipeNoProtrude] = useState<'OK' | 'NG'>('OK');
-  const [wavinessValue, setWavinessValue] = useState<string>('0.5'); // <= 1mm
+  const [wavinessValue, setWavinessValue] = useState<string>(''); // <= 1mm
   const [otherDefects, setOtherDefects] = useState<'OK' | 'NG'>('OK');
 
   // Section 3
@@ -54,11 +54,11 @@ export default function DailyInspectionFactoryB({ onBack, onSave, user }: DailyI
   const [gasketNoClearance, setGasketNoClearance] = useState<'OK' | 'NG'>('OK');
 
   // Section 4
-  const [elecStartCurrent, setElecStartCurrent] = useState<string>('15'); // 0.10:30 A
-  const [elecGroundRes, setElecGroundRes] = useState<string>('60'); // 0:120 mOhm
-  const [elecInsulRes, setElecInsulRes] = useState<string>('5'); // 0:10 mOhm
-  const [elecWithstandCurrent, setElecWithstandCurrent] = useState<string>('4'); // 0:10 mA
-  const [elecLeakageCurrent, setElecLeakageCurrent] = useState<string>('0.250'); // 0:0.450 mA
+  const [elecStartCurrent, setElecStartCurrent] = useState<string>(''); // 0.10:30 A
+  const [elecGroundRes, setElecGroundRes] = useState<string>(''); // 0:120 mOhm
+  const [elecInsulRes, setElecInsulRes] = useState<string>(''); // 0:10 mOhm
+  const [elecWithstandCurrent, setElecWithstandCurrent] = useState<string>(''); // 0:10 mA
+  const [elecLeakageCurrent, setElecLeakageCurrent] = useState<string>(''); // 0:0.450 mA
   const [gasLeakTest, setGasLeakTest] = useState<'OK' | 'NG'>('OK');
 
   // Section 5
@@ -78,7 +78,7 @@ export default function DailyInspectionFactoryB({ onBack, onSave, user }: DailyI
   const [siliconAppliedClean, setSiliconAppliedClean] = useState<'OK' | 'NG'>('OK');
 
   // Section 6
-  const [shelfGapX, setShelfGapX] = useState<string>('5'); // 3 <= x <= 8
+  const [shelfGapX, setShelfGapX] = useState<string>(''); // 3 <= x <= 8
   const [fUpperShelfOk, setFUpperShelfOk] = useState<'OK' | 'NG'>('OK');
   const [upperGGargR, setUpperGGargR] = useState<'OK' | 'NG'>('OK');
   const [lowerGGargR, setLowerGGargR] = useState<'OK' | 'NG'>('OK');
@@ -92,35 +92,35 @@ export default function DailyInspectionFactoryB({ onBack, onSave, user }: DailyI
   const [frDoorPocketTight2, setFrDoorPocketTight2] = useState<'OK' | 'NG'>('OK');
 
   // Section 8
-  const [dimA, setDimA] = useState<string>('0.8');
-  const [dimB, setDimB] = useState<string>('0.9');
-  const [dimC, setDimC] = useState<string>('0.7');
-  const [dimL, setDimL] = useState<string>('0.8');
-  const [dimM, setDimM] = useState<string>('0.9');
-  const [dimN, setDimN] = useState<string>('0.7');
-  const [dimD, setDimD] = useState<string>('12.5');
-  const [dimE, setDimE] = useState<string>('12.0');
-  const [dimY, setDimY] = useState<string>('10.0'); // 9.5:10.5
-  const [dimZ, setDimZ] = useState<string>('10.0'); // 9.5:10.5
+  const [dimA, setDimA] = useState<string>('');
+  const [dimB, setDimB] = useState<string>('');
+  const [dimC, setDimC] = useState<string>('');
+  const [dimL, setDimL] = useState<string>('');
+  const [dimM, setDimM] = useState<string>('');
+  const [dimN, setDimN] = useState<string>('');
+  const [dimD, setDimD] = useState<string>('');
+  const [dimE, setDimE] = useState<string>('');
+  const [dimY, setDimY] = useState<string>(''); // 9.5:10.5
+  const [dimZ, setDimZ] = useState<string>(''); // 9.5:10.5
 
   // Section 9
-  const [selfCloseFreezer, setSelfCloseFreezer] = useState<string>('25'); // >= 20mm
-  const [selfCloseCabinet, setSelfCloseCabinet] = useState<string>('40'); // >= 35mm
-  const [gasketContactFreezer, setGasketContactFreezer] = useState<string>('8'); // >= 7mm
-  const [gasketContactCabinet, setGasketContactCabinet] = useState<string>('8'); // >= 7mm
-  const [doorPullForce, setDoorPullForce] = useState<string>('4.2'); // <= 5Kgf
+  const [selfCloseFreezer, setSelfCloseFreezer] = useState<string>(''); // >= 20mm
+  const [selfCloseCabinet, setSelfCloseCabinet] = useState<string>(''); // >= 35mm
+  const [gasketContactFreezer, setGasketContactFreezer] = useState<string>(''); // >= 7mm
+  const [gasketContactCabinet, setGasketContactCabinet] = useState<string>(''); // >= 7mm
+  const [doorPullForce, setDoorPullForce] = useState<string>(''); // <= 5Kgf
   // Top hinge torques (4.8:7.0 Nm)
-  const [torqueA1, setTorqueA1] = useState<string>('5.5');
-  const [torqueA2, setTorqueA2] = useState<string>('5.8');
-  const [torqueA3, setTorqueA3] = useState<string>('6.0');
+  const [torqueA1, setTorqueA1] = useState<string>('');
+  const [torqueA2, setTorqueA2] = useState<string>('');
+  const [torqueA3, setTorqueA3] = useState<string>('');
   // Mid hinge torques (4.8:7.0 Nm)
-  const [torqueB1, setTorqueB1] = useState<string>('5.5');
-  const [torqueB2, setTorqueB2] = useState<string>('5.6');
+  const [torqueB1, setTorqueB1] = useState<string>('');
+  const [torqueB2, setTorqueB2] = useState<string>('');
   // Bottom hinge torques (4.8:7.0 Nm)
-  const [torqueC1, setTorqueC1] = useState<string>('5.8');
-  const [torqueC2, setTorqueC2] = useState<string>('5.9');
-  const [torqueT1, setTorqueT1] = useState<string>('1.1'); // <= 1.5mm
-  const [torqueT2, setTorqueT2] = useState<string>('1.4'); // <= 2mm
+  const [torqueC1, setTorqueC1] = useState<string>('');
+  const [torqueC2, setTorqueC2] = useState<string>('');
+  const [torqueT1, setTorqueT1] = useState<string>(''); // <= 1.5mm
+  const [torqueT2, setTorqueT2] = useState<string>(''); // <= 2mm
 
   // Section 10
   const [noAbnormalNoise, setNoAbnormalNoise] = useState<'OK' | 'NG'>('OK');
@@ -135,42 +135,42 @@ export default function DailyInspectionFactoryB({ onBack, onSave, user }: DailyI
   const is480_580 = model === '480T/AT' || model === '580T/AT';
   const limitABC_LMN = is480_580 ? 2.5 : 1.5;
 
-  // Real-time out-of-spec validations
-  const isWavinessInvalid = (parseFloat(wavinessValue) || 0) > 1.0;
+  // Real-time out-of-spec validations - ignore if empty
+  const isWavinessInvalid = wavinessValue !== "" && (parseFloat(wavinessValue) || 0) > 1.0;
   
-  const isElecStartCurrentInvalid = (parseFloat(elecStartCurrent) || 0) < 0.1 || (parseFloat(elecStartCurrent) || 0) > 30.0;
-  const isElecGroundResInvalid = (parseFloat(elecGroundRes) || 0) < 0 || (parseFloat(elecGroundRes) || 0) > 120;
-  const isElecInsulResInvalid = (parseFloat(elecInsulRes) || 0) < 0 || (parseFloat(elecInsulRes) || 0) > 10;
-  const isElecWithstandCurrentInvalid = (parseFloat(elecWithstandCurrent) || 0) < 0 || (parseFloat(elecWithstandCurrent) || 0) > 10;
-  const isElecLeakageCurrentInvalid = (parseFloat(elecLeakageCurrent) || 0) < 0 || (parseFloat(elecLeakageCurrent) || 0) > 0.450;
+  const isElecStartCurrentInvalid = elecStartCurrent !== "" && ((parseFloat(elecStartCurrent) || 0) < 0.1 || (parseFloat(elecStartCurrent) || 0) > 30.0);
+  const isElecGroundResInvalid = elecGroundRes !== "" && ((parseFloat(elecGroundRes) || 0) < 0 || (parseFloat(elecGroundRes) || 0) > 120);
+  const isElecInsulResInvalid = elecInsulRes !== "" && ((parseFloat(elecInsulRes) || 0) < 0 || (parseFloat(elecInsulRes) || 0) > 10);
+  const isElecWithstandCurrentInvalid = elecWithstandCurrent !== "" && ((parseFloat(elecWithstandCurrent) || 0) < 0 || (parseFloat(elecWithstandCurrent) || 0) > 10);
+  const isElecLeakageCurrentInvalid = elecLeakageCurrent !== "" && ((parseFloat(elecLeakageCurrent) || 0) < 0 || (parseFloat(elecLeakageCurrent) || 0) > 0.450);
 
-  const isShelfGapXInvalid = (parseFloat(shelfGapX) || 0) < 3 || (parseFloat(shelfGapX) || 0) > 8;
+  const isShelfGapXInvalid = shelfGapX !== "" && ((parseFloat(shelfGapX) || 0) < 3 || (parseFloat(shelfGapX) || 0) > 8);
 
-  const isDimAInvalid = (parseFloat(dimA) || 0) < 0 || (parseFloat(dimA) || 0) > limitABC_LMN;
-  const isDimBInvalid = (parseFloat(dimB) || 0) < 0 || (parseFloat(dimB) || 0) > limitABC_LMN;
-  const isDimCInvalid = (parseFloat(dimC) || 0) < 0 || (parseFloat(dimC) || 0) > limitABC_LMN;
-  const isDimLInvalid = (parseFloat(dimL) || 0) < 0 || (parseFloat(dimL) || 0) > limitABC_LMN;
-  const isDimMInvalid = (parseFloat(dimM) || 0) < 0 || (parseFloat(dimM) || 0) > limitABC_LMN;
-  const isDimNInvalid = (parseFloat(dimN) || 0) < 0 || (parseFloat(dimN) || 0) > limitABC_LMN;
-  const isDiffDEInvalid = diffDE > 2.0;
-  const isDimYInvalid = (parseFloat(dimY) || 0) < 9.5 || (parseFloat(dimY) || 0) > 10.5;
-  const isDimZInvalid = (parseFloat(dimZ) || 0) < 9.5 || (parseFloat(dimZ) || 0) > 10.5;
+  const isDimAInvalid = dimA !== "" && ((parseFloat(dimA) || 0) < 0 || (parseFloat(dimA) || 0) > limitABC_LMN);
+  const isDimBInvalid = dimB !== "" && ((parseFloat(dimB) || 0) < 0 || (parseFloat(dimB) || 0) > limitABC_LMN);
+  const isDimCInvalid = dimC !== "" && ((parseFloat(dimC) || 0) < 0 || (parseFloat(dimC) || 0) > limitABC_LMN);
+  const isDimLInvalid = dimL !== "" && ((parseFloat(dimL) || 0) < 0 || (parseFloat(dimL) || 0) > limitABC_LMN);
+  const isDimMInvalid = dimM !== "" && ((parseFloat(dimM) || 0) < 0 || (parseFloat(dimM) || 0) > limitABC_LMN);
+  const isDimNInvalid = dimN !== "" && ((parseFloat(dimN) || 0) < 0 || (parseFloat(dimN) || 0) > limitABC_LMN);
+  const isDiffDEInvalid = dimD !== "" && dimE !== "" && diffDE > 2.0;
+  const isDimYInvalid = dimY !== "" && ((parseFloat(dimY) || 0) < 9.5 || (parseFloat(dimY) || 0) > 10.5);
+  const isDimZInvalid = dimZ !== "" && ((parseFloat(dimZ) || 0) < 9.5 || (parseFloat(dimZ) || 0) > 10.5);
 
-  const isSelfCloseFreezerInvalid = (parseFloat(selfCloseFreezer) || 0) < 20;
-  const isSelfCloseCabinetInvalid = (parseFloat(selfCloseCabinet) || 0) < 35;
-  const isGasketContactFreezerInvalid = (parseFloat(gasketContactFreezer) || 0) < 7;
-  const isGasketContactCabinetInvalid = (parseFloat(gasketContactCabinet) || 0) < 7;
-  const isDoorPullForceInvalid = (parseFloat(doorPullForce) || 0) > 5.0;
+  const isSelfCloseFreezerInvalid = selfCloseFreezer !== "" && (parseFloat(selfCloseFreezer) || 0) < 20;
+  const isSelfCloseCabinetInvalid = selfCloseCabinet !== "" && (parseFloat(selfCloseCabinet) || 0) < 35;
+  const isGasketContactFreezerInvalid = gasketContactFreezer !== "" && (parseFloat(gasketContactFreezer) || 0) < 7;
+  const isGasketContactCabinetInvalid = gasketContactCabinet !== "" && (parseFloat(gasketContactCabinet) || 0) < 7;
+  const isDoorPullForceInvalid = doorPullForce !== "" && (parseFloat(doorPullForce) || 0) > 5.0;
 
-  const isTorqueA1Invalid = (parseFloat(torqueA1) || 0) < 4.8 || (parseFloat(torqueA1) || 0) > 7.0;
-  const isTorqueA2Invalid = (parseFloat(torqueA2) || 0) < 4.8 || (parseFloat(torqueA2) || 0) > 7.0;
-  const isTorqueA3Invalid = (parseFloat(torqueA3) || 0) < 4.8 || (parseFloat(torqueA3) || 0) > 7.0;
-  const isTorqueB1Invalid = (parseFloat(torqueB1) || 0) < 4.8 || (parseFloat(torqueB1) || 0) > 7.0;
-  const isTorqueB2Invalid = (parseFloat(torqueB2) || 0) < 4.8 || (parseFloat(torqueB2) || 0) > 7.0;
-  const isTorqueC1Invalid = (parseFloat(torqueC1) || 0) < 4.8 || (parseFloat(torqueC1) || 0) > 7.0;
-  const isTorqueC2Invalid = (parseFloat(torqueC2) || 0) < 4.8 || (parseFloat(torqueC2) || 0) > 7.0;
-  const isTorqueT1Invalid = (parseFloat(torqueT1) || 0) > 1.5;
-  const isTorqueT2Invalid = (parseFloat(torqueT2) || 0) > 2.0;
+  const isTorqueA1Invalid = torqueA1 !== "" && ((parseFloat(torqueA1) || 0) < 4.8 || (parseFloat(torqueA1) || 0) > 7.0);
+  const isTorqueA2Invalid = torqueA2 !== "" && ((parseFloat(torqueA2) || 0) < 4.8 || (parseFloat(torqueA2) || 0) > 7.0);
+  const isTorqueA3Invalid = torqueA3 !== "" && ((parseFloat(torqueA3) || 0) < 4.8 || (parseFloat(torqueA3) || 0) > 7.0);
+  const isTorqueB1Invalid = torqueB1 !== "" && ((parseFloat(torqueB1) || 0) < 4.8 || (parseFloat(torqueB1) || 0) > 7.0);
+  const isTorqueB2Invalid = torqueB2 !== "" && ((parseFloat(torqueB2) || 0) < 4.8 || (parseFloat(torqueB2) || 0) > 7.0);
+  const isTorqueC1Invalid = torqueC1 !== "" && ((parseFloat(torqueC1) || 0) < 4.8 || (parseFloat(torqueC1) || 0) > 7.0);
+  const isTorqueC2Invalid = torqueC2 !== "" && ((parseFloat(torqueC2) || 0) < 4.8 || (parseFloat(torqueC2) || 0) > 7.0);
+  const isTorqueT1Invalid = torqueT1 !== "" && (parseFloat(torqueT1) || 0) > 1.5;
+  const isTorqueT2Invalid = torqueT2 !== "" && (parseFloat(torqueT2) || 0) > 2.0;
 
   // Compute Overall status
   const isFailed = 
@@ -294,7 +294,170 @@ export default function DailyInspectionFactoryB({ onBack, onSave, user }: DailyI
     };
 
     onSave(payload);
-    alert(`تم حفظ تقرير فحص العينة بنجاح! النتيجة العامة: ${overallStatus === 'PASS' ? 'مطابق' : 'غير مطابق'}`);
+
+    // Trigger Google Sheets sync in background
+    triggerGoogleSheetSend(payload);
+
+    // Reset all numerical input states for the next recording
+    setBarcode('');
+    setWavinessValue('');
+    setElecStartCurrent('');
+    setElecGroundRes('');
+    setElecInsulRes('');
+    setElecWithstandCurrent('');
+    setElecLeakageCurrent('');
+    setShelfGapX('');
+    setDimA('');
+    setDimB('');
+    setDimC('');
+    setDimL('');
+    setDimM('');
+    setDimN('');
+    setDimD('');
+    setDimE('');
+    setDimY('');
+    setDimZ('');
+    setSelfCloseFreezer('');
+    setSelfCloseCabinet('');
+    setGasketContactFreezer('');
+    setGasketContactCabinet('');
+    setDoorPullForce('');
+    setTorqueA1('');
+    setTorqueA2('');
+    setTorqueA3('');
+    setTorqueB1('');
+    setTorqueB2('');
+    setTorqueC1('');
+    setTorqueC2('');
+    setTorqueT1('');
+    setTorqueT2('');
+
+    alert(`تم حفظ تقرير فحص العينة بنجاح! النتيجة العامة: ${overallStatus === 'PASS' ? 'مطابق' : 'غير مطابق'} وتمت جدولة إرسالها إلى Google Sheets.`);
+  };
+
+  // Trigger Google Sheet sending if available in localStorage config
+  const triggerGoogleSheetSend = (payload: any) => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_sheet_urls');
+      if (stored) {
+        const sheetUrls = JSON.parse(stored);
+        const lineConfig = sheetUrls['LINE_B'];
+        if (lineConfig && lineConfig.submission_url) {
+          const formattedPayload = {
+            tabId: 'daily_inspection_b',
+            'التاريخ': payload.date || '',
+            'الوردية': payload.shift || '',
+            'الموديل': payload.model || '',
+            'الباركود': payload.barcode || '',
+            'اسم المفتش': payload.inspectorName || '',
+            'مسجل البيانات': payload.registererName || '',
+            'النتيجة العامة': payload.overallStatus === 'PASS' ? 'مطابق' : 'غير مطابق',
+            'التاريخ والوقت': payload.timestamp || '',
+            
+            // Section 2
+            'سلامة التغليف وتجميع الكرتونة وحواجز الفوم': payload.data.packagingOk || '',
+            'عدم وجود اختلاف فى الالوان للاجزاء الخارجية': payload.data.colorMatch || '',
+            'سلامة حقن الجزء الخارجى وعدم وجود تسريب فوم': payload.data.outerInjection || '',
+            'عدم وجود خدوش او خبطات او انبعاجات بالكابينة': payload.data.noScratchDents || '',
+            'تثبيت كارتة الشاشة والضفيرة وتجميعها بطريقة صحيحة': payload.data.pcbCableFasten || '',
+            'المسافة بين الكندنسر والمواسير الكهربية والاجزاء الساخنة': payload.data.pipeDistanceOk || '',
+            'مطبقة البيانات المطبوعة للموديل والمنشأ والباركود': payload.data.printMatchesModel || '',
+            'عدم بروز ماسورة الشحن من قاعدة الكباس': payload.data.chargePipeNoProtrude || '',
+            'درجة التموج بالكابينة الصاج (Waviness)': payload.data.wavinessValue || '',
+            'سلامة الكابينة من العيوب الأخرى': payload.data.otherDefects || '',
+            
+            // Section 3
+            'عدم وجود خدوش او اتساخات بباب الفريزر والباب الخارجى': payload.data.doorNoScratch || '',
+            'عدم وجود اختلاف فى الالوان لباب الفريزر والباب الخارجى': payload.data.doorColorMatch || '',
+            'سلامة تجميع المقبض للباب الخارجى وباب الفريزر ومطابقتة': payload.data.doorHandleOk || '',
+            'عدم وجود صوت غير طبيعى عند فتح وغلق الابواب': payload.data.doorNoNoise || '',
+            'سلامة جوان باب الفريزر وجوان الكابينة وعدم وجود ترحيل': payload.data.doorGasketOk || '',
+            'سلامة تجميع البادج بالمكان المخصص لة': payload.data.badgeAssemblyOk || '',
+            'عدم وجود خلوص بين الجوان والكابينة': payload.data.gasketNoClearance || '',
+            
+            // Section 4
+            'تيار بدء التشغيل (A)': payload.data.elecStartCurrent || '',
+            'مقاومة الارضى (mΩ)': payload.data.elecGroundRes || '',
+            'مقاومة العزل (MΩ)': payload.data.elecInsulRes || '',
+            'امبير جهد الصمود (mA)': payload.data.elecWithstandCurrent || '',
+            'تيار التسريب الكهربى (mA)': payload.data.elecLeakageCurrent || '',
+            'إختبار تسريب الغاز بجميع الوصلات واللحامات بدقة': payload.data.gasLeakTest || '',
+            
+            // Section 5
+            'سلامة تجميع الجزء Fan Louver وتجميع السوفت بطريقة صحيحة': payload.data.fanLouverOk || '',
+            'سلامة حقن الفريزر والكابينة من الداخل وعدم وجود خدوش': payload.data.innerInjNoScratch || '',
+            'نظافة الفريزر والكابينة من الداخل وخلوها من الاتساخات': payload.data.innerCleanliness || '',
+            'سلامة الاجزاء الداخلية البلاستيكية والزجاجية وعدم وجود شرخ': payload.data.innerPartsNoCrack || '',
+            'سهولة حركة الادرج وحرية الحركة لغطاء درج الخضار': payload.data.freshCaseMovement || '',
+            'التأكد من ازالة الشريط اللاصق الخاص بتثبيت الاجزاء الداخلية': payload.data.innerTapeOk || '',
+            'سلامة تجميع وعزل ال Center Plate وتجميع السخان الداخلى': payload.data.centerPlateOk || '',
+            'وجود كتاب التعليمات والضمان داخل الكابينة': payload.data.manualWarrantyOk || '',
+            'سهولة خروج ودخول الارفف الزجاجية والادرج والرف السلك': payload.data.shelfRemovalOk || '',
+            'وضع طبقة الفازلين على المحاور المعدنية للمفصلة': payload.data.hingeVaselineOk || '',
+            'سلامة شاشة التحكم والتاكد من عمل جميع الازرار واللمبات': payload.data.controlPanelButtonsOk || '',
+            'ضبط ثرموستات الفريزر على وضع MED': payload.data.freezerControlMed || '',
+            'ضبط ثرموستات الكابينة على وضع MIN': payload.data.cabinetControlMin || '',
+            'وضع السيلكون بطريقة نظيفة وصحيحة بالاماكن المحددة': payload.data.siliconAppliedClean || '',
+            
+            // Section 6
+            'قياس خلوص الارفف مع جوانب الكابينة X (mm)': payload.data.shelfGapX || '',
+            'سلامة تجميع ال F/ Upper Shelf': payload.data.fUpperShelfOk || '',
+            'سلامة تجميع ال Upper G/Garg R': payload.data.upperGGargR || '',
+            'سلامة تجميع ال Lower G/Garg R': payload.data.lowerGGargR || '',
+            'سلامة تجميع ال G/Garg V': payload.data.gGargV || '',
+            
+            // Section 7
+            'احكام تجميع ال FR Door Pocket': payload.data.frDoorPocketTight || '',
+            'احكام تجميع ال R Door Pocket': payload.data.rDoorPocketTight || '',
+            'احكام تجميع ال Utility Pocket': payload.data.utilityTight || '',
+            'احكام تجميع ال Bottle Pocket': payload.data.bottlePocketTight || '',
+            'احكام تجميع ال FR Door Pocket 2': payload.data.frDoorPocketTight2 || '',
+            
+            // Section 8
+            'المقاس A (mm)': payload.data.dimA || '',
+            'المقاس B (mm)': payload.data.dimB || '',
+            'المقاس C (mm)': payload.data.dimC || '',
+            'المقاس L (mm)': payload.data.dimL || '',
+            'المقاس M (mm)': payload.data.dimM || '',
+            'المقاس N (mm)': payload.data.dimN || '',
+            'المقاس D (mm)': payload.data.dimD || '',
+            'المقاس E (mm)': payload.data.dimE || '',
+            'المقاس Y (mm)': payload.data.dimY || '',
+            'المقاس Z (mm)': payload.data.dimZ || '',
+            
+            // Section 9
+            'مسافة الغلق الذاتى لباب الفريزر (mm)': payload.data.selfCloseFreezer || '',
+            'مسافة الغلق الذاتى لباب الكابينة (mm)': payload.data.selfCloseCabinet || '',
+            'مسافة ملامسة جوان الفريزر (mm)': payload.data.gasketContactFreezer || '',
+            'مسافة ملامسة جوان الكابينة (mm)': payload.data.gasketContactCabinet || '',
+            'قوة فتح الباب (Kgf)': payload.data.doorPullForce || '',
+            'عزم ربط مسمار المفصلة العلوية A1 (Nm)': payload.data.torqueA1 || '',
+            'عزم ربط مسمار المفصلة العلوية A2 (Nm)': payload.data.torqueA2 || '',
+            'عزم ربط مسمار المفصلة العلوية A3 (Nm)': payload.data.torqueA3 || '',
+            'عزم ربط مسمار المفصلة الوسطى B1 (Nm)': payload.data.torqueB1 || '',
+            'عزم ربط مسمار المفصلة الوسطى B2 (Nm)': payload.data.torqueB2 || '',
+            'عزم ربط مسمار المفصلة السفلية C1 (Nm)': payload.data.torqueC1 || '',
+            'عزم ربط مسمار المفصلة السفلية C2 (Nm)': payload.data.torqueC2 || '',
+            'خلوص الباب العلوى T1 (mm)': payload.data.torqueT1 || '',
+            'خلوص الباب السفلى T2 (mm)': payload.data.torqueT2 || '',
+            
+            // Section 10
+            'عدم وجود صوت غير طبيعى عند تشغيل الكباس والمروحة': payload.data.noAbnormalNoise || '',
+            'التأكد من التبريد وتدفق الهواء داخل الكابينة': payload.data.coolingVerified || '',
+            'التأكد من اطفاء اللمبة تلقائيا عند غلق الباب': payload.data.lampTurnsOff || '',
+            'سلامة تفعيل ال Check Mode بالشاشة الديجيتال': payload.data.checkModeDigital || ''
+          };
+          fetch(lineConfig.submission_url, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formattedPayload)
+          }).catch(err => console.error("Sheets sync background error:", err));
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Trigger A4 Print Page
