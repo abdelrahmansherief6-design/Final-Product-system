@@ -308,21 +308,25 @@ export default function DailyInspectionFactoryB({ onBack, onSave, user }: DailyI
       {/* 1. Header with Printable Style Injection */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
+          body {
+            visibility: hidden !important;
+            background: white !important;
           }
           #print-area, #print-area * {
-            visibility: visible;
+            visibility: visible !important;
           }
           #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            direction: rtl;
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            direction: rtl !important;
             background: white !important;
             color: black !important;
-            padding: 10px;
+            padding: 20px !important;
+            z-index: 99999 !important;
           }
           .no-print {
             display: none !important;

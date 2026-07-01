@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import { User, QualityInspectionLog, ProductionLineId, RefrigeratorModel } from '../types';
 import DailyInspectionFactoryB from './DailyInspectionFactoryB';
 import DailyInspectionPVGV from './DailyInspectionPVGV';
@@ -417,7 +417,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     const wsData: any[][] = [];
 
     // Title
-    wsData.push(["تقرير الفحص الفني المعتمد للثلاجات - شركة العربي"]);
+    wsData.push(["تقرير الفحص الفني المعتمد للثلاجات - مجموعة العربي"]);
     wsData.push(["إدارة توكيد الجودة بمجموعة العربي"]);
     wsData.push([]); // spacer
 
@@ -485,13 +485,174 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     if (!ws['!views']) ws['!views'] = [];
     ws['!views'].push({ RTL: true });
 
+    // Merges
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // A1:D1
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }  // A2:D2
+    ];
+
+    if (!log.recheckStatus) {
+      // Merge supervisor decision across B7:D7 (row 6, col 1 to 3)
+      ws['!merges'].push({ s: { r: 6, c: 1 }, e: { r: 6, c: 3 } });
+    }
+
     // Column widths
     ws['!cols'] = [
-      { wch: 25 }, // Col A
-      { wch: 55 }, // Col B
-      { wch: 30 }, // Col C
-      { wch: 25 }  // Col D
+      { wch: 25 }, // Col A (رمز البند)
+      { wch: 60 }, // Col B (البيان / الوصف الفني للقياس)
+      { wch: 25 }, // Col C (القيمة / النتيجة المسجلة)
+      { wch: 25 }  // Col D (التقييم الفني)
     ];
+
+    // Row heights
+    const numRows = wsData.length;
+    const rowHeights: { hpt: number }[] = [];
+    rowHeights.push({ hpt: 35 }); // Title (Row 1)
+    rowHeights.push({ hpt: 28 }); // Subtitle (Row 2)
+    rowHeights.push({ hpt: 15 }); // Spacer (Row 3)
+    rowHeights.push({ hpt: 24 }); // Metadata (Row 4)
+    rowHeights.push({ hpt: 24 }); // Metadata (Row 5)
+    rowHeights.push({ hpt: 24 }); // Metadata (Row 6)
+    rowHeights.push({ hpt: 24 }); // Metadata (Row 7)
+    rowHeights.push({ hpt: 15 }); // Spacer (Row 8)
+    rowHeights.push({ hpt: 30 }); // Table Header (Row 9)
+
+    for (let i = 9; i < numRows; i++) {
+      rowHeights.push({ hpt: 22 }); // Detail row height
+    }
+    ws['!rows'] = rowHeights;
+
+    // Apply Cairo/Inter fonts, borders, alignments, and status colors
+    for (let r = 0; r < numRows; r++) {
+      for (let c = 0; c < 4; c++) {
+        const cellRef = XLSX.utils.encode_cell({ r, c });
+        if (!ws[cellRef]) {
+          ws[cellRef] = { t: 's', v: '' }; // fill empty cell in merge grid
+        }
+        const cell = ws[cellRef];
+
+        let fontName = "Cairo";
+        let fontSize = 10;
+        let fontColor = "1F2937"; // Gray-800
+        let isBold = false;
+        let bgRgb = "FFFFFF"; // White
+        let hAlign = "center";
+        let borderStyle = "thin";
+        let borderColor = "D1D5DB"; // Gray-300
+
+        if (r === 0) {
+          // Row 1: Main Title
+          fontSize = 14;
+          isBold = true;
+          fontColor = "FFFFFF";
+          bgRgb = "1E3A8A"; // Dark Navy
+          borderStyle = "none";
+        } else if (r === 1) {
+          // Row 2: Subtitle
+          fontSize = 11;
+          isBold = true;
+          fontColor = "FFFFFF";
+          bgRgb = "2563EB"; // Arabic Brand Blue
+          borderStyle = "none";
+        } else if (r === 2 || r === 7) {
+          // Spacers
+          borderStyle = "none";
+          bgRgb = "FFFFFF";
+        } else if (r >= 3 && r <= 6) {
+          // Metadata rows
+          if (c === 0 || c === 2) {
+            // Label Columns
+            isBold = true;
+            fontColor = "4B5563"; // Gray-600
+            bgRgb = "F3F4F6"; // Gray-100
+            hAlign = "right";
+          } else {
+            // Value Columns
+            fontColor = "111827"; // Gray-900
+            hAlign = "center";
+
+            // Color code overall status in Row 6 (r=5, c=3)
+            if (r === 5 && c === 3) {
+              isBold = true;
+              if (log.status === 'PASS') {
+                bgRgb = "D1FAE5"; // Green-100
+                fontColor = "065F46"; // Green-800
+              } else {
+                bgRgb = "FEE2E2"; // Red-100
+                fontColor = "991B1B"; // Red-800
+              }
+            }
+          }
+        } else if (r === 8) {
+          // Table Header
+          fontSize = 11;
+          isBold = true;
+          fontColor = "FFFFFF";
+          bgRgb = "475569"; // Slate-600
+          borderColor = "334155";
+        } else {
+          // Checklist / Details rows
+          const cellVal = String(cell.v || '');
+          if (c === 0) {
+            // Key Code
+            fontName = "Inter";
+            fontSize = 9;
+            fontColor = "6B7280"; // Gray-500
+            bgRgb = "FAFAFA";
+          } else if (c === 1) {
+            // Description
+            hAlign = "right";
+            fontColor = "111827";
+          } else if (c === 2) {
+            // Recorded Value
+            isBold = true;
+            if (cellVal === "OK" || cellVal === "مطابق") {
+              bgRgb = "E8F5E9"; // Green-50
+              fontColor = "2E7D32"; // Green-800
+            } else if (cellVal === "NG" || cellVal === "مخالف" || cellVal === "غير مطابق" || cellVal.includes("NG")) {
+              bgRgb = "FFEBEE"; // Red-50
+              fontColor = "C62828"; // Red-800
+            }
+          } else if (c === 3) {
+            // Evaluation Appraisal
+            isBold = true;
+            if (cellVal.includes("مطابق OK") || cellVal === "مطابق OK" || cellVal === "مطابق") {
+              bgRgb = "E8F5E9"; // Green-50
+              fontColor = "2E7D32"; // Green-800
+            } else if (cellVal.includes("غير مطابق NG") || cellVal === "غير مطابق NG" || cellVal === "غير مطابق") {
+              bgRgb = "FFEBEE"; // Red-50
+              fontColor = "C62828"; // Red-800
+            } else {
+              bgRgb = "E3F2FD"; // Blue-50
+              fontColor = "1565C0"; // Blue-800
+            }
+          }
+        }
+
+        cell.s = {
+          font: {
+            name: fontName,
+            sz: fontSize,
+            bold: isBold,
+            color: { rgb: fontColor }
+          },
+          fill: {
+            fgColor: { rgb: bgRgb }
+          },
+          alignment: {
+            horizontal: hAlign,
+            vertical: "center",
+            wrapText: true
+          },
+          border: borderStyle === "none" ? undefined : {
+            top: { style: borderStyle, color: { rgb: borderColor } },
+            bottom: { style: borderStyle, color: { rgb: borderColor } },
+            left: { style: borderStyle, color: { rgb: borderColor } },
+            right: { style: borderStyle, color: { rgb: borderColor } }
+          }
+        };
+      }
+    }
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "تقرير الفحص الفني");

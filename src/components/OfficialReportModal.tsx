@@ -397,21 +397,25 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
       {/* Printable Style Injection */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
+          body {
+            visibility: hidden !important;
+            background: white !important;
           }
           #active-print-area, #active-print-area * {
-            visibility: visible;
+            visibility: visible !important;
           }
           #active-print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
+            height: auto !important;
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
             background: white !important;
+            z-index: 99999 !important;
           }
           .print-page {
             page-break-after: always !important;
