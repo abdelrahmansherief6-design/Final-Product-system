@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { User, QualityInspectionLog, ProductionLineId, RefrigeratorModel } from '../types';
 import DailyInspectionFactoryB from './DailyInspectionFactoryB';
+import DailyInspectionPVGV from './DailyInspectionPVGV';
 import { OfficialReportModal } from './OfficialReportModal';
 import { PRODUCTION_LINES, CHECKLIST_ITEMS, DEFECT_OPTIONS, generateSerialNumber } from '../data';
 import { 
@@ -509,6 +510,9 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
   // Active section inside the factory content
   const [currentSection, setCurrentSection] = useState<'DASHBOARD' | 'DAILY_INSPECTION' | 'CRITICAL_OPS' | 'TRIAL_RUNS' | 'ARCHIVE' | 'TEST_INSTRUCTIONS' | 'MY_RECENT_INSPECTIONS' | 'NCR_REPORTS' | 'LOADING_STOPS' | 'PRODUCTION_QTY'>('DASHBOARD');
+
+  // LINE B sub-section selector for Daily Inspection
+  const [lineBDailySection, setLineBDailySection] = useState<'SELECT' | '48_58_SHEET' | 'PV_GV_SHEET'>('SELECT');
 
   // Month selector for stats
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -1608,6 +1612,25 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setCurrentSection('DASHBOARD');
   };
 
+  const handleSavePVGVInspection = (payload: any) => {
+    const transformed: QualityInspectionLog = {
+      id: payload.id,
+      serialNumber: payload.barcode,
+      modelId: payload.model,
+      lineId: 'LINE_B',
+      inspectorSap: user.sapNumber || 'UNKNOWN',
+      inspectorName: payload.inspectorName,
+      timestamp: payload.timestamp,
+      status: payload.overallStatus,
+      checkedItems: {},
+      defects: [],
+      factoryBData: payload
+    };
+    onAddInspection(transformed);
+    setActiveReport(transformed);
+    setCurrentSection('DASHBOARD');
+  };
+
   const handleDeleteClick = (id: string, serial: string) => {
     if (window.confirm(`هل أنت متأكد من رغبتك في حذف عينة الفحص ذات السيريال (${serial}) وتقريرها نهائياً؟`)) {
       if (onDeleteInspection) {
@@ -2496,7 +2519,10 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
               
               {/* Item 1 */}
               <div 
-                onClick={() => setCurrentSection('DAILY_INSPECTION')}
+                onClick={() => {
+                  setLineBDailySection('SELECT');
+                  setCurrentSection('DAILY_INSPECTION');
+                }}
                 className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-blue-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
               >
                 <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-blue-600 group-hover:text-white">
@@ -2662,11 +2688,83 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
         {currentSection === 'DAILY_INSPECTION' ? (
           lineId === 'LINE_B' ? (
-            <DailyInspectionFactoryB 
-              onBack={() => setCurrentSection('DASHBOARD')} 
-              onSave={handleSaveFactoryBInspection} 
-              user={user} 
-            />
+            lineBDailySection === 'SELECT' ? (
+              <div className="space-y-6 animate-fadeIn text-right">
+                <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+                  <div className="flex items-center gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => setCurrentSection('DASHBOARD')}
+                      className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-xl text-zinc-650 transition-colors"
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <div>
+                      <h2 className="text-base font-black text-zinc-900">اختر استمارة الفحص النهائي - مصنع B</h2>
+                      <p className="text-xs text-zinc-500">اختر نموذج الفحص الفني المطلوب للموديلات النشطة بالخط</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto pt-6">
+                  {/* Card 1: 48C / 58C Sheet */}
+                  <div 
+                    onClick={() => setLineBDailySection('48_58_SHEET')}
+                    className="bg-white border border-zinc-200 rounded-2xl p-6 hover:border-blue-500 hover:shadow-md cursor-pointer transition-all space-y-4 flex flex-col justify-between group"
+                  >
+                    <div className="space-y-3">
+                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                        <ClipboardList className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-zinc-900">Final Inspection Sheet for (48C-A-T & 58C-A-T)</h3>
+                        <p className="text-xs text-zinc-400 leading-relaxed mt-2">
+                          النموذج المخصص لفحص ثلاجات الفئة 48 و 58 (شامل الموديلات 480 و 580 ومطابقة أبعادها الفنية وعزوم ربطها).
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-blue-600 font-bold pt-4 border-t border-zinc-100">
+                      <span>فتح استمارة الفحص</span>
+                      <ChevronLeft className="w-4 h-4" />
+                    </div>
+                  </div>
+
+                  {/* Card 2: PV / GV Sheet */}
+                  <div 
+                    onClick={() => setLineBDailySection('PV_GV_SHEET')}
+                    className="bg-white border border-zinc-200 rounded-2xl p-6 hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all space-y-4 flex flex-col justify-between group"
+                  >
+                    <div className="space-y-3">
+                      <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+                        <Layers className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-zinc-900">Final Inspection Sheet PV&GV</h3>
+                        <p className="text-xs text-zinc-400 leading-relaxed mt-2">
+                          النموذج المخصص لفحص ثلاجات الفئات الجديدة (PV & GV) شاملة 10 أقسام فنية كاملة مع الحدود التلقائية للأبعاد.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-emerald-600 font-bold pt-4 border-t border-zinc-100">
+                      <span>فتح استمارة الفحص</span>
+                      <ChevronLeft className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : lineBDailySection === '48_58_SHEET' ? (
+              <DailyInspectionFactoryB 
+                onBack={() => setLineBDailySection('SELECT')} 
+                onSave={handleSaveFactoryBInspection} 
+                user={user} 
+              />
+            ) : (
+              <DailyInspectionPVGV 
+                onBack={() => setLineBDailySection('SELECT')} 
+                onSave={handleSavePVGVInspection} 
+                user={user} 
+              />
+            )
           ) : (
             <div className="space-y-6 animate-fadeIn">
             {/* Header */}

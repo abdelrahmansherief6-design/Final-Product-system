@@ -1067,6 +1067,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
               
               {activeReport.factoryBData ? (() => {
                 const bData = activeReport.factoryBData.data || {};
+                const isPvgv = activeReport.factoryBData.tabId === 'daily_inspection_pvgv';
                 const renderField = (label: string, val: any, suffix = '') => {
                   const isNg = val === 'NG' || val === false;
                   const isOk = val === 'OK' || val === true;
@@ -1079,6 +1080,178 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                     </div>
                   );
                 };
+
+                if (isPvgv) {
+                  return (
+                    <div className="space-y-6">
+                      {/* Section 1: المظهر الخارجي والتعبئة والتغليف */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">1. الفحص الظاهري لمجموعة التعبئة والتغليف (PV & GV):</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('سلامه أجزاء التغليف ومطابقتها لمواصفة الخط', bData.packagingOk)}
+                        </div>
+                      </div>
+
+                      {/* Section 2: المظهر الخارجي للكابينة المحقونة */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">2. الفحص الظاهري للكابينة المحقونة من الخارج:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('سلامة درجة لون الثلاجه ومطابقتها للباركود', bData.colorMatch)}
+                          {renderField('سلامة حقن الثلاجه وخلوها من نقص حقن', bData.outerInjection)}
+                          {renderField('عدم وجود خدوش او خبطات او انبعاجات', bData.noScratchDents)}
+                          {renderField('سلامة كابل وتثبيت مجموعة البورده', bData.pcbCableFasten)}
+                          {renderField('المسافه بين المواسير الخلفية اكبر من 5مم', bData.pipeDistanceOk)}
+                          {renderField('مطابقة المطبوعات لموديل الثلاجة', bData.printMatchesModel)}
+                          {renderField('عدم بروز ماسورة الشحن', bData.chargePipeNoProtrude)}
+                          {renderField('تموج على جانبى الثلاجه الخارجي', bData.wavinessValue, ' مم')}
+                          {renderField('عيوب اخرى', bData.otherDefects)}
+                        </div>
+                      </div>
+
+                      {/* Section 3: فحص أبواب العينات */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">3. نتائج فحص أبواب العينات:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('عدم وجود خبطات او خدوش او انعوجاج بالباب', bData.doorNoScratch)}
+                          {renderField('توافق درجة لون الباب مع الكابينة', bData.doorColorMatch)}
+                          {renderField('فحص يد الباب وتثبيتها جيداً', bData.doorHandleOk)}
+                          {renderField('لا يوجد صوت عند فتح وغلق الباب', bData.doorNoNoise)}
+                          {renderField('التأكد من سلامة الجوان', bData.doorGasketOk)}
+                          {renderField('سلامة تجمع البادج ومطابقته', bData.badgeAssemblyOk)}
+                          {renderField('لا يوجد أي خلوص على محيط الجوان', bData.gasketNoClearance)}
+                        </div>
+                      </div>
+
+                      {/* Section 4: الاختبارات الكهربية */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">4. الاختبارات الكهربية وقيم القياس:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('تيار اختبار بدء التشغيل (187V)', bData.elecStartCurrent, ' أمبير')}
+                          {renderField('مقاومة اختبار الأرضي (25A, 5s)', bData.elecGroundRes, ' مللي أوم')}
+                          {renderField('مقاومة العزل الكهربائي (DC500V)', bData.elecInsulRes, ' ميجا أوم')}
+                          {renderField('اختبار الصمود وتحمل الجهد (1500V AC)', bData.elecWithstandCurrent, ' مللي أمبير')}
+                          {renderField('تيار تسريب الشحنة الكهربائية', bData.elecLeakageCurrent, ' مللي أمبير')}
+                          {renderField('اختبار تسريب فريون الدائرة التبريدية', bData.gasLeakTest)}
+                        </div>
+                      </div>
+
+                      {/* Section 5: الفحص الداخلي */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">5. الفحص الظاهرى الداخلى للثلاجه ومرفقاتها:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('سلامة تجميع الـ fan louver', bData.fanLouverOk)}
+                          {renderField('سلامه الكابينة المحقونة من الداخل وخلوها من الخدوش', bData.innerInjNoScratch)}
+                          {renderField('نظافة الكابينة وخلوها من الأتربة والعيوب', bData.innerCleanliness)}
+                          {renderField('سلامة تجميع الاجزاء وعدم جود كسور او شروخ', bData.innerPartsNoCrack)}
+                          {renderField('سهولة حركة رف Fresh Case وبابه', bData.freshCaseMovement)}
+                          {renderField('تثبيت الاجزاء الداخلية باللاصق', bData.innerTapeOk)}
+                          {renderField('فحص الـ Centre plate المجمع', bData.centerPlateOk)}
+                          {renderField('مطابقه دليل المالك وشهادة الضمان بالباركود', bData.manualWarrantyOk)}
+                          {renderField('سهولة خلع و تركيب الارفف المتحركه', bData.shelfRemovalOk)}
+                          {renderField('وجود الفازلين على مفصلات الأبواب وتزييتها', bData.hingeVaselineOk)}
+                          {renderField('سلامه شاشه التحكم وعدم وجود مشاكل بها', bData.controlPanelButtonsOk)}
+                          {renderField('ضبط شاشه التحكم على وضع R/5 & F/-18', bData.controlPanelR5F18)}
+                          {renderField('وجود السيلكون فى الاماكن المحدده ونظيف', bData.siliconAppliedClean)}
+                        </div>
+                      </div>
+
+                      {/* Section 6: قياس الفراغ */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">6. نتائج قياس الفراغ بين نهاية الارفف والجسم الداخلي للكابينة:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('مسافة الفراغ الكلي X بالضبعة', bData.shelfGapX, ' مم')}
+                          {renderField('حالة تطابق رف F-Upper Shelf', bData.fUpperShelfOk)}
+                          {renderField('حالة تطابق رف Upper G Garg -R', bData.upperGGargR)}
+                          {renderField('حالة تطابق رف Lower G Garg -R', bData.lowerGGargR)}
+                          {renderField('حالة تطابق رف G Garg -V', bData.gGargV)}
+                        </div>
+                      </div>
+
+                      {/* Section 7: قوة التثبيت شد 5 كجم */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">7. إختبار قوة تثبيت الاجزاء الداخلية عند قوة شد 5Kgf:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('رف باب الفريزر F - R Door Pocket', bData.frDoorPocketTight)}
+                          {renderField('درج الـ R -Door Pocket .B', bData.rDoorPocketTightB)}
+                          {renderField('درج الـ R-Door Pocket .C', bData.rDoorPocketTightC)}
+                          {renderField('رف الزجاجات Bottle Pocket', bData.bottlePocketTight)}
+                          {renderField('رف باب الكابينة F-R Door Pocket', bData.frDoorPocketTight2)}
+                        </div>
+                      </div>
+
+                      {/* Section 8: الأبعاد والتموج */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">8. نتائج قياسات الأبعاد والتموج وموضع البادج (PV & GV):</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('فئة مواصفات القياس النشطة', activeReport.factoryBData.modelProfile === 'GV58A' ? 'مواصفة GV58A' : 'مواصفة PV & GV العامة')}
+                          {renderField('الارتفاع الخارجي (A)', bData.dimA, ' مم')}
+                          {renderField('العرض الخارجي (B)', bData.dimB, ' مم')}
+                          {renderField('العمق الخارجي (C)', bData.dimC, ' مم')}
+                          {renderField('الطول الداخلي للفريزر (L)', bData.dimL, ' مم')}
+                          {renderField('الطول الداخلي للكابينة (M)', bData.dimM, ' مم')}
+                          {renderField('العمق الداخلي للكابينة (N)', bData.dimN, ' مم')}
+                          {renderField('القطر القطري للفريزر (D)', bData.dimD, ' مم')}
+                          {renderField('القطر القطري للكابينة (E)', bData.dimE, ' مم')}
+                          {renderField('البعد الرأسي للبادج Y (اليمين)', bData.dimY, ' مم')}
+                          {renderField('البعد الرأسي للبادج Z (اليسار)', bData.dimZ, ' مم')}
+                        </div>
+                      </div>
+
+                      {/* Section 9: عزوم الربط وخلوص C Part */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">9. قياس عزوم المفصلات ومسافة الغلق وخلوص C Part:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('مسافة الغلق الذاتي لباب الفريزر', bData.selfCloseFreezer, ' مم')}
+                          {renderField('مسافة الغلق الذاتي لباب الكابينة', bData.selfCloseCabinet, ' مم')}
+                          {renderField('مسافة تلامس الجوان لباب الفريزر', bData.gasketContactFreezer, ' مم')}
+                          {renderField('مسافة تلامس الجوان لباب الكابينة', bData.gasketContactCabinet, ' مم')}
+                          {renderField('قوة شد فتح الباب بوزن 5 كجم', bData.doorPullForce, ' كجم')}
+                          {renderField('عزم ربط مسمار المفصلة العلوية A1', bData.torqueA1, ' نيوتن.متر')}
+                          {renderField('عزم ربط مسمار المفصلة العلوية A2', bData.torqueA2, ' نيوتن.متر')}
+                          {renderField('عزم ربط مسمار المفصلة العلوية A3', bData.torqueA3, ' نيوتن.متر')}
+                          {renderField('عزم ربط مسمار المفصلة الوسطى B1', bData.torqueB1, ' نيوتن.متر')}
+                          {renderField('عزم ربط مسمار المفصلة الوسطى B2', bData.torqueB2, ' نيوتن.متر')}
+                          {renderField('عزم ربط مسمار المفصلة السفلية C1', bData.torqueC1, ' نيوتن.متر')}
+                          {renderField('عزم ربط مسمار المفصلة السفلية C2', bData.torqueC2, ' نيوتن.متر')}
+                          {renderField('خلوص C Part مجمع T1', bData.torqueT1, ' مم')}
+                          {renderField('خلوص C Part مجمع T2', bData.torqueT2, ' مم')}
+                        </div>
+                      </div>
+
+                      {/* Section 10: اختبار التبريد والتشغيل */}
+                      <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs text-right">
+                        <div className="bg-zinc-50 border-b border-zinc-200 px-3 py-2">
+                          <h4 className="font-bold text-zinc-900 text-xs">10. اختبار تبريد وتشغيل العينة:</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 p-3">
+                          {renderField('خلو صوت الموتور من الضوضاء غير الطبيعية', bData.noAbnormalNoise)}
+                          {renderField('تحقق وانسياب التبريد بنجاح', bData.coolingVerified)}
+                          {renderField('انطفاء اللمبة تلقائياً عند مسافة اقل من 60مم', bData.lampTurnsOff)}
+                          {renderField('اختبار check mode للموديلات الديجيتال المعتمدة', bData.checkModeDigital)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div className="space-y-6">
                     {/* Section 1: المظهر الخارجي والتعبئة والتغليف */}
@@ -1091,7 +1264,7 @@ export const OfficialReportModal: React.FC<OfficialReportModalProps> = ({
                         {renderField('تطابق لون الهيكل مع الباركود', bData.colorMatch)}
                         {renderField('سلامة حقن الهيكل الخارجي وخلوه من العيوب', bData.outerInjection)}
                         {renderField('خلو الهيكل من الخدوش والنقر والتموج', bData.noScratchDents)}
-                        {renderField('تموج صاج الجانبين الخارجي', bData.wavinessValue, ' ملم')}
+                        {renderField('تموج صاج الجانبين الخارجي', bData.wavinessValue, ' مله')}
                         {renderField('تثبيت الكابلات والـ PCB الخلفية', bData.pcbCableFasten)}
                         {renderField('المسافة الآمنة للمواسير الخلفية عن البودي', bData.pipeDistanceOk)}
                         {renderField('تطابق طباعة البيانات الخلفية مع موديل العينة', bData.printMatchesModel)}
