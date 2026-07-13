@@ -47,6 +47,7 @@ export default function ManagerWorkspace({
     'LINE_B': 'INSPECTION',
     'LINE_C': 'INSPECTION',
   });
+  const [selectedLineId, setSelectedLineId] = useState<string>('LINE_A');
 
   // Load complementary data from localStorage
   const [criticalLogs] = useState<any[]>(() => {
@@ -559,14 +560,35 @@ export default function ManagerWorkspace({
         )}
 
         {activeTab === 'INVENTORY_REPORTS' && (
-          <div className="space-y-8 animate-fadeIn text-right">
-            {PRODUCTION_LINES.map((line) => {
+          <div className="space-y-6 animate-fadeIn text-right">
+            {/* Factory Selector Tabs */}
+            <div className="flex flex-wrap bg-zinc-100 p-1 rounded-2xl w-fit gap-1 mx-auto border border-zinc-200">
+              {PRODUCTION_LINES.map((line) => {
+                const isSelected = selectedLineId === line.id;
+                return (
+                  <button
+                    key={line.id}
+                    onClick={() => setSelectedLineId(line.id)}
+                    className={`px-8 py-2.5 rounded-xl text-xs font-black transition-all ${
+                      isSelected
+                        ? 'bg-amber-600 text-white shadow-sm'
+                        : 'text-zinc-650 hover:text-zinc-900 hover:bg-white/50'
+                    }`}
+                  >
+                    {line.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {(() => {
+              const line = PRODUCTION_LINES.find(l => l.id === selectedLineId) || PRODUCTION_LINES[0];
               const currentSubTab = factoryTabs[line.id] || 'INSPECTION';
               const lineInspections = inspections.filter(log => log.lineId === line.id);
               const lineAudits = processAudits.filter(aud => aud.lineId === line.id);
 
               return (
-                <div key={line.id} className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
+                <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
                   {/* Section Title and Info */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-150 pb-4">
                     <div>
@@ -770,7 +792,7 @@ export default function ManagerWorkspace({
                   )}
                 </div>
               );
-            })}
+            })()}
           </div>
         )}
 
