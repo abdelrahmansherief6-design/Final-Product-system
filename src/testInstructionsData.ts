@@ -6,6 +6,8 @@ export interface TestInstruction {
   acceptanceCriteria: string[];
 }
 
+import { SHARP_CONSTRUCTION_TESTS_DATA } from './sharpConstructionData';
+
 export const SHARP_PERFORMANCE_TESTS: TestInstruction[] = [
   {
     id: 1,
@@ -797,37 +799,7 @@ export const SHARP_PERFORMANCE_TESTS: TestInstruction[] = [
   }
 ];
 
-export const SHARP_CONSTRUCTION_TESTS: TestInstruction[] = [
-  {
-    id: 1,
-    title: "معايير فحص أبعاد وجودة الصاج الخارجي (Sharp Construction Standard)",
-    objective: "التحقق الإنشائي من أبعاد الهيكل ومظهر صاج الأبواب وخلوه من الانبعاج والاعوجاج.",
-    steps: [
-      "استخدم شريط القياس والـ Caliper لقياس الارتفاع والعمق والعرض ومقارنتها بالرسومات الهندسية المعتمدة.",
-      "افحص جودة دهان البودرة الإلكتروستاتيكي وتأكد من سماكته ومطابقة درجة اللون.",
-      "تأكد من استواء السقف والزوايا القائمة للهيكل بمسواة المياه المغناطيسية."
-    ],
-    acceptanceCriteria: [
-      "الخلو التام من الخدوش والنقر والالتواء في الصاج الخارجي.",
-      "درجة اللون وسماكة الدهان يجب أن تكون مطابقة لبطاقة المواصفات الفنية المعتمدة من توشيبا شارب.",
-      "تسامح الأبعاد الكلية ±1.5 مم كحد أقصى."
-    ]
-  },
-  {
-    id: 2,
-    title: "فحص جودة تثبيت عزل البولي يوريثان وكثافته",
-    objective: "التأكد من انتظام حقن الفوم العازل بجميع جوانب الكابينة الخلفية والجانبية لضمان سلامة العزل الحراري والإنشائي.",
-    steps: [
-      "افحص عشوائياً نقاط الحقن الموزعة على الهيكل وتأكد من عدم وجود انتفاخات غير طبيعية بالصاج.",
-      "تحقق من عدم وجود فراغات أو جيوب هوائية (Voids) باستخدام الفحص بالرنين الخفيف على الهيكل.",
-      "قِس سماكة جدران العزل ومطابقتها للمواصفات التصميمية للثلاجة."
-    ],
-    acceptanceCriteria: [
-      "انتظام تام لمادة الفوم العازل بجميع جوانب الكابينة دون أي تجاويف أو انتفاخ خارجي للصاج.",
-      "سماكة العزل في الحدود المحددة بالرسومات الهندسية لضمان كفاءة الطاقة."
-    ]
-  }
-];
+export const SHARP_CONSTRUCTION_TESTS: TestInstruction[] = SHARP_CONSTRUCTION_TESTS_DATA;
 
 export const TORNADO_PERFORMANCE_TESTS: TestInstruction[] = [
   {
