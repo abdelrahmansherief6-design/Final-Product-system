@@ -3,184 +3,471 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, QualityInspectionLog, ProcessAuditLog, ProductionLineId, RefrigeratorModel } from '../types';
+import { User, QualityInspectionLog, ProductionLineId, RefrigeratorModel } from '../types';
 import { PRODUCTION_LINES, DEFECT_OPTIONS } from '../data';
-import { ShieldCheck, LogOut, CheckCircle, RefreshCcw, ClipboardCheck, Trash2, ArrowLeftRight, Activity, Thermometer, Flame, Gauge, ShieldAlert, PlusCircle, History } from 'lucide-react';
+import { 
+  ShieldCheck, LogOut, CheckCircle2, XCircle, AlertTriangle, ListChecks, History, 
+  BookOpen, Layers, Ban, ClipboardList, Calendar, Search, ArrowRight, HelpCircle, 
+  Archive, Save, PlusCircle, ShieldAlert, Gauge, Activity, FileText, ChevronLeft, 
+  Settings, RefreshCw, Trash2, Printer, FileSpreadsheet, Eye, EyeOff, CheckSquare, 
+  AlertCircle, Sparkles, ClipboardCheck
+} from 'lucide-react';
+import { OfficialReportModal } from './OfficialReportModal';
+import XLSX from 'xlsx-js-style';
 
-interface SupervisorWorkspaceProps {
-  user: User;
-  onLogout: () => void;
-  inspections: QualityInspectionLog[];
-  onUpdateInspection: (id: string, updates: Partial<QualityInspectionLog>) => void;
-  processAudits: ProcessAuditLog[];
-  onAddProcessAudit: (audit: ProcessAuditLog) => void;
-  models: RefrigeratorModel[];
+interface CriticalLog {
+  id: string;
+  lineId: string;
+  tabId?: 'calib' | 'init_ass' | 'injection' | 'final_torque' | 'start_torque' | 'inject_torque' | 'perf_test';
+  inspectorSap: string;
+  vacuumLevel?: number;
+  gasCharge?: number;
+  insulationRes?: number;
+  heliumLeak?: 'PASS' | 'FAIL';
+  timestamp: string;
+  source?: 'WEBSITE' | 'APPSHEET';
+  shift?: string;
+  machine?: string;
+  modelName?: string;
+  rawCharge?: any;
+  date?: string;
+  [key: string]: any;
 }
+
+interface TrialRun {
+  id: string;
+  lineId: string;
+  serialNumber: string;
+  modelId: string;
+  duration: string;
+  cabinetTemp: number;
+  result: 'PASS' | 'FAIL';
+  notes: string;
+  timestamp: string;
+}
+
+interface NCRReport {
+  id: string;
+  lineId: string;
+  title: string;
+  modelId: string;
+  description: string;
+  actionRequired: string;
+  severity: 'CRITICAL' | 'MAJOR';
+  status: 'OPEN' | 'RESOLVED';
+  timestamp: string;
+}
+
+interface LoadingStop {
+  id: string;
+  lineId: string;
+  modelId: string;
+  reason: string;
+  stoppedBy: string;
+  status: 'ACTIVE' | 'RELEASED';
+  timestamp: string;
+}
+
+interface ProductionQty {
+  id: string;
+  lineId: string;
+  target: number;
+  actual: number;
+  notes?: string;
+  timestamp: string;
+}
+
+const CRITICAL_TABS = [
+  { id: 'calib', name: 'معايرة ماكينة الشحن' },
+  { id: 'init_ass', name: 'التجمع الابتدائي' },
+  { id: 'injection', name: 'الحقن' },
+  { id: 'final_torque', name: 'عزوم التجميع النهائي' },
+  { id: 'start_torque', name: 'عزوم بداية خط' },
+  { id: 'inject_torque', name: 'عزوم الحقن' },
+  { id: 'perf_test', name: 'اختبار الأداء' }
+] as const;
 
 export default function SupervisorWorkspace({
   user,
   onLogout,
   inspections,
+  models,
   onUpdateInspection,
   processAudits,
   onAddProcessAudit,
-  models,
-}: SupervisorWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'PENDING_REPAIRS' | 'PROCESS_AUDIT' | 'AUDIT_HISTORY'>('PENDING_REPAIRS');
-
-  // Process Audit form states
-  const [auditLineId, setAuditLineId] = useState<ProductionLineId>(() => {
+}: {
+  user: User;
+  onLogout: () => void;
+  inspections: QualityInspectionLog[];
+  models: RefrigeratorModel[];
+  onUpdateInspection?: any;
+  processAudits?: any;
+  onAddProcessAudit?: any;
+}) {
+  // Line Selection based on Supervisor's assigned factoryId
+  const [lineId, setLineId] = useState<ProductionLineId>(() => {
     if (user.factoryId && user.factoryId !== 'ALL') {
       return user.factoryId;
     }
     return 'LINE_A';
   });
-  const [weldingTemp, setWeldingTemp] = useState(380);
-  const [foamingDensity, setFoamingDensity] = useState(38.5);
-  const [gasPressure, setGasPressure] = useState(2.3);
-  const [vacuumLevel, setVacuumLevel] = useState(0.04);
-  const [groundLeakageOK, setGroundLeakageOK] = useState(true);
-  const [auditNotes, setAuditNotes] = useState('');
-  
-  const [auditSuccess, setAuditSuccess] = useState('');
 
-  // Repair action state (supervisor comments per card)
-  const [supervisorComments, setSupervisorComments] = useState<Record<string, string>>({});
+  // Current active section (matches tech sections visually)
+  const [currentSection, setCurrentSection] = useState<'DASHBOARD' | 'ARCHIVE' | 'CRITICAL_OPS' | 'TRIAL_RUNS' | 'TEST_INSTRUCTIONS' | 'NCR_REPORTS' | 'LOADING_STOPS' | 'PRODUCTION_QTY'>('DASHBOARD');
 
-  // Filters (Restricted by factoryId)
-  const pendingLogs = inspections.filter(
-    (log) => log.status === 'FAIL' && 
-             log.recheckStatus === 'PENDING' &&
-             (!user.factoryId || user.factoryId === 'ALL' || log.lineId === user.factoryId)
-  );
+  // Month selector for statistics
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    return `${yyyy}-${mm}`;
+  });
 
-  // My line audits list (restricted by factoryId)
-  const sortedAudits = [...processAudits]
-    .filter((aud) => !user.factoryId || user.factoryId === 'ALL' || aud.lineId === user.factoryId)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  // Active Detailed Report Preview Modal State
+  const [activeReport, setActiveReport] = useState<QualityInspectionLog | null>(null);
 
-  // Submitting final product repair approval
-  const handleApproveRepair = (logId: string) => {
-    onUpdateInspection(logId, {
-      status: 'PASS',
-      recheckStatus: 'APPROVED_AFTER_REPAIR',
-      supervisorApproved: true,
-      approvalTimestamp: new Date().toISOString(),
-    });
-    
-    // Clear comment state
-    setSupervisorComments(prev => {
-      const copy = { ...prev };
-      delete copy[logId];
-      return copy;
+  // Active Critical Operations Tab
+  const [activeCritTab, setActiveCritTab] = useState<'calib' | 'init_ass' | 'injection' | 'final_torque' | 'start_torque' | 'inject_torque' | 'perf_test'>('calib');
+
+  // Load technician's logs from localStorage to view them live
+  const [criticalLogs] = useState<CriticalLog[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_critical_logs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const [syncedLogs] = useState<CriticalLog[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_synced_critical_logs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const [trialRuns] = useState<TrialRun[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_trial_runs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const [ncrs] = useState<NCRReport[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_ncrs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const [loadingStops] = useState<LoadingStop[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_loading_stops');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  const [productionQuantities] = useState<ProductionQty[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_production_qty');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  // Supervisor reviews: recordId -> { read: boolean, reviewed: boolean }
+  const [reviews, setReviews] = useState<Record<string, { read: boolean; reviewed: boolean }>>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_supervisor_reviews');
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
+
+  // Toggles for Read and Reviewed states with automatic persistence
+  const toggleRead = (id: string) => {
+    setReviews(prev => {
+      const updated = {
+        ...prev,
+        [id]: {
+          read: !prev[id]?.read,
+          reviewed: prev[id]?.reviewed || false
+        }
+      };
+      localStorage.setItem('elaraby_qa_supervisor_reviews', JSON.stringify(updated));
+      return updated;
     });
   };
 
-  // Submitting final product scrapping
-  const handleScrapProduct = (logId: string) => {
-    if (window.confirm('هل أنت متأكد من قرار تكهين وتخريد هذه الثلاجة بالكامل؟ هذا الإجراء غير قابل للتراجع.')) {
-      onUpdateInspection(logId, {
-        status: 'FAIL',
-        recheckStatus: 'SCRAPPED',
-        supervisorApproved: false,
-        approvalTimestamp: new Date().toISOString(),
-      });
-      
-      setSupervisorComments(prev => {
-        const copy = { ...prev };
-        delete copy[logId];
-        return copy;
-      });
+  const toggleReviewed = (id: string) => {
+    setReviews(prev => {
+      const updated = {
+        ...prev,
+        [id]: {
+          read: prev[id]?.read || false,
+          reviewed: !prev[id]?.reviewed
+        }
+      };
+      localStorage.setItem('elaraby_qa_supervisor_reviews', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Naming and formatting helpers
+  const getLineName = (lid: string) => {
+    switch (lid) {
+      case 'LINE_A': return 'مصنع A';
+      case 'LINE_B': return 'مصنع B';
+      case 'LINE_C': return 'مصنع C';
+      default: return lid;
     }
   };
 
-  // Process Quality Audit submission
-  const handleProcessAuditSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const getModelName = (mid: string) => {
+    const found = models.find(m => m.id === mid);
+    return found ? found.name : mid;
+  };
 
-    // Standard calculations
-    const isWeldingOK = weldingTemp >= 375 && weldingTemp <= 395;
-    const isFoamingOK = foamingDensity >= 37 && foamingDensity <= 41;
-    const isGasPressureOK = gasPressure >= 2.2 && gasPressure <= 2.5;
-    const isVacuumOK = vacuumLevel <= 0.06;
+  const safeDateString = (isoString?: string) => {
+    if (!isoString) return '—';
+    try {
+      return new Date(isoString).toLocaleDateString('ar-EG', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    } catch { return '—'; }
+  };
 
-    const newAudit: ProcessAuditLog = {
-      id: `PA-SUP-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      lineId: auditLineId,
-      auditorId: user.id,
-      auditorName: user.name,
-      timestamp: new Date().toISOString(),
-      weldingStationTemp: weldingTemp,
-      weldingOK: isWeldingOK,
-      foamingDensity: foamingDensity,
-      foamingOK: isFoamingOK,
-      gasChargingPressure: gasPressure,
-      gasChargingOK: isGasPressureOK,
-      vacuumLevel: vacuumLevel,
-      vacuumOK: isVacuumOK,
-      safetyGroundLeakageOK: groundLeakageOK,
-      notes: auditNotes || 'عمليات التفتيش والمراقبة الدورية مطابقة ومسجلة.',
+  const safeTimeString = (isoString?: string) => {
+    if (!isoString) return '—';
+    try {
+      return new Date(isoString).toLocaleTimeString('ar-EG', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch { return '—'; }
+  };
+
+  // Helper status colorizer
+  const statusColor = (status: string) => {
+    if (status === 'PASS' || status === 'مطابق' || status === 'RELEASED' || status === 'OK' || status === 'RESOLVED') {
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    }
+    return 'bg-red-50 text-red-700 border border-red-200';
+  };
+
+  // Simplified spreadsheet downloader for compatibility
+  const handleDownloadExcel = (log: QualityInspectionLog) => {
+    const wb = XLSX.utils.book_new();
+    const data = [
+      ["تقرير جودة ثلاجات العربي - فحص العينة العشوائية"],
+      [""],
+      ["رقم السيريال (Serial Number)", log.serialNumber],
+      ["الموديل (Model Name)", getModelName(log.modelId)],
+      ["المفتش الفني (Inspector)", `${log.inspectorName} (SAP: ${log.inspectorSap})`],
+      ["وقت الفحص (Inspection Timestamp)", `${safeDateString(log.timestamp)} ${safeTimeString(log.timestamp)}`],
+      ["خط الإنتاج (Production Line)", getLineName(log.lineId)],
+      ["حالة المطابقة الفنية (Status)", log.status === 'PASS' ? "مطابق (PASS)" : "مرفوض (FAIL)"],
+      [""]
+    ];
+
+    if (log.defects && log.defects.length > 0) {
+      data.push(["العيوب الفنية المرصودة:"]);
+      log.defects.forEach((def, idx) => {
+        const dObj = DEFECT_OPTIONS.find(d => d.id === def.defectOptionId);
+        data.push([`${idx + 1}. ${dObj ? dObj.label : def.defectOptionId} ${def.details ? `(ملاحظة: ${def.details})` : ''}`]);
+      });
+    } else {
+      data.push(["نتائج الفحص: سليم ومطابق لكافة المواصفات المعتمدة."]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, "بيانات الفحص");
+    XLSX.writeFile(wb, `ElAraby_QA_Report_${log.serialNumber}.xlsx`);
+  };
+
+  // Filtering inspections & statistics calculations
+  const lineInspections = inspections.filter(log => log.lineId === lineId);
+  const sortedLineInspections = [...lineInspections].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  
+  const monthlyInspections = lineInspections.filter(log => {
+    const logDate = new Date(log.timestamp);
+    const logY = logDate.getFullYear();
+    const logM = String(logDate.getMonth() + 1).padStart(2, '0');
+    return `${logY}-${logM}` === selectedMonth;
+  });
+
+  const monthTotalInspected = monthlyInspections.length;
+  const monthConforming = monthlyInspections.filter(log => log.status === 'PASS').length;
+  const monthNonConforming = monthTotalInspected - monthConforming;
+
+  const lineTrialRuns = trialRuns.filter(tr => tr.lineId === lineId);
+  const sortedTrialRuns = [...lineTrialRuns].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const monthlyTrialRuns = lineTrialRuns.filter(tr => {
+    const trDate = new Date(tr.timestamp);
+    const trY = trDate.getFullYear();
+    const trM = String(trDate.getMonth() + 1).padStart(2, '0');
+    return `${trY}-${trM}` === selectedMonth;
+  });
+  const monthTrialRunsCount = monthlyTrialRuns.length;
+
+  const lineNcrs = ncrs.filter(ncr => ncr.lineId === lineId);
+  const sortedNcrs = [...lineNcrs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const lineStops = loadingStops.filter(stop => stop.lineId === lineId);
+  const sortedStops = [...lineStops].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const lineQuantities = productionQuantities.filter(q => q.lineId === lineId);
+  const sortedQuantities = [...lineQuantities].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  // Critical logs unified list
+  const allCriticalLogs = useMemo(() => {
+    const localLineLogs = (criticalLogs || [])
+      .filter(l => l && l.lineId === lineId && (l.tabId || 'calib') === activeCritTab)
+      .map(log => ({
+        ...log,
+        source: log.source || 'WEBSITE' as const,
+        shift: log.shift || 'الأولى',
+        machine: log.machine || 'خط التجميع',
+        modelName: log.modelName || getModelName(log.modelName || log.modelId) || 'عام',
+        rawCharge: log.rawCharge || log.gasCharge,
+        date: log.date || safeDateString(log.timestamp)
+      }));
+    
+    const syncedLineLogs = (syncedLogs || []).filter(l => l && l.lineId === lineId && (l.tabId || 'calib') === activeCritTab)
+      .map(log => ({
+        ...log,
+        source: log.source || 'WEBSITE' as const,
+        shift: log.shift || 'الأولى',
+        machine: log.machine || 'خط التجميع',
+        modelName: log.modelName || getModelName(log.modelName || log.modelId) || 'عام',
+        rawCharge: log.rawCharge || log.gasCharge,
+        date: log.date || safeDateString(log.timestamp)
+      }));
+    
+    return [...localLineLogs, ...syncedLineLogs].sort((a, b) => {
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+  }, [criticalLogs, syncedLogs, lineId, activeCritTab, models]);
+
+  // Review progress metrics
+  const totalLogsCount = useMemo(() => {
+    const localLineLogs = (criticalLogs || []).filter(l => l && l.lineId === lineId);
+    const syncedLineLogs = (syncedLogs || []).filter(l => l && l.lineId === lineId);
+    const trialLineLogs = (trialRuns || []).filter(l => l && l.lineId === lineId);
+    const ncrLineLogs = (ncrs || []).filter(l => l && l.lineId === lineId);
+    const stopLineLogs = (loadingStops || []).filter(l => l && l.lineId === lineId);
+    const qtyLineLogs = (productionQuantities || []).filter(l => l && l.lineId === lineId);
+
+    return lineInspections.length + localLineLogs.length + syncedLineLogs.length + trialLineLogs.length + ncrLineLogs.length + stopLineLogs.length + qtyLineLogs.length;
+  }, [lineInspections, criticalLogs, syncedLogs, trialRuns, ncrs, loadingStops, productionQuantities, lineId]);
+
+  const reviewedLogsCount = useMemo(() => {
+    let count = 0;
+    const check = (id: string) => {
+      if (reviews[id]?.reviewed) count++;
     };
+    lineInspections.forEach(l => check(l.id));
+    (criticalLogs || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (syncedLogs || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (trialRuns || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (ncrs || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (loadingStops || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (productionQuantities || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    return count;
+  }, [lineInspections, criticalLogs, syncedLogs, trialRuns, ncrs, loadingStops, productionQuantities, lineId, reviews]);
 
-    onAddProcessAudit(newAudit);
-    
-    // UI Feedback
-    let faultsCount = 0;
-    if (!isWeldingOK) faultsCount++;
-    if (!isFoamingOK) faultsCount++;
-    if (!isGasPressureOK) faultsCount++;
-    if (!isVacuumOK) faultsCount++;
-    if (!groundLeakageOK) faultsCount++;
+  const readLogsCount = useMemo(() => {
+    let count = 0;
+    const check = (id: string) => {
+      if (reviews[id]?.read) count++;
+    };
+    lineInspections.forEach(l => check(l.id));
+    (criticalLogs || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (syncedLogs || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (trialRuns || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (ncrs || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (loadingStops || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    (productionQuantities || []).filter(l => l && l.lineId === lineId).forEach(l => check(l.id));
+    return count;
+  }, [lineInspections, criticalLogs, syncedLogs, trialRuns, ncrs, loadingStops, productionQuantities, lineId, reviews]);
 
-    setAuditSuccess(
-      faultsCount === 0 
-        ? 'تم تسجيل تدقيق الجودة بنجاح! جميع المعايير مطابقة للمواصفات الفنية.' 
-        : `تم تسجيل تدقيق الجودة بوجود عدد (${faultsCount}) معايير خارج النطاقات الحرجة. تم إرسال تنبيه آلي لمدير الدائرة.`
+  // Unified visual component for supervisor actions
+  const renderSupervisorToggles = (recordId: string) => {
+    const isRead = reviews[recordId]?.read || false;
+    const isReviewed = reviews[recordId]?.reviewed || false;
+
+    return (
+      <div className="flex items-center gap-2 justify-center">
+        {/* Read Status Toggle */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleRead(recordId);
+          }}
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+            isRead
+              ? 'bg-emerald-50 border-emerald-250 text-emerald-750 hover:bg-emerald-100/50'
+              : 'bg-zinc-100 border-zinc-250 text-zinc-550 hover:bg-zinc-200'
+          }`}
+          title={isRead ? 'تغيير إلى غير مقروء' : 'تغيير إلى مقروء'}
+        >
+          {isRead ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+          <span>{isRead ? 'مقروء' : 'غير مقروء'}</span>
+        </button>
+
+        {/* Reviewed Status Toggle */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleReviewed(recordId);
+          }}
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+            isReviewed
+              ? 'bg-emerald-50 border-emerald-250 text-emerald-750 hover:bg-emerald-100/50'
+              : 'bg-amber-50 border-amber-250 text-amber-700 hover:bg-amber-100'
+          }`}
+          title={isReviewed ? 'تغيير إلى قيد المراجعة' : 'تغيير إلى تم الاعتماد'}
+        >
+          {isReviewed ? <CheckSquare className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+          <span>{isReviewed ? 'تمت المراجعة' : 'تحت المراجعة'}</span>
+        </button>
+      </div>
     );
-    
-    // Reset Form
-    setWeldingTemp(380);
-    setFoamingDensity(38.5);
-    setGasPressure(2.3);
-    setVacuumLevel(0.04);
-    setGroundLeakageOK(true);
-    setAuditNotes('');
-
-    setTimeout(() => {
-      setAuditSuccess('');
-    }, 6000);
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-zinc-800 flex flex-col font-sans" dir="rtl">
-      {/* Top Header */}
+    <div className="min-h-screen bg-zinc-50 text-zinc-800 flex flex-col font-sans" dir="rtl">
+      
+      {/* Top Header Row */}
       <header className="bg-white border-b border-zinc-200/80 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg text-white">
+            <div className="bg-blue-600 p-2.5 rounded-xl text-white">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-extrabold text-zinc-900">بوابة المشرفين الفنية</h1>
-                <span className="font-mono bg-blue-50 text-blue-600 border border-blue-150 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">
-                  المتابعة والاعتماد
+                <h1 className="text-sm font-extrabold text-zinc-900">بوابة المشرفين الفنية ومراقبة الجودة</h1>
+                <span className="font-mono bg-blue-50 text-blue-600 border border-blue-100 text-[9px] uppercase font-bold px-1.5 py-0.5 rounded">
+                  توشيبا & العربي
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-500">إدارة إصلاح منتجات الثلاجات وتدقيق معايير الجودة للعمليات</p>
+              <p className="text-[10px] text-zinc-400 font-medium">متابعة واعتماد تسجيلات الفنيين لخطوط تجميع الثلاجات</p>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="hidden sm:block text-left">
-              <span className="text-[10px] text-zinc-400 font-bold block">مشرف جودة المصنع</span>
-              <span className="text-xs text-blue-600 font-bold font-sans">{user.name}</span>
+            <div className="hidden sm:block text-right text-xs">
+              <span className="text-[10px] text-zinc-400 font-bold block">المشرف الفني</span>
+              <span className="text-blue-600 font-bold">{user.name}</span>
+              <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded mr-2">
+                كود: {user.code || 'SUP-QA'}
+              </span>
             </div>
             <button
               onClick={onLogout}
-              className="bg-zinc-50 hover:bg-neutral-100 text-zinc-650 hover:text-red-650 border border-zinc-200 hover:border-red-200 p-2.5 rounded-xl transition-all"
+              className="bg-zinc-50 hover:bg-neutral-100 text-zinc-650 hover:text-red-600 border border-zinc-200 hover:border-red-200 p-2.5 rounded-xl transition-all"
               title="تسجيل الخروج"
             >
               <LogOut className="w-4 h-4" />
@@ -191,522 +478,978 @@ export default function SupervisorWorkspace({
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 space-y-6">
-        
-        {/* Supervisor Welcome banner */}
-        <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-zinc-900">التحقق وإصدار شهادات التطابق ومراقبة جودة الإنتاج 🏭</h2>
-            <p className="text-xs text-zinc-550">يمكنك هنا مراجعة معالجة العيوب في خطوط التجميع وتوثيق تدقيق العمليات (Process QC) لغاز الشحن، الفوم، واللحام.</p>
+
+        {/* Global Factory Line Switcher and Month Selector */}
+        <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3.5">
+            <div>
+              <label className="block text-[10px] text-zinc-400 font-extrabold mb-1">المصنع المستهدف بالتدقيق والاعتماد</label>
+              {user.factoryId && user.factoryId !== 'ALL' ? (
+                <div className="bg-blue-50 border border-blue-100 text-blue-700 px-4 py-2 rounded-xl text-xs font-bold">
+                  {getLineName(user.factoryId)}
+                </div>
+              ) : (
+                <select
+                  value={lineId}
+                  onChange={(e) => setLineId(e.target.value as ProductionLineId)}
+                  className="bg-zinc-50 border border-zinc-200 focus:border-blue-500 focus:bg-white rounded-xl px-3 py-2 text-xs font-bold text-zinc-800 outline-none transition-all"
+                >
+                  {PRODUCTION_LINES.map(line => (
+                    <option key={line.id} value={line.id}>
+                      {line.name} ({line.supervisorName})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[10px] text-zinc-400 font-extrabold mb-1">شهر المراقبة والتحليل الإحصائي</label>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-zinc-50 border border-zinc-200 focus:border-blue-500 focus:bg-white rounded-xl px-3.5 py-1.5 text-xs text-center font-bold text-zinc-800 outline-none transition-all"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-zinc-50 border border-zinc-200 px-4 py-2.5 rounded-xl text-center">
-              <span className="block text-[10px] text-zinc-500 font-bold mb-1">بانتظار الاعتماد</span>
-              <span className={`text-sm font-bold font-mono ${pendingLogs.length > 0 ? 'text-amber-600' : 'text-zinc-500'}`}>
-                {pendingLogs.length} ثلاجات
+
+          {/* Supervisor Audit Performance Progress Widget */}
+          <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl px-4 py-2.5 flex items-center gap-4">
+            <div className="text-right">
+              <span className="text-[9px] text-zinc-400 font-bold block">معدل مراجعة البيانات للخط الحالي</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-sm font-black text-blue-650">{reviewedLogsCount} / {totalLogsCount}</span>
+                <span className="text-[10px] text-zinc-400">سجل معتمد</span>
+              </div>
+            </div>
+            <div className="w-20 bg-zinc-200 h-2 rounded-full overflow-hidden relative">
+              <div 
+                className="bg-blue-600 h-full transition-all duration-500" 
+                style={{ width: `${totalLogsCount > 0 ? Math.round((reviewedLogsCount / totalLogsCount) * 100) : 0}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Global Statistics Overview Banner */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1 */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-2 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-600" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-blue-600 font-extrabold block">العينات العشوائية المفحوصة بالشهر</span>
+              <ClipboardCheck className="w-4 h-4 text-blue-500" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-zinc-900 font-mono">{monthTotalInspected}</span>
+              <span className="text-[10px] text-zinc-400">ثلاجات</span>
+            </div>
+            <p className="text-[9px] text-zinc-400">فحص عشوائي روتيني 100% بالخط</p>
+          </div>
+
+          {/* Card 2 */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-2 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-emerald-600 font-extrabold block">العينات المطابقة تمامًا (Pass)</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-emerald-600 font-mono">{monthConforming}</span>
+              <span className="text-[9px] text-emerald-500 font-bold">
+                ({monthTotalInspected > 0 ? Math.round((monthConforming / monthTotalInspected) * 100) : 0}%)
               </span>
             </div>
+            <p className="text-[9px] text-zinc-400">خلو تام من أي ملاحظات فنية</p>
+          </div>
+
+          {/* Card 3 */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-2 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-red-650 font-extrabold block">العينات المرفوضة والعيوب (Fail)</span>
+              <XCircle className="w-4 h-4 text-red-500" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-red-650 font-mono">{monthNonConforming}</span>
+              <span className="text-[9px] text-red-500 font-bold">
+                ({monthTotalInspected > 0 ? Math.round((monthNonConforming / monthTotalInspected) * 100) : 0}%)
+              </span>
+            </div>
+            <p className="text-[9px] text-zinc-400">مرصودة وقيد الإصلاح بالخط</p>
+          </div>
+
+          {/* Card 4 */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-2 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-amber-600 font-extrabold block">تجارب تشغيل العينات والضواغط</span>
+              <Gauge className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-amber-600 font-mono">{monthTrialRunsCount}</span>
+              <span className="text-[10px] text-zinc-400">تجارب نشطة</span>
+            </div>
+            <p className="text-[9px] text-zinc-400">قياس استقرار التيار الكهربائي ومعدل التبريد</p>
           </div>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex border-b border-zinc-200 gap-2">
-          <button
-            onClick={() => setActiveTab('PENDING_REPAIRS')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
-              activeTab === 'PENDING_REPAIRS'
-                ? 'border-blue-600 text-blue-605 bg-white shadow-sm rounded-t-xl border-t border-x border-zinc-200'
-                : 'border-transparent text-zinc-500 hover:text-zinc-850'
-            }`}
-          >
-            <RefreshCcw className="w-4 h-4" />
-            <span>اتخاذ القرار بالمرفوضات ({pendingLogs.length})</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('PROCESS_AUDIT')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
-              activeTab === 'PROCESS_AUDIT'
-                ? 'border-blue-600 text-blue-605 bg-white shadow-sm rounded-t-xl border-t border-x border-zinc-200'
-                : 'border-transparent text-zinc-500 hover:text-zinc-850'
-            }`}
-          >
-            <ClipboardCheck className="w-4 h-4" />
-            <span>تسجيل تدقيق العمليات (Line Audit)</span>
-          </button>
+        {/* ========================================================================= */}
+        {/* CONDITIONAL SECTIONS RENDER */}
+        {/* ========================================================================= */}
 
-          <button
-            onClick={() => setActiveTab('AUDIT_HISTORY')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
-              activeTab === 'AUDIT_HISTORY'
-                ? 'border-blue-600 text-blue-605 bg-white shadow-sm rounded-t-xl border-t border-x border-zinc-200'
-                : 'border-transparent text-zinc-500 hover:text-zinc-850'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            <span>تاريخ ومحاضر تدقيق المعايير ({sortedAudits.length})</span>
-          </button>
-        </div>
+        {currentSection === 'DASHBOARD' ? (
+          <div className="space-y-6">
+            <div className="border-b border-zinc-200 pb-2">
+              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-wider">لوحة تحكم المشرف ومراجعة السجلات</h2>
+              <p className="text-xs text-zinc-500">اختر أحد الأقسام والمصنفات أدناه لمراجعة كافة بيانات الفنيين والتوقيع عليها إلكترونياً</p>
+            </div>
 
-        {/* Success Alert */}
-        <AnimatePresence>
-          {auditSuccess && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className={`p-4 rounded-xl flex items-center gap-3 border shadow-sm ${
-                auditSuccess.includes('خارج النطاقات')
-                  ? 'bg-amber-50 border-amber-200 text-amber-800'
-                  : 'bg-emerald-50 border-emerald-250 text-emerald-800'
-              }`}
-            >
-              {auditSuccess.includes('خارج النطاقات') ? (
-                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" />
-              ) : (
-                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-              )}
-              <div>
-                <span className="font-bold text-xs block">تم توثيق فحص المعايير</span>
-                <p className="text-[11px] mt-0.5">{auditSuccess}</p>
+            {/* Grid of identical Technician data blocks with supervisor review status overlay */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              
+              {/* Item 1: Archive (Daily Inspections) */}
+              <div 
+                onClick={() => setCurrentSection('ARCHIVE')}
+                className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-blue-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
+              >
+                <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-blue-600 group-hover:text-white">
+                  <Archive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-zinc-900">أرشيف الفحوصات اليومية</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">تصفح سجلات الفحص العشوائي للثلاجات والتوقيع عليها أو تصديرها وطباعتها كتقارير رسمية.</p>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-blue-600 font-bold pt-2 border-t border-zinc-100">
+                  <span>فتح السجلات ({lineInspections.length})</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* Dynamic Tab Panel Container */}
-        {activeTab === 'PENDING_REPAIRS' && (
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2 mb-2">
-              <span className="w-2 h-4 bg-blue-600 rounded-sm block" />
-              ثلاجات غير مطابقة بانتظار قرار إعادة الاعتماد أو التكهين (تخريد)
-            </h3>
-
-            {pendingLogs.length === 0 ? (
-              <div className="bg-white border border-zinc-200 rounded-2xl p-12 text-center text-zinc-500 space-y-1 shadow-sm">
-                <CheckCircle className="w-8 h-8 text-emerald-605 mx-auto" />
-                <h4 className="text-xs font-bold text-zinc-800 pt-1">خط تجميع الثلاجات نظيف 100%!</h4>
-                <p className="text-[11px] text-zinc-400">لا توجد ثلاجات مرفوضة معلقة حاليًا بانتظار الاعتماد بعد الإصلاح.</p>
+              {/* Item 2: Critical Operations */}
+              <div 
+                onClick={() => setCurrentSection('CRITICAL_OPS')}
+                className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-red-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
+              >
+                <div className="w-11 h-11 bg-red-50 text-red-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-red-600 group-hover:text-white">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-zinc-900">العمليات الحرجة بمصنع {getLineName(lineId)}</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">مراقبة قياسات الشحن، عزل الفوم، عزم مفصلات الأبواب، واختبار الأداء الكهربائي المتزامن.</p>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-red-650 font-bold pt-2 border-t border-zinc-100">
+                  <span>مراجعة 7 تبويبات فنية</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pendingLogs.map((log) => {
-                  const modelObj = models.find((m) => m.id === log.modelId);
-                  const lineObj = PRODUCTION_LINES.find((l) => l.id === log.lineId);
-                  return (
-                    <motion.div
-                      layout
-                      key={log.id}
-                      className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4"
-                    >
-                      <div className="space-y-3.5">
-                        {/* Header card info */}
-                        <div className="flex items-center justify-between border-b border-zinc-100 pb-2.5">
-                          <div>
-                            <span className="text-[9px] font-mono text-zinc-600 bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded uppercase font-bold">
-                              {lineObj ? lineObj.name.split(' ')[0] + ' ' + lineObj.name.split(' ')[1] : log.lineId}
-                            </span>
-                            <span className="font-mono text-xs font-bold block mt-1 text-zinc-900 tracking-wider">
-                              SN: {log.serialNumber}
-                            </span>
-                          </div>
-                          <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded text-[10px] font-bold">
-                            بانتظار التأكيد
+
+              {/* Item 3: Trial Runs */}
+              <div 
+                onClick={() => setCurrentSection('TRIAL_RUNS')}
+                className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-amber-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
+              >
+                <div className="w-11 h-11 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-amber-600 group-hover:text-white">
+                  <Gauge className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-zinc-900">تجارب تشغيل العينات اليومية</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">تتبع درجات حرارة كابينة التبريد والفريزر واستقرار التيار للوحدات قيد التجارب الفنية.</p>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-amber-650 font-bold pt-2 border-t border-zinc-100">
+                  <span>عرض تجارب التشغيل ({lineTrialRuns.length})</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Item 4: NCR Reports */}
+              <div 
+                onClick={() => setCurrentSection('NCR_REPORTS')}
+                className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-rose-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
+              >
+                <div className="w-11 h-11 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-rose-600 group-hover:text-white">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-zinc-900">تقارير عدم المطابقة الفنية (NCR)</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">سجل حالات الخلل أو الأعطال المتكررة المرصودة بالخط والقرارات التصحيحية لضمان مطابقتها.</p>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-rose-650 font-bold pt-2 border-t border-zinc-100">
+                  <span>عرض التقارير النشطة ({lineNcrs.length})</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Item 5: Loading Stops */}
+              <div 
+                onClick={() => setCurrentSection('LOADING_STOPS')}
+                className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-zinc-700 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
+              >
+                <div className="w-11 h-11 bg-zinc-100 text-zinc-700 rounded-xl flex items-center justify-center transition-colors group-hover:bg-zinc-700 group-hover:text-white">
+                  <Ban className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-zinc-900">قرارات إيقاف شحن الموديلات</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">أوامر حظر شحن موديلات معينة بسبب عيوب فنية طارئة وتتبع حالات فك الحظر الفني.</p>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-zinc-750 font-bold pt-2 border-t border-zinc-100">
+                  <span>عرض أوامر الحظر ({lineStops.length})</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Item 6: Production Quantities */}
+              <div 
+                onClick={() => setCurrentSection('PRODUCTION_QTY')}
+                className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-emerald-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group"
+              >
+                <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+                  <TrendingUpIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-zinc-900">الكميات والإنتاجية المحققة بالخط</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">مطابقة الإنتاجية الفعلية لخط تجميع الثلاجات مع المستهدف المخطط لكل وردية عمل فنية.</p>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-emerald-650 font-bold pt-2 border-t border-zinc-100">
+                  <span>عرض تقارير الإنتاجية ({lineQuantities.length})</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Item 7: Test Instructions */}
+              <div 
+                onClick={() => setCurrentSection('TEST_INSTRUCTIONS')}
+                className="bg-white border border-zinc-200 rounded-2xl p-5 hover:border-violet-500 hover:shadow-md cursor-pointer transition-all space-y-3 relative group sm:col-span-2 lg:col-span-3"
+              >
+                <div className="w-11 h-11 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center transition-colors group-hover:bg-violet-600 group-hover:text-white">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-zinc-900">تعليمات وكتيب اختبارات الجودة المعتمد لمجموعة العربي</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">تصفح المعايير والتعليمات القياسية لفحص المظهر ودائرة التبريد والدائرة الكهربائية والملحقات المعتمدة رسمياً.</p>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-violet-600 font-bold pt-2 border-t border-zinc-100">
+                  <span>تصفح كتيب الجودة والمعايير المعتمدة</span>
+                  <ChevronLeft className="w-4 h-4" />
+                </div>
+              </div>
+
+            </div>
+          </div>
+        ) : null}
+
+        {/* ========================================================================= */}
+        {/* SUB SECTION: ARCHIVE (Daily Inspections list with supervisor approvals) */}
+        {/* ========================================================================= */}
+        {currentSection === 'ARCHIVE' ? (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-zinc-200 pb-3 text-right">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentSection('DASHBOARD')}
+                  className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <div>
+                  <h2 className="text-sm font-black text-zinc-900">أرشيف فحوصات خط الإنتاج ({getLineName(lineId)})</h2>
+                  <p className="text-[10px] text-zinc-400">تصفح واعتماد سجلات الفحوصات الفنية لخط التجميع</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-zinc-550 uppercase tracking-wider text-[10px] font-bold bg-zinc-50">
+                    <th className="py-3 px-4">رقم السيريال (Serial)</th>
+                    <th className="py-3 px-4">الموديل (Model)</th>
+                    <th className="py-3 px-4">المفتش</th>
+                    <th className="py-3 px-4">وقت الفحص</th>
+                    <th className="py-3 px-4 text-center">النتيجة</th>
+                    <th className="py-3 px-4">أعطال الوحدة إن وجدت</th>
+                    <th className="py-3 px-4 text-center">التوقيع والاعتماد الفني للمشرف</th>
+                    <th className="py-3 px-4 text-center">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {sortedLineInspections.map((log) => {
+                    const modelObj = models.find(m => m.id === log.modelId);
+                    return (
+                      <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="py-3 px-4 font-mono font-bold text-zinc-950 tracking-wider">
+                          {log.serialNumber}
+                        </td>
+                        <td className="py-3 px-4 text-zinc-800 font-bold">
+                          {modelObj ? modelObj.name : log.modelId}
+                        </td>
+                        <td className="py-3 px-4 text-zinc-600 font-bold">
+                          {log.inspectorName} ({log.inspectorSap})
+                        </td>
+                        <td className="py-3 px-4 text-zinc-500 font-mono">
+                          {safeDateString(log.timestamp)} - {safeTimeString(log.timestamp)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                            log.status === 'PASS' ? 'bg-emerald-50 border-emerald-250 text-emerald-750' : 'bg-red-50 border-red-250 text-red-750'
+                          }`}>
+                            {log.status === 'PASS' ? 'مطابق' : 'مرفوض'}
                           </span>
-                        </div>
-
-                        {/* Model details */}
-                        <div className="space-y-1 text-xs">
-                          <label className="text-[10px] text-zinc-400 font-bold block">الموديل الفني والمواصفة</label>
-                          <span className="font-bold text-zinc-800">{modelObj ? modelObj.name : log.modelId}</span>
-                        </div>
-
-                        {/* Defect details registered by tech */}
-                        <div className="space-y-1 text-xs bg-red-50/30 p-3 rounded-xl border border-red-100">
-                          <label className="text-[10px] text-red-700 font-bold flex items-center gap-1 mb-1.5">
-                            📌 قائمة العيوب والعيّنات المرفوضة:
-                          </label>
-                          <ul className="space-y-1.5">
-                            {log.defects.map((def, idx) => {
-                              const defOpt = DEFECT_OPTIONS.find((d) => d.id === def.defectOptionId);
-                              return (
-                                <li key={idx} className="text-[11px] text-red-700 flex items-start gap-1">
-                                  <span className="text-red-500 font-bold shrink-0">•</span>
-                                  <div>
-                                    <strong className="text-zinc-900">{defOpt ? defOpt.label : def.defectOptionId}</strong>
-                                    {def.details && <p className="text-[10px] text-zinc-500 mt-0.5 font-bold">ملاحظات الفني: {def.details}</p>}
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-
-                        {/* Submitter info */}
-                        <div className="flex justify-between items-center text-[10px] text-zinc-400 pt-1.5 border-t border-zinc-100">
-                          <span>الفاحص: <strong className="text-zinc-700">{log.inspectorName.split(' ')[0]}</strong></span>
-                          <span>الوقت: <strong className="font-mono text-zinc-700">
-                            {new Date(log.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                          </strong></span>
-                        </div>
-                      </div>
-
-                      {/* Decision CTA */}
-                      <div className="pt-4 border-t border-zinc-150 space-y-2.5">
-                        <div className="flex gap-2">
+                        </td>
+                        <td className="py-3 px-4 text-zinc-500 font-sans max-w-xs truncate">
+                          {log.defects.length === 0 ? (
+                            <span className="text-emerald-600 text-[10px] font-bold">• سليم</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {log.defects.map((def, id) => {
+                                const defObj = DEFECT_OPTIONS.find(d => d.id === def.defectOptionId);
+                                return (
+                                  <span key={id} className="bg-red-50 text-red-600 px-1.5 py-0.2 rounded text-[9px] border border-red-150 font-bold">
+                                    {defObj ? defObj.label : def.defectOptionId}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </td>
+                        {/* Interactive Supervisor verification actions */}
+                        <td className="py-3 px-4 text-center">
+                          {renderSupervisorToggles(log.id)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
                           <button
-                            onClick={() => handleApproveRepair(log.id)}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                            onClick={() => setActiveReport(log)}
+                            className="p-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-900 rounded-lg transition-colors cursor-pointer"
+                            title="عرض وطباعة التقرير بالكامل"
                           >
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>معتمد بعد الإصلاح</span>
+                            <Printer className="w-3.5 h-3.5" />
                           </button>
-                          
-                          <button
-                            onClick={() => handleScrapProduct(log.id)}
-                            className="bg-zinc-100 hover:bg-red-50 hover:text-red-600 border border-zinc-250 hover:border-red-205 px-3 py-2 rounded-xl text-zinc-650 flex items-center justify-center transition-all shrink-0"
-                            title="تكهين الثلاجة (تخريد)"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {sortedLineInspections.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="text-center py-12 text-zinc-400 font-bold">لا توجد فحوصات مسجلة في الأرشيف لخط الإنتاج هذا.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        )}
+        ) : null}
 
-        {activeTab === 'PROCESS_AUDIT' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ========================================================================= */}
+        {/* SUB SECTION: CRITICAL OPERATIONS (7 tabs with supervisor verification) */}
+        {/* ========================================================================= */}
+        {currentSection === 'CRITICAL_OPS' ? (
+          <div className="space-y-6 animate-fadeIn">
             
-            {/* Left/Middle Column Form */}
-            <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="border-b border-zinc-200 pb-3 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
-                  <ClipboardCheck className="w-4 h-4 text-blue-600" />
-                  تسجيل نموذج تدقيق الجودة للعمليات الفنية بالخط (Process QC)
-                </h3>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentSection('DASHBOARD')}
+                  className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-600 transition-colors cursor-pointer"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <div>
+                  <h2 className="text-sm font-black text-zinc-900">العمليات الحرجة وفحوصات الجودة بمصنع {getLineName(lineId)}</h2>
+                  <p className="text-[10px] text-zinc-400">مراقبة واعتماد كافة قياسات الأجهزة وعزوم ربط الباب والتجميع</p>
+                </div>
               </div>
+            </div>
 
-              <form onSubmit={handleProcessAuditSubmit} className="space-y-5">
-                {/* Audit Line */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-zinc-550 font-bold mb-2">خط الإنتاج المستهدف بالتدقيق</label>
-                    {user.factoryId && user.factoryId !== 'ALL' ? (
-                      <div className="w-full bg-zinc-100 border border-zinc-200 text-zinc-700 rounded-xl px-3 py-2.5 text-xs font-bold font-sans">
-                        {PRODUCTION_LINES.find(l => l.id === user.factoryId)?.name || user.factoryId}
-                      </div>
-                    ) : (
-                      <select
-                        value={auditLineId}
-                        onChange={(e) => setAuditLineId(e.target.value as ProductionLineId)}
-                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-xs text-zinc-850 outline-none transition-all"
-                      >
-                        {PRODUCTION_LINES.map(line => (
-                          <option key={line.id} value={line.id}>
-                            {line.name} ({line.supervisorName})
-                          </option>
-                        ))}
-                      </select>
+            {/* Department / Sections (Tabs) Slider */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+              {CRITICAL_TABS.map(tab => {
+                const isActive = activeCritTab === tab.id;
+                const tabLogs = [...(syncedLogs || []), ...(criticalLogs || [])].filter(l => l && l.lineId === lineId && (l.tabId || 'calib') === tab.id);
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveCritTab(tab.id as any)}
+                    className={`px-4 py-2 text-xs font-extrabold rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 border cursor-pointer ${
+                      isActive 
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
+                        : 'bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <span>{tab.name}</span>
+                    {tabLogs.length > 0 && (
+                      <span className={`px-1.5 py-0.5 text-[9px] rounded-full font-black ${isActive ? 'bg-blue-500 text-white' : 'bg-zinc-100 text-zinc-600'}`}>
+                        {tabLogs.length}
+                      </span>
                     )}
-                  </div>
-                  <div>
-                    <label className="block text-xs text-zinc-550 font-bold mb-2">اسم المشرف المدقق</label>
-                    <input
-                      type="text"
-                      value={user.name}
-                      disabled
-                      className="w-full bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2.5 text-xs text-zinc-500 font-bold"
-                    />
-                  </div>
-                </div>
-
-                {/* Audit Parameters sliders and manual entering inside tolerances limits */}
-                <div className="space-y-4 pt-2 border-t border-zinc-150">
-                  <span className="text-[11px] text-blue-600 font-bold block mb-1">
-                    يرجى قراءة وتسجيل القيم الرقمية من شاشات التحكم بالمحطات:
-                  </span>
-
-                  {/* 1. Welding temperature */}
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-205 space-y-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                        <Flame className="w-3.5 h-3.5 text-orange-500" />
-                        درجة حرارة محطة لحام مواسير نحاس الكوندنسر والفلتر
-                      </span>
-                      <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
-                        weldingTemp >= 375 && weldingTemp <= 395 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
-                        {weldingTemp} °C (المعيار: 375 - 395 °C)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min="360"
-                        max="410"
-                        value={weldingTemp}
-                        onChange={(e) => setWeldingTemp(parseInt(e.target.value))}
-                        className="flex-1 accent-orange-500 cursor-ew-resize"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 2. Foaming Density */}
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-205 space-y-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                        <Thermometer className="w-3.5 h-3.5 text-blue-500" />
-                        كثافة مركب عزل الفوم بداخل جدران الهيكل الخارجي
-                      </span>
-                      <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
-                        foamingDensity >= 37 && foamingDensity <= 41 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
-                        {foamingDensity} kg/m³ (المعيار: 37 - 41 kg/m³)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min="34"
-                        max="44"
-                        step="0.1"
-                        value={foamingDensity}
-                        onChange={(e) => setFoamingDensity(parseFloat(e.target.value))}
-                        className="flex-1 accent-blue-550 cursor-ew-resize"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3. Gas Charging pressure */}
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-205 space-y-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                        <Gauge className="w-3.5 h-3.5 text-cyan-500" />
-                        ضغط شحن غاز الفريون المبرد (R600a Engine)
-                      </span>
-                      <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
-                        gasPressure >= 2.2 && gasPressure <= 2.5 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
-                        {gasPressure} bar (المعيار: 2.2 - 2.5 bar)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min="2.0"
-                        max="2.8"
-                        step="0.05"
-                        value={gasPressure}
-                        onChange={(e) => setGasPressure(parseFloat(e.target.value))}
-                        className="flex-1 accent-cyan-555 cursor-ew-resize"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 4. Vacuum Speed Level */}
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-205 space-y-2.5">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
-                        <Activity className="w-3.5 h-3.5 text-indigo-500" />
-                        مستوى تفريغ الهواء بالأنابيب (Vacuum Level) قبل الشحن
-                      </span>
-                      <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded ${
-                        vacuumLevel <= 0.06 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
-                        {vacuumLevel} mbar (المعيار: ≤ 0.06 mbar)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min="0.01"
-                        max="0.10"
-                        step="0.005"
-                        value={vacuumLevel}
-                        onChange={(e) => setVacuumLevel(parseFloat(e.target.value))}
-                        className="flex-1 accent-indigo-555 cursor-ew-resize"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 5. Electricity Ground leakage calibrator */}
-                  <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-205 flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-805 flex items-center gap-1.5">
-                      <ShieldAlert className="w-3.5 h-3.5 text-red-500 animate-pulse" />
-                      معايرة واختبار الأمان وجهاز تيار التسريب الأرضي (Calibration Ground Safety)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setGroundLeakageOK(!groundLeakageOK)}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                        groundLeakageOK 
-                          ? 'bg-emerald-50 border-emerald-300 text-emerald-705' 
-                          : 'bg-red-50 border-red-300 text-red-705'
-                      }`}
-                    >
-                      {groundLeakageOK ? 'نشط ومعاير (Pass)' : 'فاشل المعايرة (Fail)'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Audit notes and Submit button */}
-                <div className="space-y-3 pt-3">
-                  <label className="block text-xs text-zinc-650 font-bold">ملاحظات التدقيق وحالة خط تجميع الثلاجات</label>
-                  <textarea
-                    rows={2}
-                    value={auditNotes}
-                    onChange={(e) => setAuditNotes(e.target.value)}
-                    placeholder="ملاحظات اختيارية عن استقرار المعايير أو أي أخطاء ميكانيكية بالخط..."
-                    className="w-full bg-zinc-55/40 border border-zinc-200/90 focus:border-blue-500 focus:bg-white text-xs px-3.5 py-2.5 rounded-xl text-zinc-900 outline-none transition-all"
-                  />
-
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="submit"
-                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-sm"
-                    >
-                      <PlusCircle className="w-4 h-4" />
-                      <span>حفظ ونشر التقرير بالشبكة</span>
-                    </button>
-                  </div>
-                </div>
-              </form>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Right Instructions/Tolerances card */}
-            <div className="lg:col-span-1 space-y-4">
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-                <span className="text-xs font-mono text-blue-600 uppercase font-bold tracking-wider block">
-                  دليل معايير الجودة للعمليات الفنية
-                </span>
-                <h4 className="text-sm font-bold text-zinc-900 pb-2 border-b border-zinc-150">
-                  لوحة المراقبة المعيارية لمجموعات التبريد وعزل الثلاجة
-                </h4>
-
-                <div className="space-y-3.5 text-xs text-zinc-550 leading-relaxed">
-                  <p>
-                     يجب على المشرف القيام بهذا التدقيق مرة واحدة بكل نوبة عمل فنية على الأقل، للتأكد من المحافظة على الجودة العالية لنفس معايير مجموعة دوجان وتوشيبا وبناء الثلاجات.
-                  </p>
-
-                  <div className="space-y-2.5 pt-3">
-                    <div className="flex items-start gap-2">
-                      <span className="w-2 h-2 rounded-full bg-orange-500 mt-1 shrink-0" />
-                      <div>
-                        <strong className="text-zinc-800 block">درجة الحرارة المستهدفة للحام:</strong>
-                        <span>380 درجة مئوية (المدى الآمن لفوهات غاز الأكسجين واللحامات للوصلات).</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500 mt-1 shrink-0" />
-                      <div>
-                        <strong className="text-zinc-800 block">كثافة الفوم العازل:</strong>
-                        <span>38-40 كجم/متر مكعب (لضمان كفاءة التبريد السريع وعدم تسريب الفريزر للرطوبة).</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-500 mt-1 shrink-0" />
-                      <div>
-                        <strong className="text-zinc-800 block">ضغط تعبئة الفريون R600a:</strong>
-                        <span>2.3 بار (الوزن الدقيق لضاغط الثلاجات الحديثة).</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'AUDIT_HISTORY' && (
-          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
-              <History className="w-4 h-4 text-blue-600" />
-              تاريخ ومحاضر تدقيق العمليات الفنية للخطوط
-            </h3>
-
-            {sortedAudits.length === 0 ? (
-              <div className="text-center py-12 text-zinc-450 text-xs">
-                لم يتم تسجيل أي محاضر تدقيق عمليات جودة فنية حتى الآن.
-              </div>
-            ) : (
+            {/* List Table with Review statuses */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-xs">
                   <thead>
                     <tr className="border-b border-zinc-200 text-zinc-550 uppercase tracking-wider text-[10px] font-bold bg-zinc-50">
-                      <th className="py-3 px-4">رقم المحضر</th>
-                      <th className="py-3 px-4">خط الإنتاج</th>
-                      <th className="py-3 px-4">المدقق</th>
-                      <th className="py-3 px-4">درجة حرارة اللحام</th>
-                      <th className="py-3 px-4">كثافة الفوم</th>
-                      <th className="py-3 px-4">ضغط غاز المبرد</th>
-                      <th className="py-3 px-4">سرعة التفريغ</th>
-                      <th className="py-3 px-4 text-center">تيار التسريب</th>
-                      <th className="py-3 px-4">الوقت والتاريخ</th>
+                      <th className="p-3">رقم المفتش فني (Inspector)</th>
+                      <th className="p-3">التاريخ والوقت</th>
+                      
+                      {activeCritTab === 'calib' && (
+                        <>
+                          <th className="p-3">رقم ماكينة الشحن</th>
+                          <th className="p-3">الموديل الفني للثلاجة</th>
+                          <th className="p-3 text-center">كمية غاز الشحن المستهدفة (جرام)</th>
+                        </>
+                      )}
+
+                      {activeCritTab === 'init_ass' && (
+                        <>
+                          <th className="p-3">كود الموديل</th>
+                          <th className="p-3 text-center">تطابق وتجانس الفولتيات والجهود</th>
+                          <th className="p-3 text-center">أعطال التجميع الابتدائي إن وجدت</th>
+                          <th className="p-3 text-center">النتيجة</th>
+                        </>
+                      )}
+
+                      {activeCritTab === 'injection' && (
+                        <>
+                          <th className="p-3 text-center">حرارة فوم الحقن (°C)</th>
+                          <th className="p-3 text-center">ضغط مكبس الحقن (bar)</th>
+                          <th className="p-3 text-center">كثافة مادة عزل الفوم (kg/m³)</th>
+                          <th className="p-3 text-center">النتيجة</th>
+                        </>
+                      )}
+
+                      {activeCritTab === 'final_torque' && (
+                        <>
+                          <th className="p-3 text-center">مفصلة الباب العلوية (N.m)</th>
+                          <th className="p-3 text-center">مفصلة الباب الوسطى (N.m)</th>
+                          <th className="p-3 text-center">مفصلة الباب السفلية (N.m)</th>
+                          <th className="p-3 text-center">مدة تفريغ الفاكيوم (ثانية)</th>
+                          <th className="p-3 text-center">عمق ماسورة الكابلري (mm)</th>
+                          <th className="p-3 text-center">النتيجة</th>
+                        </>
+                      )}
+
+                      {activeCritTab === 'start_torque' && (
+                        <>
+                          <th className="p-3 text-center">موضع تجميع شاصيه الضاغط الماتور (N.m)</th>
+                          <th className="p-3 text-center">مسامير قاعدة التجميع الحديدية (N.m)</th>
+                          <th className="p-3 text-center">النتيجة</th>
+                        </>
+                      )}
+
+                      {activeCritTab === 'inject_torque' && (
+                        <>
+                          <th className="p-3 text-center">عزم تجميع الأرجل الأمامية (N.m)</th>
+                          <th className="p-3 text-center">عزم تجميع الأرجل الخلفية (N.m)</th>
+                          <th className="p-3 text-center">مكابس الحقن وزاوية ربط البوردة (N.m)</th>
+                          <th className="p-3 text-center">النتيجة</th>
+                        </>
+                      )}
+
+                      {activeCritTab === 'perf_test' && (
+                        <>
+                          <th className="p-3 text-center">حرارة الغرفة الفنية (°C)</th>
+                          <th className="p-3 text-center">شدة شد الحزام الكرتوني كرتون الشحن (kg)</th>
+                          <th className="p-3 text-center">حالة اختبار الأمان الكهربائي والجهد</th>
+                          <th className="p-3 text-center">النتيجة النهائية</th>
+                        </>
+                      )}
+
+                      <th className="p-3 text-center">التوقيع والاعتماد الفني للمشرف</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
-                    {sortedAudits.map((item) => {
-                      const lineObj = PRODUCTION_LINES.find(l => l.id === item.lineId);
-                      const hasFailure = !item.weldingOK || !item.foamingOK || !item.gasChargingOK || !item.vacuumOK || !item.safetyGroundLeakageOK;
-                      return (
-                        <tr key={item.id} className={`hover:bg-zinc-55/30 transition-colors ${hasFailure ? 'bg-amber-50/60' : ''}`}>
-                          <td className="py-3 px-4 font-mono font-bold text-zinc-500">
-                            {item.id}
-                          </td>
-                          <td className="py-3 px-4 font-bold text-zinc-800">
-                            {lineObj ? lineObj.name.split(' ')[0] + ' ' + lineObj.name.split(' ')[1] : item.lineId}
-                          </td>
-                          <td className="py-3 px-4 text-zinc-650">
-                            {item.auditorName.split(' ')[0]} {item.auditorName.split(' ')[1] || ''}
-                          </td>
-                          <td className={`py-3 px-4 font-mono font-bold ${item.weldingOK ? 'text-emerald-750' : 'text-red-750'}`}>
-                            {item.weldingStationTemp} °C {!item.weldingOK && '⚠️'}
-                          </td>
-                          <td className={`py-3 px-4 font-mono font-bold ${item.foamingOK ? 'text-emerald-750' : 'text-red-750'}`}>
-                            {item.foamingDensity} kg/m³ {!item.foamingOK && '⚠️'}
-                          </td>
-                          <td className={`py-3 px-4 font-mono font-bold ${item.gasChargingOK ? 'text-emerald-750' : 'text-red-750'}`}>
-                            {item.gasChargingPressure} bar {!item.gasChargingOK && '⚠️'}
-                          </td>
-                          <td className={`py-3 px-4 font-mono font-bold ${item.vacuumOK ? 'text-emerald-750' : 'text-red-750'}`}>
-                            {item.vacuumLevel} mbar {!item.vacuumOK && '⚠️'}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className={`inline-flex px-2.5 py-0.5 rounded text-[10px] font-bold ${item.safetyGroundLeakageOK ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                              {item.safetyGroundLeakageOK ? 'معاير' : 'خارج النطاق'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-zinc-400">
-                            {new Date(item.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {allCriticalLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="p-3 font-mono font-bold text-zinc-900">
+                          {log.inspectorSap}
+                          <span className="text-[9px] bg-zinc-100 text-zinc-500 font-bold px-1 py-0.2 rounded mr-1.5 uppercase tracking-wide">
+                            {log.source || 'WEBSITE'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-zinc-600 font-mono">
+                          {log.date || safeDateString(log.timestamp)}
+                          <span className="text-[9px] text-zinc-400 block font-bold">
+                            وردية {log.shift}
+                          </span>
+                        </td>
+
+                        {/* Tab specific cells */}
+                        {activeCritTab === 'calib' && (
+                          <>
+                            <td className="p-3 font-bold text-zinc-700">{log.machine}</td>
+                            <td className="p-3 text-zinc-650 truncate max-w-[150px]">{log.modelName}</td>
+                            <td className="p-3 font-mono font-black text-center text-zinc-950">{log.rawCharge || log.gasCharge} جرام</td>
+                          </>
+                        )}
+
+                        {activeCritTab === 'init_ass' && (
+                          <>
+                            <td className="p-3 font-bold text-zinc-700">{log.modelCode || 'عام'}</td>
+                            <td className="p-3 text-center font-mono text-[10px] text-zinc-650">
+                              {`Y:${log.Y ?? '0'} | X:${log.X ?? '0'} | N:${log.N ?? '0'} | M:${log.M ?? '0'} | L:${log.L ?? '0'} | W:${log.W ?? '0'} | P:${log.P ?? '0'} | R:${log.R ?? '0'} | S:${log.S ?? '0'}`}
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex flex-wrap justify-center gap-1 max-w-[280px] mx-auto">
+                                {[
+                                  { k: 'ضبعه', v: log.check_dabsha },
+                                  { k: 'خدوش', v: log.check_scratch },
+                                  { k: 'ألومنيوم', v: log.check_aluminum_tape },
+                                  { k: 'هوت بايب', v: log.check_hot_pipe },
+                                  { k: 'عجينة', v: log.check_paste },
+                                  { k: 'فوم', v: log.check_foam_back },
+                                  { k: 'ضفيرة', v: log.check_wiring_clip },
+                                  { k: 'سيلر', v: log.check_hot_sealer },
+                                  { k: 'باركود', v: log.check_barcode_date },
+                                  { k: 'بوردة', v: log.check_pcb_test },
+                                  { k: 'صرف', v: log.check_drain_hose },
+                                  { k: 'مفصلة', v: log.check_door_fixtures }
+                                ].map((item, idx) => (
+                                  <span
+                                    key={idx}
+                                    className={`px-1 py-0.2 rounded text-[8px] font-black ${
+                                      item.v === 'NG' ? 'bg-red-100 text-red-750' : 'bg-emerald-50 text-emerald-800'
+                                    }`}
+                                  >
+                                    {item.k}: {item.v || 'OK'}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(log.assemblyStatus || 'PASS')}`}>
+                                {log.assemblyStatus || 'PASS'}
+                              </span>
+                            </td>
+                          </>
+                        )}
+
+                        {activeCritTab === 'injection' && (
+                          <>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.manualY || log.tempFoam || '38'} °C</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.manualX || log.pressFoam || '2.3'} bar</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.manualN || log.densityFoam || '38.5'} kg/m³</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(log.assemblyStatus || 'PASS')}`}>
+                                {log.assemblyStatus || 'PASS'}
+                              </span>
+                            </td>
+                          </>
+                        )}
+
+                        {activeCritTab === 'final_torque' && (
+                          <>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.ftHingeTopL1 || '4.5'} | {log.ftHingeTopC1 || '4.5'} | {log.ftHingeTopR1 || '4.5'}</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.ftHingeMidL1 || '3.2'} | {log.ftHingeMidR1 || '3.2'}</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.ftHingeBotL1 || '4.8'} | {log.ftHingeBotR1 || '4.8'}</td>
+                            <td className="p-3 text-center font-mono text-zinc-600">{log.ftVacuumCycleTime || '45'} ثانية</td>
+                            <td className="p-3 text-center font-mono text-zinc-650">{log.ftCapillaryDepth || '120'} mm</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(log.torqueStatus || 'PASS')}`}>
+                                {log.torqueStatus || 'PASS'}
+                              </span>
+                            </td>
+                          </>
+                        )}
+
+                        {activeCritTab === 'start_torque' && (
+                          <>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.stCompBaseFrontL1 || '3.8'} | {log.stCompBaseFrontR1 || '3.8'}</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.stBaseScrewFrontL1 || '2.9'} | {log.stBaseScrewFrontR1 || '2.9'}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(log.startTorqueStatus || 'PASS')}`}>
+                                {log.startTorqueStatus || 'PASS'}
+                              </span>
+                            </td>
+                          </>
+                        )}
+
+                        {activeCritTab === 'inject_torque' && (
+                          <>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.itLegFrontL1 || '4.1'} | {log.itLegFrontR1 || '4.1'}</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.itLegBackL2 || '3.9'} | {log.itLegBackR2 || '3.9'}</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-800">{log.itScrewFPL || '2.8'} N.m</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(log.injectTorqueStatus || 'PASS')}`}>
+                                {log.injectTorqueStatus || 'PASS'}
+                              </span>
+                            </td>
+                          </>
+                        )}
+
+                        {activeCritTab === 'perf_test' && (
+                          <>
+                            <td className="p-3 text-center font-mono text-zinc-805">{log.ptTempPerfRoom || '25'} °C</td>
+                            <td className="p-3 text-center font-mono text-zinc-805">{log.ptStrapTightL1 || '45'} | {log.ptStrapTightL2 || '45'} kg</td>
+                            <td className="p-3 text-center font-bold text-emerald-600">
+                              {log.pt_check_electric_insulation === 'OK' ? 'آمنة ومعايرة' : 'فاشلة العزل'}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor(log.perfResult || 'PASS')}`}>
+                                {log.perfResult || 'PASS'}
+                              </span>
+                            </td>
+                          </>
+                        )}
+
+                        {/* Interactive Supervisor review indicators */}
+                        <td className="p-3 text-center">
+                          {renderSupervisorToggles(log.id)}
+                        </td>
+                      </tr>
+                    ))}
+                    {allCriticalLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={12} className="text-center py-12 text-zinc-400 font-bold">لا توجد سجلات عمليات حرجة تابعة لخط تجميع الثلاجات الحالي.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+
           </div>
-        )}
+        ) : null}
+
+        {/* ========================================================================= */}
+        {/* SUB SECTION: TRIAL RUNS */}
+        {/* ========================================================================= */}
+        {currentSection === 'TRIAL_RUNS' ? (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 animate-fadeIn text-right">
+            <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
+              <button 
+                onClick={() => setCurrentSection('DASHBOARD')}
+                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className="text-sm font-black text-zinc-900">سجل تجارب تشغيل العينات للخط ({getLineName(lineId)})</h2>
+                <p className="text-[10px] text-zinc-400">مراجعة درجات حرارة الكابينة وتيار التشغيل واستقرار الضواغط للعينات العشوائية</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-zinc-550 uppercase tracking-wider text-[10px] font-bold bg-zinc-50">
+                    <th className="py-3 px-4">رقم تجربة التشغيل</th>
+                    <th className="py-3 px-4">رقم السيريال (Serial)</th>
+                    <th className="py-3 px-4">الموديل الفني للثلاجة</th>
+                    <th className="py-3 px-4 text-center">مدة التجربة بالدقيقة</th>
+                    <th className="py-3 px-4 text-center">حرارة كابينة التبريد والماتور (°C)</th>
+                    <th className="py-3 px-4 text-center">النتيجة</th>
+                    <th className="py-3 px-4">تفاصيل وملاحظات التجربة</th>
+                    <th className="py-3 px-4 text-center">التوقيع والاعتماد الفني للمشرف</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {sortedTrialRuns.map((tr) => (
+                    <tr key={tr.id} className="hover:bg-zinc-50/50 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-zinc-500">{tr.id}</td>
+                      <td className="py-3 px-4 font-mono font-black text-zinc-900">{tr.serialNumber}</td>
+                      <td className="py-3 px-4 font-bold text-zinc-800">{getModelName(tr.modelId)}</td>
+                      <td className="py-3 px-4 text-center font-mono text-zinc-700">{tr.duration}</td>
+                      <td className="py-3 px-4 text-center font-mono font-black text-blue-600">{tr.cabinetTemp} °C</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${statusColor(tr.result)}`}>
+                          {tr.result === 'PASS' ? 'مطابق وتبريد ناجح' : 'تبريد فاشل'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-zinc-500 max-w-xs truncate">{tr.notes}</td>
+                      {/* Interactive Supervisor action */}
+                      <td className="py-3 px-4 text-center">
+                        {renderSupervisorToggles(tr.id)}
+                      </td>
+                    </tr>
+                  ))}
+                  {sortedTrialRuns.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="text-center py-12 text-zinc-400 font-bold">لا توجد عينات قيد تجارب التشغيل مسجلة حالياً بالخط.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+
+        {/* ========================================================================= */}
+        {/* SUB SECTION: NCR REPORTS */}
+        {/* ========================================================================= */}
+        {currentSection === 'NCR_REPORTS' ? (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 animate-fadeIn text-right">
+            <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
+              <button 
+                onClick={() => setCurrentSection('DASHBOARD')}
+                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className="text-sm font-black text-zinc-900">تقارير عدم المطابقة الفنية (Non-Conformance Reports)</h2>
+                <p className="text-[10px] text-zinc-400">إجراءات الجودة المفتوحة والمغلقة لإصلاح الأعطال المتكررة لخط {getLineName(lineId)}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {sortedNcrs.map((ncr) => (
+                <div key={ncr.id} className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3 relative overflow-hidden">
+                  <div className={`absolute top-0 right-0 w-full h-1 ${ncr.status === 'OPEN' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] text-zinc-400 font-bold">تقرير رقم: {ncr.id}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${statusColor(ncr.status)}`}>
+                      {ncr.status === 'OPEN' ? 'قيد العمل والمعالجة' : 'تم حل المشكلة'}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-black text-zinc-955">{ncr.title}</h3>
+                    <p className="text-[11px] text-zinc-450">الموديل المتأثر: <strong className="text-zinc-700">{getModelName(ncr.modelId)}</strong></p>
+                  </div>
+                  <p className="text-[11px] text-zinc-600 bg-white p-2.5 rounded-lg border border-zinc-150 leading-relaxed font-bold">
+                    وصف الخلل: {ncr.description}
+                  </p>
+                  <p className="text-[11px] text-zinc-550 leading-relaxed font-bold">
+                    <span className="text-blue-600 font-extrabold block mb-0.5">💡 الإجراء التصحيحي:</span>
+                    {ncr.actionRequired}
+                  </p>
+                  <div className="flex items-center justify-between pt-2 border-t border-zinc-150">
+                    <span className="text-[10px] text-zinc-400">تاريخ الإصدار: {safeDateString(ncr.timestamp)}</span>
+                    {renderSupervisorToggles(ncr.id)}
+                  </div>
+                </div>
+              ))}
+              {sortedNcrs.length === 0 && (
+                <div className="col-span-2 text-center py-12 text-zinc-400 font-bold">خلو تام من أي تقارير عدم مطابقة فنية نشطة بالخط.</div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* ========================================================================= */}
+        {/* SUB SECTION: LOADING STOPS */}
+        {/* ========================================================================= */}
+        {currentSection === 'LOADING_STOPS' ? (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 animate-fadeIn text-right">
+            <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
+              <button 
+                onClick={() => setCurrentSection('DASHBOARD')}
+                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className="text-sm font-black text-zinc-900">قرارات إيقاف وحظر شحن الموديلات المعيبة</h2>
+                <p className="text-[10px] text-zinc-400">تتبع حالات حظر الشحن الفني وفك قيود التحميل من المخازن لإنتاج خط {getLineName(lineId)}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {sortedStops.map((stop) => (
+                <div key={stop.id} className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3 relative">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] text-zinc-400 font-bold">حظر رقم: {stop.id}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${stop.status === 'ACTIVE' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                      {stop.status === 'ACTIVE' ? '🚫 حظر شحن نشط' : '✅ تم فك الحظر'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-zinc-900">الموديل المحظور: {getModelName(stop.modelId)}</h3>
+                    <p className="text-[11px] text-zinc-500 font-bold mt-1.5 leading-relaxed bg-white border border-zinc-150 p-2.5 rounded-lg text-red-650">
+                      أسباب الحظر: {stop.reason}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-zinc-150 text-[10px] text-zinc-400 font-bold">
+                    <span>الجهة المصدرة للقرار: {stop.stoppedBy}</span>
+                    <span>التاريخ: {safeDateString(stop.timestamp)}</span>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    {renderSupervisorToggles(stop.id)}
+                  </div>
+                </div>
+              ))}
+              {sortedStops.length === 0 && (
+                <div className="col-span-2 text-center py-12 text-zinc-400 font-bold">لا توجد أوامر حظر شحن نشطة تابعة لمخازن هذا الخط حالياً.</div>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        {/* ========================================================================= */}
+        {/* SUB SECTION: PRODUCTION QUANTITIES */}
+        {/* ========================================================================= */}
+        {currentSection === 'PRODUCTION_QTY' ? (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 animate-fadeIn text-right">
+            <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
+              <button 
+                onClick={() => setCurrentSection('DASHBOARD')}
+                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className="text-sm font-black text-zinc-900">سجل الكميات والانتاجية الفنية ({getLineName(lineId)})</h2>
+                <p className="text-[10px] text-zinc-400">مطابقة أعداد الأجهزة المجمعة فعلياً مع أهداف الوردية الإنتاجية المعتمدة</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-zinc-550 uppercase tracking-wider text-[10px] font-bold bg-zinc-50">
+                    <th className="py-3 px-4">رقم الوردية</th>
+                    <th className="py-3 px-4 text-center">المستهدف المخطط للوردية (وحدة)</th>
+                    <th className="py-3 px-4 text-center">الإنتاج الفعلي المحقق (وحدة)</th>
+                    <th className="py-3 px-4 text-center">معدل تحقيق الكفاءة</th>
+                    <th className="py-3 px-4">تعليقات وملاحظات فنية بالخط</th>
+                    <th className="py-3 px-4 text-center">تاريخ النشر</th>
+                    <th className="py-3 px-4 text-center">التوقيع والاعتماد الفني للمشرف</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {sortedQuantities.map((q) => {
+                    const efficiency = q.target > 0 ? Math.round((q.actual / q.target) * 100) : 0;
+                    return (
+                      <tr key={q.id} className="hover:bg-zinc-50/50 transition-colors">
+                        <td className="py-3 px-4 font-mono font-bold text-zinc-500">{q.id}</td>
+                        <td className="py-3 px-4 text-center font-mono font-black text-zinc-900">{q.target} ثلاجة</td>
+                        <td className="py-3 px-4 text-center font-mono font-black text-blue-600">{q.actual} ثلاجة</td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            efficiency >= 100 ? 'bg-emerald-50 border-emerald-200 text-emerald-705' : 'bg-amber-50 border-amber-250 text-amber-705'
+                          }`}>
+                            {efficiency}% من الهدف
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-zinc-500">{q.notes || 'انتظام لوجستيات خط التجميع'}</td>
+                        <td className="py-3 px-4 text-zinc-400 font-mono">{safeDateString(q.timestamp)}</td>
+                        {/* Interactive Supervisor action */}
+                        <td className="py-3 px-4 text-center">
+                          {renderSupervisorToggles(q.id)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {sortedQuantities.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-zinc-400 font-bold">لا توجد بيانات إنتاج مضافة حالياً لخط تجميع الثلاجات الحالي.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+
+        {/* ========================================================================= */}
+        {/* SUB SECTION: TEST INSTRUCTIONS (Read-only copy for supervisor audits) */}
+        {/* ========================================================================= */}
+        {currentSection === 'TEST_INSTRUCTIONS' ? (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 animate-fadeIn text-right">
+            <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
+              <button 
+                onClick={() => setCurrentSection('DASHBOARD')}
+                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <div>
+                <h2 className="text-sm font-black text-zinc-900">تعليمات وكتيب اختبارات الجودة المعتمد لمجموعة العربي</h2>
+                <p className="text-[10px] text-zinc-400">المعايير المعتمدة من توشيبا اليابانية وقسم الجودة بمصر لخطوط تجميع الثلاجات</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs font-bold text-zinc-750">
+              
+              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
+                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold text-[10px]">المظهر الخارجي وصاج الثلاجة</span>
+                <p className="text-zinc-700 font-bold mt-1">المعايير القياسية للفحص البصري 100%:</p>
+                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
+                  <li>عدم وجود أي خدوش على السطح الخارجي للباب أو الهيكل وصاج الجوانب.</li>
+                  <li>تطابق حواف الجوانات والكاوتش المطاطي لمنع أي تسرب للبرودة.</li>
+                  <li>استواء الهيكل الخارجي والقاعدة السفلية للثلاجة وخلوها من الانبعاجات.</li>
+                </ul>
+              </div>
+
+              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
+                <span className="bg-teal-100 text-teal-700 px-2 py-0.5 rounded font-bold text-[10px]">دائرة التبريد وشحنة الغاز</span>
+                <p className="text-zinc-700 font-bold mt-1">مواصفات تجميع كابينة التبريد الفنية:</p>
+                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
+                  <li>التحقق التام من جودة لحامات أنابيب المكثف والضاغط النحاسية.</li>
+                  <li>توافق ضغط تفريغ الهواء ومستوى غاز الفريون المحقون وصمام الخدمة.</li>
+                  <li>سلامة تمدد الغاز داخل المواسير وعدم وجود صوت سريان شاذ بالدائرة.</li>
+                </ul>
+              </div>
+
+              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
+                <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded font-bold text-[10px]">الدائرة الكهربائية وعمل الكنترول</span>
+                <p className="text-zinc-700 font-bold mt-1">اختبار الجهد والملفات الأرضية:</p>
+                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
+                  <li>التحقق من عمل الكنترول واللوحة الديجيتال وضبط مستويات درجات الحرارة.</li>
+                  <li>سلامة كابل التغذية الأرضي ومقاومة العزل عالية القوة ضد الصعق.</li>
+                  <li>انتظام تشغيل لمبة الإضاءة الداخلية ومروحة الفريزر عند فتح وإغلاق الباب.</li>
+                </ul>
+              </div>
+
+              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
+                <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold text-[10px]">الملحقات والأرفف والأدراج</span>
+                <p className="text-zinc-700 font-bold mt-1">تنسيق وتثبيت المستلزمات الداخلية:</p>
+                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
+                  <li>ترتيب الرفوف الزجاجية المقاومة للكسر بموضعها المخصص في المجاري.</li>
+                  <li>سلامة أدراج حفظ الخضراوات وسلاستها أثناء السحب والإغلاق.</li>
+                  <li>إضافة أكياس الكتالوج الضمان وقطع الثلج والملحقات الإضافية كاملة.</li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+        ) : null}
 
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-zinc-200 py-6 mt-12 text-center text-zinc-405 text-[11px]">
-        <p>© شركة العربي للصناعات الهندسية • نظام توكيد جودة المنتجات المتقدم</p>
+      {/* Footer Branding */}
+      <footer className="bg-white border-t border-zinc-200 py-6 mt-12 text-center text-zinc-400 text-[10px] font-bold no-print">
+        <p>© شركة العربي للصناعات الهندسية • نظام توكيد جودة الثلاجات المتنقل</p>
+        <p className="mt-1 font-medium">يتم مراجعة واعتماد كافة الفحوصات والعمليات الحرجة فوراً من قبل مشرف الجودة.</p>
       </footer>
+
+      {/* Active detailed Report Modal */}
+      {activeReport && (
+        <OfficialReportModal
+          activeReport={activeReport}
+          inspections={inspections}
+          models={models}
+          getLineName={getLineName}
+          setActiveReport={setActiveReport}
+          handleDownloadExcel={handleDownloadExcel}
+        />
+      )}
     </div>
+  );
+}
+
+// Extra local trending up icon for completeness
+function TrendingUpIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+      <polyline points="16 7 22 7 22 13" />
+    </svg>
   );
 }

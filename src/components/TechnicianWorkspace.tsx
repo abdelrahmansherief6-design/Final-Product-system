@@ -989,6 +989,17 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     }
   }, [lineId, models, modelId]);
 
+  // Migrate old cached sheet urls to the new default sheet url if they contain the old placeholder
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_sheet_urls');
+      if (stored && stored.includes('QmFuckmtTroMM1r')) {
+        localStorage.removeItem('elaraby_qa_sheet_urls');
+        window.location.reload();
+      }
+    } catch (err) {}
+  }, []);
+
   // States for Daily Inspection Form
   const [serialNumber, setSerialNumber] = useState('');
   const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
@@ -1027,7 +1038,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
           const val = parsed[lid];
           if (typeof val === 'string') {
             normalized[lid] = {
-              masterUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pubhtml',
+              masterUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9QEfv5ICNsNru_bk14GUIuV9RoD_WfwY5P0PYv33oDpyUDU_yeaU5qmkmbtzjssbwXeeKZ-j_K1s8/pubhtml',
               calib_url: val,
               calib_gid: '574817176',
               init_ass_gid: '2026850401',
@@ -1045,8 +1056,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
             };
           } else {
             normalized[lid] = {
-              masterUrl: lid === 'LINE_B' ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pubhtml' : '',
-              calib_url: lid === 'LINE_B' ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pub?gid=574817176&single=true&output=csv' : '',
+              masterUrl: lid === 'LINE_B' ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9QEfv5ICNsNru_bk14GUIuV9RoD_WfwY5P0PYv33oDpyUDU_yeaU5qmkmbtzjssbwXeeKZ-j_K1s8/pubhtml' : '',
+              calib_url: lid === 'LINE_B' ? 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9QEfv5ICNsNru_bk14GUIuV9RoD_WfwY5P0PYv33oDpyUDU_yeaU5qmkmbtzjssbwXeeKZ-j_K1s8/pub?gid=574817176&single=true&output=csv' : '',
               calib_gid: '574817176',
               init_ass_gid: '2026850401',
               injection_gid: '1501712415',
@@ -1074,8 +1085,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         perf_test_gid: '54261763'
       },
       LINE_B: {
-        masterUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pubhtml',
-        calib_url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmFuckmtTroMM1r-FLYIKKfZF92NbGQE7hmhPM_jbiE8tayt_2H8vwiUt6R_pehFJKpLm8144szGSm/pub?gid=574817176&single=true&output=csv',
+        masterUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9QEfv5ICNsNru_bk14GUIuV9RoD_WfwY5P0PYv33oDpyUDU_yeaU5qmkmbtzjssbwXeeKZ-j_K1s8/pubhtml',
+        calib_url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9QEfv5ICNsNru_bk14GUIuV9RoD_WfwY5P0PYv33oDpyUDU_yeaU5qmkmbtzjssbwXeeKZ-j_K1s8/pub?gid=574817176&single=true&output=csv',
         calib_gid: '574817176',
         init_ass_gid: '2026850401',
         injection_gid: '1501712415',
@@ -1122,7 +1133,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   const [manualShift, setManualShift] = useState('الأولى');
   const [manualMachine, setManualMachine] = useState('اجرامكو 1');
   const [manualModelName, setManualModelName] = useState('');
-  const [manualCharge, setManualCharge] = useState('114');
+  const [manualCharge, setManualCharge] = useState('');
 
   // Tab Selection for Critical Ops
   const [activeCritTab, setActiveCritTab] = useState<'calib' | 'init_ass' | 'injection' | 'final_torque' | 'start_torque' | 'inject_torque' | 'perf_test'>('calib');
@@ -2092,9 +2103,9 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   };
 
   // State: New Critical Log Form
-  const [vacuumInput, setVacuumInput] = useState('0.07');
-  const [gasInput, setGasInput] = useState('60');
-  const [insulationInput, setInsulationInput] = useState('110');
+  const [vacuumInput, setVacuumInput] = useState('');
+  const [gasInput, setGasInput] = useState('');
+  const [insulationInput, setInsulationInput] = useState('');
   const [heliumLeakInput, setHeliumLeakInput] = useState<'PASS' | 'FAIL'>('PASS');
   const [critSuccessMsg, setCritSuccessMsg] = useState('');
 
@@ -2687,6 +2698,9 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setPtCheckStrapStrength('OK');
     setPtStrapTightL1('');
     setPtStrapTightL2('');
+    setVacuumInput('');
+    setGasInput('');
+    setInsulationInput('');
 
     setCritSuccessMsg('تم تسجيل وتوثيق العملية الحرجة وتحديث السجل وإرسالها لجدول جوجل بنجاح!');
     setTimeout(() => setCritSuccessMsg(''), 4000);
@@ -2695,8 +2709,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   // State: New Trial Run Form
   const [trialSerial, setTrialSerial] = useState('');
   const [trialModel, setTrialModel] = useState(modelId || 'MOD_450L');
-  const [trialDuration, setTrialDuration] = useState('60 دقيقة');
-  const [trialCabinetTemp, setTrialCabinetTemp] = useState('-19.5');
+  const [trialDuration, setTrialDuration] = useState('');
+  const [trialCabinetTemp, setTrialCabinetTemp] = useState('');
   const [trialNotes, setTrialNotes] = useState('');
   const [trialResult, setTrialResult] = useState<'PASS' | 'FAIL'>('PASS');
   const [trialSuccessMsg, setTrialSuccessMsg] = useState('');
@@ -2722,6 +2736,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setTrialSuccessMsg('تم حفظ تقرير تجربة التشغيل بنجاح!');
     setTrialSerial('');
     setTrialNotes('');
+    setTrialDuration('');
+    setTrialCabinetTemp('');
     setTimeout(() => setTrialSuccessMsg(''), 3000);
   };
 
@@ -2759,8 +2775,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   };
 
   // State: Production Qty Form
-  const [prodTarget, setProdTarget] = useState('200');
-  const [prodActual, setProdActual] = useState('190');
+  const [prodTarget, setProdTarget] = useState('');
+  const [prodActual, setProdActual] = useState('');
   const [prodNotes, setProdNotes] = useState('');
   const [prodSuccessMsg, setProdSuccessMsg] = useState('');
 
@@ -2769,7 +2785,7 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     const newProd: ProductionQty = {
       id: `PROD-${Date.now()}`,
       lineId,
-      target: parseInt(prodTarget) || 200,
+      target: parseInt(prodTarget) || 0,
       actual: parseInt(prodActual) || 0,
       notes: prodNotes.trim() || undefined,
       timestamp: new Date().toISOString()
@@ -2777,6 +2793,8 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setProductionQuantities(prev => [newProd, ...prev]);
     setProdSuccessMsg('تم تحديث كمية إنتاج خط التجميع بنجاح!');
     setProdNotes('');
+    setProdTarget('');
+    setProdActual('');
     setTimeout(() => setProdSuccessMsg(''), 3000);
   };
 
