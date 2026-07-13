@@ -75,14 +75,12 @@ export default function ManagerWorkspace({
     } catch { return []; }
   });
 
-  // Helper to check if a date is within current month or past 30 days
+  // Helper to check if a date is within current month strictly
   const isCurrentMonth = (dateStr?: string) => {
     if (!dateStr) return false;
     const d = new Date(dateStr);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - d.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) || diffDays <= 30;
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   };
 
   // State variables for test instructions
@@ -190,19 +188,21 @@ export default function ManagerWorkspace({
   // Download reports
   const handleDownloadInventoryCSV = () => {
     const headers = ['Serial Number', 'Model Name', 'Production Line', 'Inspector SAP', 'Inspection Date/Time', 'Initial Status', 'Current Action Status'];
-    const rows = inspections.map(log => {
-      const model = models.find(m => m.id === log.modelId)?.name || log.modelId;
-      const line = PRODUCTION_LINES.find(l => l.id === log.lineId)?.name || log.lineId;
-      return [
-        log.serialNumber,
-        `"${model.replace(/"/g, '""')}"`,
-        `"${line}"`,
-        log.inspectorSap,
-        log.timestamp,
-        log.status,
-        log.recheckStatus || 'APPROVED_PASS'
-      ];
-    });
+    const rows = inspections
+      .filter(log => isCurrentMonth(log.timestamp))
+      .map(log => {
+        const model = models.find(m => m.id === log.modelId)?.name || log.modelId;
+        const line = PRODUCTION_LINES.find(l => l.id === log.lineId)?.name || log.lineId;
+        return [
+          log.serialNumber,
+          `"${model.replace(/"/g, '""')}"`,
+          `"${line}"`,
+          log.inspectorSap,
+          log.timestamp,
+          log.status,
+          log.recheckStatus || 'APPROVED_PASS'
+        ];
+      });
 
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
       + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -218,21 +218,23 @@ export default function ManagerWorkspace({
 
   const handleDownloadProcessCSV = () => {
     const headers = ['Audit ID', 'Line Name', 'Auditor Name', 'Welding Temperature (C)', 'Foaming Density (kg/m3)', 'Gas Pressure (bar)', 'Vacuum Level (mbar)', 'Date/Time', 'Status'];
-    const rows = processAudits.map(aud => {
-      const line = PRODUCTION_LINES.find(l => l.id === aud.lineId)?.name || aud.lineId;
-      const hasFail = !aud.weldingOK || !aud.foamingOK || !aud.gasChargingOK || !aud.vacuumOK || !aud.safetyGroundLeakageOK;
-      return [
-        aud.id,
-        `"${line}"`,
-        `"${aud.auditorName}"`,
-        aud.weldingStationTemp,
-        aud.foamingDensity,
-        aud.gasChargingPressure,
-        aud.vacuumLevel,
-        aud.timestamp,
-        hasFail ? 'NON_COMPLIANT' : 'COMPLIANT'
-      ];
-    });
+    const rows = processAudits
+      .filter(aud => isCurrentMonth(aud.timestamp))
+      .map(aud => {
+        const line = PRODUCTION_LINES.find(l => l.id === aud.lineId)?.name || aud.lineId;
+        const hasFail = !aud.weldingOK || !aud.foamingOK || !aud.gasChargingOK || !aud.vacuumOK || !aud.safetyGroundLeakageOK;
+        return [
+          aud.id,
+          `"${line}"`,
+          `"${aud.auditorName}"`,
+          aud.weldingStationTemp,
+          aud.foamingDensity,
+          aud.gasChargingPressure,
+          aud.vacuumLevel,
+          aud.timestamp,
+          hasFail ? 'NON_COMPLIANT' : 'COMPLIANT'
+        ];
+      });
 
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
       + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -249,7 +251,7 @@ export default function ManagerWorkspace({
   const handleDownloadInventoryCSVForLine = (lineId: string, lineName: string) => {
     const headers = ['Serial Number', 'Model Name', 'Production Line', 'Inspector SAP', 'Inspection Date/Time', 'Initial Status', 'Current Action Status'];
     const rows = inspections
-      .filter(log => log.lineId === lineId)
+      .filter(log => log.lineId === lineId && isCurrentMonth(log.timestamp))
       .map(log => {
         const model = models.find(m => m.id === log.modelId)?.name || log.modelId;
         const line = PRODUCTION_LINES.find(l => l.id === log.lineId)?.name || log.lineId;
@@ -279,7 +281,7 @@ export default function ManagerWorkspace({
   const handleDownloadProcessCSVForLine = (lineId: string, lineName: string) => {
     const headers = ['Audit ID', 'Line Name', 'Auditor Name', 'Welding Temperature (C)', 'Foaming Density (kg/m3)', 'Gas Pressure (bar)', 'Vacuum Level (mbar)', 'Date/Time', 'Status'];
     const rows = processAudits
-      .filter(aud => aud.lineId === lineId)
+      .filter(aud => aud.lineId === lineId && isCurrentMonth(aud.timestamp))
       .map(aud => {
         const line = PRODUCTION_LINES.find(l => l.id === aud.lineId)?.name || aud.lineId;
         const hasFail = !aud.weldingOK || !aud.foamingOK || !aud.gasChargingOK || !aud.vacuumOK || !aud.safetyGroundLeakageOK;
@@ -584,8 +586,8 @@ export default function ManagerWorkspace({
             {(() => {
               const line = PRODUCTION_LINES.find(l => l.id === selectedLineId) || PRODUCTION_LINES[0];
               const currentSubTab = factoryTabs[line.id] || 'INSPECTION';
-              const lineInspections = inspections.filter(log => log.lineId === line.id);
-              const lineAudits = processAudits.filter(aud => aud.lineId === line.id);
+              const lineInspections = inspections.filter(log => log.lineId === line.id && isCurrentMonth(log.timestamp));
+              const lineAudits = processAudits.filter(aud => aud.lineId === line.id && isCurrentMonth(aud.timestamp));
 
               return (
                 <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
