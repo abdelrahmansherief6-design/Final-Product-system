@@ -8,8 +8,16 @@ import { User, QualityInspectionLog, ProcessAuditLog, ManagedUser, UserRole, Ref
 import { PRODUCTION_LINES } from '../data';
 import { 
   BarChart3, LogOut, TrendingUp, Printer, FileSpreadsheet, Download, HelpCircle, 
-  CheckCircle, ShieldAlert, Award, Users, UserPlus, Trash2, Lock, Shield, UserCheck, PlusCircle, Package
+  CheckCircle, ShieldAlert, Award, Users, UserPlus, Trash2, Lock, Shield, UserCheck, PlusCircle, Package,
+  BookOpen, Search, ArrowRight
 } from 'lucide-react';
+import { 
+  SHARP_PERFORMANCE_TESTS, 
+  SHARP_CONSTRUCTION_TESTS, 
+  TORNADO_PERFORMANCE_TESTS, 
+  TORNADO_CONSTRUCTION_TESTS,
+  TestInstruction 
+} from '../testInstructionsData';
 
 interface ManagerWorkspaceProps {
   user: User;
@@ -32,7 +40,12 @@ export default function ManagerWorkspace({
   models,
   onUpdateModels,
 }: ManagerWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'PROCESS_REPORTS' | 'USER_DIRECTORY'>('ANALYTICS');
+  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'PROCESS_REPORTS' | 'USER_DIRECTORY' | 'TEST_INSTRUCTIONS'>('ANALYTICS');
+
+  // State variables for test instructions
+  const [instMainTab, setInstMainTab] = useState<'SHARP' | 'TORNADO'>('SHARP');
+  const [instSubTab, setInstSubTab] = useState<'PERFORMANCE' | 'CONSTRUCTION'>('PERFORMANCE');
+  const [instSearch, setInstSearch] = useState('');
 
   // KPI calculations
   const totalInspected = inspections.length;
@@ -336,6 +349,18 @@ export default function ManagerWorkspace({
           >
             <Users className="w-4 h-4" />
             <span>بيانات المستخدمين ({users.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('TEST_INSTRUCTIONS')}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
+              activeTab === 'TEST_INSTRUCTIONS'
+                ? 'border-amber-500 text-amber-605 bg-white shadow-sm rounded-t-xl border-t border-x border-zinc-200'
+                : 'border-transparent text-zinc-500 hover:text-zinc-850'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>تعليمات الاختبارات</span>
           </button>
         </div>
 
@@ -789,6 +814,197 @@ export default function ManagerWorkspace({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Test Instructions Tab Panel */}
+        {activeTab === 'TEST_INSTRUCTIONS' && (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-6 animate-fadeIn text-right mt-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-zinc-900">تعليمات وكتيب اختبارات الجودة المعتمد لمجموعة العربي</h2>
+                  <p className="text-[11px] text-zinc-500">كتيب المعايير والتعليمات التفصيلية لفحص المنتجات النهائية ومراحل الإنتاج</p>
+                </div>
+              </div>
+
+              {/* Main Division Tabs (Sharp vs Tornado) */}
+              <div className="flex bg-zinc-100 p-1 rounded-xl self-end sm:self-center">
+                <button
+                  onClick={() => { setInstMainTab('SHARP'); setInstSearch(''); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                    instMainTab === 'SHARP' 
+                      ? 'bg-white text-blue-700 shadow-sm' 
+                      : 'text-zinc-500 hover:text-zinc-800'
+                  }`}
+                >
+                  Sharp Standard
+                </button>
+                <button
+                  onClick={() => { setInstMainTab('TORNADO'); setInstSearch(''); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                    instMainTab === 'TORNADO' 
+                      ? 'bg-white text-amber-700 shadow-sm' 
+                      : 'text-zinc-500 hover:text-zinc-800'
+                  }`}
+                >
+                  Tornado Standard
+                </button>
+              </div>
+            </div>
+
+            {/* Sub Division Tabs & Search Bar */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-zinc-50/50 p-4 rounded-xl border border-zinc-200/60">
+              {/* Sub Tabs (Performance vs Construction) */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setInstSubTab('PERFORMANCE')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
+                    instSubTab === 'PERFORMANCE'
+                      ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm'
+                      : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-55'
+                  }`}
+                >
+                  الأداء (Performance)
+                </button>
+                <button
+                  onClick={() => setInstSubTab('CONSTRUCTION')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
+                    instSubTab === 'CONSTRUCTION'
+                      ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm'
+                      : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-55'
+                  }`}
+                >
+                  التجميع والإنشاء (Construction)
+                </button>
+              </div>
+
+              {/* Search Field */}
+              <div className="relative flex-1 max-w-md">
+                <span className="absolute inset-y-0 right-3 flex items-center pr-2 pointer-events-none text-zinc-400">
+                  <Search className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  value={instSearch}
+                  onChange={(e) => setInstSearch(e.target.value)}
+                  placeholder="ابحث باسم الاختبار أو الهدف..."
+                  className="w-full pr-10 pl-4 py-2 border border-zinc-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900 text-right font-medium"
+                />
+                {instSearch && (
+                  <button
+                    onClick={() => setInstSearch('')}
+                    className="absolute inset-y-0 left-3 flex items-center text-xs text-zinc-400 hover:text-zinc-600"
+                  >
+                    مسح
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Render Instructions List */}
+            {(() => {
+              // Retrieve corresponding test list
+              let sourceList: TestInstruction[] = [];
+              if (instMainTab === 'SHARP') {
+                sourceList = instSubTab === 'PERFORMANCE' ? SHARP_PERFORMANCE_TESTS : SHARP_CONSTRUCTION_TESTS;
+              } else {
+                sourceList = instSubTab === 'PERFORMANCE' ? TORNADO_PERFORMANCE_TESTS : TORNADO_CONSTRUCTION_TESTS;
+              }
+
+              // Filter by search keyword
+              const keyword = instSearch.trim().toLowerCase();
+              const filtered = sourceList.filter(test => {
+                if (!keyword) return true;
+                return (
+                  test.title.toLowerCase().includes(keyword) ||
+                  test.objective.toLowerCase().includes(keyword) ||
+                  test.id.toString() === keyword ||
+                  test.steps.some(s => s.toLowerCase().includes(keyword)) ||
+                  test.acceptanceCriteria.some(c => c.toLowerCase().includes(keyword))
+                );
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-12 border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/30">
+                    <HelpCircle className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+                    <h3 className="text-sm font-bold text-zinc-700">لا توجد اختبارات تطابق البحث</h3>
+                    <p className="text-[10px] text-zinc-400 mt-1">تأكد من كتابة الكلمة بشكل صحيح، أو تنقل بين تبويبات الأقسام</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-right">
+                  {filtered.map((test) => (
+                    <div 
+                      key={`${instMainTab}-${instSubTab}-${test.id}`}
+                      className={`border rounded-2xl p-4 shadow-sm bg-white transition-all hover:shadow-md space-y-3 flex flex-col justify-between ${
+                        instMainTab === 'SHARP' 
+                          ? 'border-zinc-200 hover:border-blue-200 border-r-4 border-r-blue-500' 
+                          : 'border-zinc-200 hover:border-amber-200 border-r-4 border-r-amber-500'
+                      }`}
+                    >
+                      <div className="space-y-2 text-right">
+                        {/* Title */}
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                            instMainTab === 'SHARP' 
+                              ? 'bg-blue-50 text-blue-700' 
+                              : 'bg-amber-50 text-amber-700'
+                          }`}>
+                            اختبار #{test.id}
+                          </span>
+                        </div>
+                        <h3 className="text-xs font-black text-zinc-800 leading-relaxed text-right">
+                          {test.title}
+                        </h3>
+
+                        {/* Objective */}
+                        <div className="bg-zinc-50 border border-zinc-100 p-2.5 rounded-xl space-y-1 text-right">
+                          <h4 className="text-[10px] font-bold text-zinc-400 flex items-center gap-1 justify-end">
+                            <span>الهدف من الاختبار</span>
+                          </h4>
+                          <p className="text-[10.5px] font-medium text-zinc-600 leading-relaxed text-right">
+                            {test.objective}
+                          </p>
+                        </div>
+
+                        {/* Steps */}
+                        <div className="space-y-1 text-right">
+                          <h4 className="text-[10px] font-bold text-zinc-400 text-right">خطوات التنفيذ والطريقة</h4>
+                          <ul className="space-y-1 text-right">
+                            {test.steps.map((step, sIdx) => (
+                              <li key={sIdx} className="text-[11px] font-medium text-zinc-600 leading-relaxed bg-zinc-50/40 px-2 py-1 rounded-md border border-zinc-100 text-right">
+                                <span className="font-bold text-zinc-400 ml-1">{sIdx + 1}.</span> {step}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Acceptance Criteria */}
+                      <div className="pt-2 border-t border-zinc-100 space-y-1 bg-zinc-50/20 p-2 rounded-xl text-right">
+                        <h4 className="text-[10px] font-bold text-zinc-400 text-right">معايير القبول والرفض</h4>
+                        <ul className="space-y-1 text-right">
+                          {test.acceptanceCriteria.map((crit, cIdx) => (
+                            <li key={cIdx} className="text-[10.5px] font-semibold text-zinc-700 leading-relaxed flex items-start gap-1 justify-end">
+                              <span>{crit}</span>
+                              <span className="text-zinc-400">•</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 

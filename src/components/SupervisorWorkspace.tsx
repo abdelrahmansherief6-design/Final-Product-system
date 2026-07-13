@@ -16,6 +16,13 @@ import {
 } from 'lucide-react';
 import { OfficialReportModal } from './OfficialReportModal';
 import XLSX from 'xlsx-js-style';
+import { 
+  SHARP_PERFORMANCE_TESTS, 
+  SHARP_CONSTRUCTION_TESTS, 
+  TORNADO_PERFORMANCE_TESTS, 
+  TORNADO_CONSTRUCTION_TESTS,
+  TestInstruction 
+} from '../testInstructionsData';
 
 interface CriticalLog {
   id: string;
@@ -138,6 +145,11 @@ export default function SupervisorWorkspace({
       return stored ? JSON.parse(stored) : [];
     } catch { return []; }
   });
+
+  // State variables for test instructions
+  const [instMainTab, setInstMainTab] = useState<'SHARP' | 'TORNADO'>('SHARP');
+  const [instSubTab, setInstSubTab] = useState<'PERFORMANCE' | 'CONSTRUCTION'>('PERFORMANCE');
+  const [instSearch, setInstSearch] = useState('');
 
   const [syncedLogs] = useState<CriticalLog[]>(() => {
     try {
@@ -1347,66 +1359,198 @@ export default function SupervisorWorkspace({
         ) : null}
 
         {/* ========================================================================= */}
-        {/* SUB SECTION: TEST INSTRUCTIONS (Read-only copy for supervisor audits) */}
+        {/* SUB SECTION: TEST INSTRUCTIONS (Dynamic copy for supervisor audits) */}
         {/* ========================================================================= */}
         {currentSection === 'TEST_INSTRUCTIONS' ? (
-          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 animate-fadeIn text-right">
-            <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
-              <button 
-                onClick={() => setCurrentSection('DASHBOARD')}
-                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
-              >
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              <div>
-                <h2 className="text-sm font-black text-zinc-900">تعليمات وكتيب اختبارات الجودة المعتمد لمجموعة العربي</h2>
-                <p className="text-[10px] text-zinc-400">المعايير المعتمدة من توشيبا اليابانية وقسم الجودة بمصر لخطوط تجميع الثلاجات</p>
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-6 animate-fadeIn text-right">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 pb-4">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setCurrentSection('DASHBOARD')}
+                  className="bg-zinc-100 hover:bg-zinc-200 p-2.5 rounded-xl text-zinc-650 transition-all active:scale-95"
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                <div>
+                  <h2 className="text-base font-black text-zinc-900">تعليمات وكتيب اختبارات الجودة المعتمد لمجموعة العربي</h2>
+                  <p className="text-[11px] text-zinc-500">المعايير المعتمدة من توشيبا اليابانية وقسم الجودة بمصر لخطوط تجميع الثلاجات</p>
+                </div>
+              </div>
+
+              {/* Main Division Tabs (Sharp vs Tornado) */}
+              <div className="flex bg-zinc-100 p-1 rounded-xl self-end sm:self-center">
+                <button
+                  onClick={() => { setInstMainTab('SHARP'); setInstSearch(''); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                    instMainTab === 'SHARP' 
+                      ? 'bg-white text-blue-700 shadow-sm' 
+                      : 'text-zinc-500 hover:text-zinc-800'
+                  }`}
+                >
+                  Sharp Standard
+                </button>
+                <button
+                  onClick={() => { setInstMainTab('TORNADO'); setInstSearch(''); }}
+                  className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                    instMainTab === 'TORNADO' 
+                      ? 'bg-white text-amber-700 shadow-sm' 
+                      : 'text-zinc-500 hover:text-zinc-800'
+                  }`}
+                >
+                  Tornado Standard
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs font-bold text-zinc-750">
-              
-              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
-                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold text-[10px]">المظهر الخارجي وصاج الثلاجة</span>
-                <p className="text-zinc-700 font-bold mt-1">المعايير القياسية للفحص البصري 100%:</p>
-                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
-                  <li>عدم وجود أي خدوش على السطح الخارجي للباب أو الهيكل وصاج الجوانب.</li>
-                  <li>تطابق حواف الجوانات والكاوتش المطاطي لمنع أي تسرب للبرودة.</li>
-                  <li>استواء الهيكل الخارجي والقاعدة السفلية للثلاجة وخلوها من الانبعاجات.</li>
-                </ul>
+            {/* Sub Division Tabs & Search Bar */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-zinc-50/50 p-4 rounded-xl border border-zinc-200/60">
+              {/* Sub Tabs (Performance vs Construction) */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setInstSubTab('PERFORMANCE')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
+                    instSubTab === 'PERFORMANCE'
+                      ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm'
+                      : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                >
+                  الأداء (Performance)
+                </button>
+                <button
+                  onClick={() => setInstSubTab('CONSTRUCTION')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${
+                    instSubTab === 'CONSTRUCTION'
+                      ? 'bg-zinc-900 border-zinc-900 text-white shadow-sm'
+                      : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                  }`}
+                >
+                  التجميع والإنشاء (Construction)
+                </button>
               </div>
 
-              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
-                <span className="bg-teal-100 text-teal-700 px-2 py-0.5 rounded font-bold text-[10px]">دائرة التبريد وشحنة الغاز</span>
-                <p className="text-zinc-700 font-bold mt-1">مواصفات تجميع كابينة التبريد الفنية:</p>
-                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
-                  <li>التحقق التام من جودة لحامات أنابيب المكثف والضاغط النحاسية.</li>
-                  <li>توافق ضغط تفريغ الهواء ومستوى غاز الفريون المحقون وصمام الخدمة.</li>
-                  <li>سلامة تمدد الغاز داخل المواسير وعدم وجود صوت سريان شاذ بالدائرة.</li>
-                </ul>
+              {/* Search Field */}
+              <div className="relative flex-1 max-w-md">
+                <span className="absolute inset-y-0 right-3 flex items-center pr-2 pointer-events-none text-zinc-400">
+                  <Search className="w-4 h-4" />
+                </span>
+                <input
+                  type="text"
+                  value={instSearch}
+                  onChange={(e) => setInstSearch(e.target.value)}
+                  placeholder="ابحث باسم الاختبار أو الهدف..."
+                  className="w-full pr-10 pl-4 py-2 border border-zinc-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900 text-right font-medium"
+                />
+                {instSearch && (
+                  <button
+                    onClick={() => setInstSearch('')}
+                    className="absolute inset-y-0 left-3 flex items-center text-xs text-zinc-400 hover:text-zinc-600"
+                  >
+                    مسح
+                  </button>
+                )}
               </div>
-
-              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
-                <span className="bg-violet-100 text-violet-700 px-2 py-0.5 rounded font-bold text-[10px]">الدائرة الكهربائية وعمل الكنترول</span>
-                <p className="text-zinc-700 font-bold mt-1">اختبار الجهد والملفات الأرضية:</p>
-                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
-                  <li>التحقق من عمل الكنترول واللوحة الديجيتال وضبط مستويات درجات الحرارة.</li>
-                  <li>سلامة كابل التغذية الأرضي ومقاومة العزل عالية القوة ضد الصعق.</li>
-                  <li>انتظام تشغيل لمبة الإضاءة الداخلية ومروحة الفريزر عند فتح وإغلاق الباب.</li>
-                </ul>
-              </div>
-
-              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2">
-                <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold text-[10px]">الملحقات والأرفف والأدراج</span>
-                <p className="text-zinc-700 font-bold mt-1">تنسيق وتثبيت المستلزمات الداخلية:</p>
-                <ul className="list-disc list-inside space-y-1 text-zinc-550 mt-1.5 leading-relaxed pr-2">
-                  <li>ترتيب الرفوف الزجاجية المقاومة للكسر بموضعها المخصص في المجاري.</li>
-                  <li>سلامة أدراج حفظ الخضراوات وسلاستها أثناء السحب والإغلاق.</li>
-                  <li>إضافة أكياس الكتالوج الضمان وقطع الثلج والملحقات الإضافية كاملة.</li>
-                </ul>
-              </div>
-
             </div>
+
+            {/* Render Instructions List */}
+            {(() => {
+              // Retrieve corresponding test list
+              let sourceList: TestInstruction[] = [];
+              if (instMainTab === 'SHARP') {
+                sourceList = instSubTab === 'PERFORMANCE' ? SHARP_PERFORMANCE_TESTS : SHARP_CONSTRUCTION_TESTS;
+              } else {
+                sourceList = instSubTab === 'PERFORMANCE' ? TORNADO_PERFORMANCE_TESTS : TORNADO_CONSTRUCTION_TESTS;
+              }
+
+              // Filter by search keyword
+              const keyword = instSearch.trim().toLowerCase();
+              const filtered = sourceList.filter(test => {
+                if (!keyword) return true;
+                return (
+                  test.title.toLowerCase().includes(keyword) ||
+                  test.objective.toLowerCase().includes(keyword) ||
+                  test.id.toString() === keyword ||
+                  test.steps.some(s => s.toLowerCase().includes(keyword)) ||
+                  test.acceptanceCriteria.some(c => c.toLowerCase().includes(keyword))
+                );
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-12 border border-dashed border-zinc-200 rounded-2xl bg-zinc-50/30">
+                    <HelpCircle className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+                    <h3 className="text-sm font-bold text-zinc-700">لا توجد اختبارات تطابق البحث</h3>
+                    <p className="text-[10px] text-zinc-400 mt-1">تأكد من كتابة الكلمة بشكل صحيح، أو تنقل بين تبويبات الأقسام</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {filtered.map((test) => (
+                    <div 
+                      key={`${instMainTab}-${instSubTab}-${test.id}`}
+                      className={`border rounded-2xl p-4 shadow-sm bg-white transition-all hover:shadow-md space-y-3 flex flex-col justify-between ${
+                        instMainTab === 'SHARP' 
+                          ? 'border-zinc-200 hover:border-blue-200 border-r-4 border-r-blue-500' 
+                          : 'border-zinc-200 hover:border-amber-200 border-r-4 border-r-amber-500'
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        {/* Title */}
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                            instMainTab === 'SHARP' 
+                              ? 'bg-blue-50 text-blue-700' 
+                              : 'bg-amber-50 text-amber-700'
+                          }`}>
+                            اختبار #{test.id}
+                          </span>
+                        </div>
+                        <h3 className="text-xs font-black text-zinc-800 leading-relaxed">
+                          {test.title}
+                        </h3>
+
+                        {/* Objective */}
+                        <div className="bg-zinc-50 border border-zinc-100 p-2.5 rounded-xl space-y-1">
+                          <h4 className="text-[10px] font-bold text-zinc-400 flex items-center gap-1">
+                            <span>الهدف من الاختبار:</span>
+                          </h4>
+                          <p className="text-[10.5px] font-medium text-zinc-600 leading-relaxed">
+                            {test.objective}
+                          </p>
+                        </div>
+
+                        {/* Steps */}
+                        <div className="space-y-1">
+                          <h4 className="text-[10px] font-bold text-zinc-400">خطوات التنفيذ والطريقة:</h4>
+                          <ul className="space-y-1">
+                            {test.steps.map((step, sIdx) => (
+                              <li key={sIdx} className="text-[11px] font-medium text-zinc-600 leading-relaxed bg-zinc-50/40 px-2 py-1 rounded-md border border-zinc-100">
+                                <span className="font-bold text-zinc-400 ml-1">{sIdx + 1}.</span> {step}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Acceptance Criteria */}
+                      <div className="pt-2 border-t border-zinc-100 space-y-1 bg-zinc-50/20 p-2 rounded-xl">
+                        <h4 className="text-[10px] font-bold text-zinc-400">معايير القبول والرفض:</h4>
+                        <ul className="space-y-1">
+                          {test.acceptanceCriteria.map((crit, cIdx) => (
+                            <li key={cIdx} className="text-[10.5px] font-semibold text-zinc-700 leading-relaxed flex items-start gap-1">
+                              <span className="text-zinc-400">•</span>
+                              <span>{crit}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         ) : null}
 
