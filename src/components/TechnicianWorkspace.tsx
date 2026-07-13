@@ -989,17 +989,6 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     }
   }, [lineId, models, modelId]);
 
-  // Migrate old cached sheet urls to the new default sheet url if they contain the old placeholder
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('elaraby_qa_sheet_urls');
-      if (stored && stored.includes('QmFuckmtTroMM1r')) {
-        localStorage.removeItem('elaraby_qa_sheet_urls');
-        window.location.reload();
-      }
-    } catch (err) {}
-  }, []);
-
   // States for Daily Inspection Form
   const [serialNumber, setSerialNumber] = useState('');
   const [checklist, setChecklist] = useState<Record<string, boolean>>(() => {
@@ -1030,7 +1019,14 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   // AppSheet Google Sheet published CSV urls
   const [sheetUrls, setSheetUrls] = useState<Record<string, any>>(() => {
     try {
-      const stored = localStorage.getItem('elaraby_qa_sheet_urls');
+      let stored = localStorage.getItem('elaraby_qa_sheet_urls');
+      if (stored) {
+        // If the old dirty placeholder is present, discard the cache and fall back to clean defaults
+        if (stored.includes('QmFuckmtTroMM1r')) {
+          localStorage.removeItem('elaraby_qa_sheet_urls');
+          stored = null;
+        }
+      }
       if (stored) {
         const parsed = JSON.parse(stored);
         const normalized: Record<string, any> = {};
@@ -1749,8 +1745,13 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
 
     setIsSyncing(true);
     setSyncError('');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout to prevent freezing
+
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!response.ok) {
         throw new Error(`خطأ في جلب البيانات: ${response.statusText}`);
       }
@@ -1765,8 +1766,11 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       setCritSuccessMsg(`تمت مزامنة بيانات (${CRITICAL_TABS.find(t => t.id === tabKey)?.name}) بنجاح!`);
       setTimeout(() => setCritSuccessMsg(''), 4000);
     } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error(err);
-      setSyncError(`فشل الاتصال بجدول البيانات للقسم ${CRITICAL_TABS.find(t => t.id === tabKey)?.name}. تأكد من صحة الـ GID أو رابط النشر. تفاصيل الخطأ: ${err.message || err}`);
+      const isTimeout = err.name === 'AbortError';
+      const errMsg = isTimeout ? 'انتهت مهلة الاتصال بالخادم (6 ثوانٍ)' : (err.message || err);
+      setSyncError(`فشل الاتصال بجدول البيانات للقسم ${CRITICAL_TABS.find(t => t.id === tabKey)?.name}. تأكد من صحة الـ GID أو اتصال الإنترنت. تفاصيل الخطأ: ${errMsg}`);
     } finally {
       setIsSyncing(false);
     }
@@ -1800,8 +1804,12 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
       const url = getTabCsvUrl(lineConfig.masterUrl, gid, customUrl);
       if (!url) continue;
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 seconds timeout per tab
+
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
         if (response.ok) {
           const csvText = await response.text();
           const parsed = parseCriticalSheetCSV(csvText, targetLineId, tab.id);
@@ -1814,8 +1822,9 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
         } else {
           errors.push(tab.name);
         }
-      } catch (e) {
-        errors.push(tab.name);
+      } catch (e: any) {
+        clearTimeout(timeoutId);
+        errors.push(`${tab.name} (${e.name === 'AbortError' ? 'انتهت المهلة' : 'فشل الاتصال'})`);
       }
     }
 
@@ -1835,12 +1844,10 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     setTimeout(() => setCritSuccessMsg(''), 4000);
   };
 
-  // Auto sync active tab on line or tab change
+  // Disabled automatic sync on mount/tab change to prevent blocking/infinite loading in offline/restricted environments.
+  // Sync is now fully manual using the explicit "تحديث" or "مزامنة" buttons in the UI.
   useEffect(() => {
-    const lineConfig = sheetUrls[lineId];
-    if (lineConfig && (lineConfig.masterUrl || lineConfig.calib_url)) {
-      handleSyncTab(lineId, activeCritTab);
-    }
+    // Left empty intentionally to prevent automatic blocking fetch on mount/tab change.
   }, [lineId, activeCritTab]);
 
   // Memoized unified critical logs list filtered by line and active tab
