@@ -40,7 +40,8 @@ export default function ManagerWorkspace({
   models,
   onUpdateModels,
 }: ManagerWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'PROCESS_REPORTS' | 'USER_DIRECTORY' | 'TEST_INSTRUCTIONS'>('ANALYTICS');
+  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'USER_DIRECTORY' | 'TEST_INSTRUCTIONS'>('ANALYTICS');
+  const [invSubTab, setInvSubTab] = useState<'INSPECTION' | 'OPERATIONS'>('INSPECTION');
 
   // State variables for test instructions
   const [instMainTab, setInstMainTab] = useState<'SHARP' | 'TORNADO'>('SHARP');
@@ -324,19 +325,7 @@ export default function ManagerWorkspace({
             }`}
           >
             <Printer className="w-4 h-4" />
-            <span>سجل فحوصات المنتجات النهائية وجدول التصحيح</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('PROCESS_REPORTS')}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
-              activeTab === 'PROCESS_REPORTS'
-                ? 'border-amber-500 text-amber-605 bg-white shadow-sm rounded-t-xl border-t border-x border-zinc-200'
-                : 'border-transparent text-zinc-500 hover:text-zinc-850'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>تقارير تدقيق معايير العمليات (Line Process QC)</span>
+            <span>سجل الفحوصات</span>
           </button>
 
           <button
@@ -594,182 +583,207 @@ export default function ManagerWorkspace({
         )}
 
         {activeTab === 'INVENTORY_REPORTS' && (
-          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-150 pb-3">
-              <div>
-                <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
-                  <Printer className="w-4 h-4 text-amber-500" />
-                  بيان سجل ومواصفات الفحص الفني لجرد الثلاجات
-                </h3>
-                <p className="text-[10px] text-zinc-500 mt-1">كشف تفصيلي يبين جودة كافة الوحدات المغادرة لخط الإنتاج والقرار الإشرافي المتخذ بشأنها</p>
-              </div>
-
-              {/* Action Buttons */}
+          <div className="space-y-4 animate-fadeIn text-right">
+            {/* Sub Tabs: Inspections vs Operations */}
+            <div className="flex bg-zinc-100 p-1 rounded-xl w-fit">
               <button
-                onClick={handleDownloadInventoryCSV}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm"
+                onClick={() => setInvSubTab('INSPECTION')}
+                className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${
+                  invSubTab === 'INSPECTION'
+                    ? 'bg-white text-amber-700 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-800'
+                }`}
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>تحميل كشف اكسل (CSV)</span>
+                الفحص
+              </button>
+              <button
+                onClick={() => setInvSubTab('OPERATIONS')}
+                className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${
+                  invSubTab === 'OPERATIONS'
+                    ? 'bg-white text-amber-700 shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-800'
+                }`}
+              >
+                العمليات
               </button>
             </div>
 
-            {/* Inventory table logs */}
-            <div className="overflow-x-auto text-[11px]">
-              <table className="w-full text-right">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-zinc-550 uppercase text-[10px] font-bold bg-zinc-50">
-                    <th className="py-3 px-4">رقم السيريال (Serial)</th>
-                    <th className="py-3 px-4">الموديل الفني</th>
-                    <th className="py-3 px-4">خط الإنتاج</th>
-                    <th className="py-3 px-4">الفاحص (الـ SAP)</th>
-                    <th className="py-3 px-4">التاريخ والوقت</th>
-                    <th className="py-3 px-4 text-center">القرار المبدئي للثلاجة</th>
-                    <th className="py-3 px-4 text-center">حالة معالجة العيوب لخط الإنتاج</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 text-zinc-700">
-                  {inspections.map((log) => {
-                    const modelObj = models.find(m => m.id === log.modelId);
-                    const lineObj = PRODUCTION_LINES.find(l => l.id === log.lineId);
-                    return (
-                      <tr key={log.id} className="hover:bg-zinc-55/35 transition-colors">
-                        <td className="py-3 px-4 font-mono font-bold text-zinc-900 tracking-wider">
-                          {log.serialNumber}
-                        </td>
-                        <td className="py-3 px-4 font-sans text-zinc-800">
-                          {modelObj ? modelObj.name : log.modelId}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-zinc-500">
-                          {lineObj ? lineObj.name : log.lineId}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-[10px] text-zinc-400">
-                          {log.inspectorName.split(' ')[0]} ({log.inspectorSap})
-                        </td>
-                        <td className="py-3 px-4 text-zinc-500">
-                          {new Date(log.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            log.status === 'PASS' 
-                              ? 'bg-emerald-50 border-emerald-250 text-emerald-700' 
-                              : 'bg-red-50 border-red-200 text-red-700'
-                          }`}>
-                            {log.status === 'PASS' ? 'مطابق وممتاز' : 'به عيوب تصنيع'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {log.status === 'PASS' ? (
-                            <span className="text-zinc-300 text-[10px]">-</span>
-                          ) : log.recheckStatus === 'APPROVED_AFTER_REPAIR' ? (
-                            <span className="bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                              أصلح واعتمد بنجاح
-                            </span>
-                          ) : log.recheckStatus === 'SCRAPPED' ? (
-                            <span className="bg-zinc-100 text-zinc-500 border border-zinc-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                              تم تخريد الهيكل
-                            </span>
-                          ) : (
-                            <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">
-                              قيد المعالجة الميكانيكية
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+            {invSubTab === 'INSPECTION' ? (
+              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-150 pb-3">
+                  <div>
+                    <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
+                      <Printer className="w-4 h-4 text-amber-500" />
+                      بيان سجل ومواصفات الفحص الفني لجرد الثلاجات
+                    </h3>
+                    <p className="text-[10px] text-zinc-500 mt-1">كشف تفصيلي يبين جودة كافة الوحدات المغادرة لخط الإنتاج والقرار الإشرافي المتخذ بشأنها</p>
+                  </div>
 
-        {/* Tab Components: PROCESS_REPORTS */}
-        {activeTab === 'PROCESS_REPORTS' && (
-          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-150 pb-3">
-              <div>
-                <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
-                  <FileSpreadsheet className="w-4 h-4 text-amber-500" />
-                  تقارير تدقيق جودة العمليات المترولوجية لمجموعات الدعم والإنتاج
-                </h3>
-                <p className="text-[10px] text-zinc-500 mt-1">تتبع انحرافات اللحام، قوة وضغط قذف غاز الفريون المبرد، وكثافة مركب عزل الهيكل الخارجي</p>
+                  {/* Action Buttons */}
+                  <button
+                    onClick={handleDownloadInventoryCSV}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>تحميل كشف اكسل (CSV)</span>
+                  </button>
+                </div>
+
+                {/* Inventory table logs */}
+                <div className="overflow-x-auto text-[11px]">
+                  <table className="w-full text-right">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-zinc-550 uppercase text-[10px] font-bold bg-zinc-50">
+                        <th className="py-3 px-4">رقم السيريال (Serial)</th>
+                        <th className="py-3 px-4">الموديل الفني</th>
+                        <th className="py-3 px-4">خط الإنتاج</th>
+                        <th className="py-3 px-4">الفاحص (الـ SAP)</th>
+                        <th className="py-3 px-4">التاريخ والوقت</th>
+                        <th className="py-3 px-4 text-center">القرار المبدئي للثلاجة</th>
+                        <th className="py-3 px-4 text-center">حالة معالجة العيوب لخط الإنتاج</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 text-zinc-700">
+                      {inspections.map((log) => {
+                        const modelObj = models.find(m => m.id === log.modelId);
+                        const lineObj = PRODUCTION_LINES.find(l => l.id === log.lineId);
+                        return (
+                          <tr key={log.id} className="hover:bg-zinc-55/35 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-zinc-900 tracking-wider">
+                              {log.serialNumber}
+                            </td>
+                            <td className="py-3 px-4 font-sans text-zinc-800">
+                              {modelObj ? modelObj.name : log.modelId}
+                            </td>
+                            <td className="py-3 px-4 font-bold text-zinc-500">
+                              {lineObj ? lineObj.name : log.lineId}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-[10px] text-zinc-400">
+                              {log.inspectorName.split(' ')[0]} ({log.inspectorSap})
+                            </td>
+                            <td className="py-3 px-4 text-zinc-500">
+                              {new Date(log.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                log.status === 'PASS' 
+                                  ? 'bg-emerald-50 border-emerald-250 text-emerald-700' 
+                                  : 'bg-red-50 border-red-200 text-red-700'
+                              }`}>
+                                {log.status === 'PASS' ? 'مطابق وممتاز' : 'به عيوب تصنيع'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {log.status === 'PASS' ? (
+                                <span className="text-zinc-300 text-[10px]">-</span>
+                              ) : log.recheckStatus === 'APPROVED_AFTER_REPAIR' ? (
+                                <span className="bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                  أصلح واعتمد بنجاح
+                                </span>
+                              ) : log.recheckStatus === 'SCRAPPED' ? (
+                                <span className="bg-zinc-100 text-zinc-500 border border-zinc-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                  تم تخريد الهيكل
+                                </span>
+                              ) : (
+                                <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">
+                                  قيد المعالجة الميكانيكية
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+            ) : (
+              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-150 pb-3">
+                  <div>
+                    <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
+                      <FileSpreadsheet className="w-4 h-4 text-amber-500" />
+                      تقارير تدقيق جودة العمليات المترولوجية لمجموعات الدعم والإنتاج
+                    </h3>
+                    <p className="text-[10px] text-zinc-500 mt-1">تتبع انحرافات اللحام، قوة وضغط قذف غاز الفريون المبرد، وكثافة مركب عزل الهيكل الخارجي</p>
+                  </div>
 
-              {/* Action Buttons */}
-              <button
-                onClick={handleDownloadProcessCSV}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>تحميل بيان العمليات الفنية (CSV)</span>
-              </button>
-            </div>
+                  {/* Action Buttons */}
+                  <button
+                    onClick={handleDownloadProcessCSV}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>تحميل بيان العمليات الفنية (CSV)</span>
+                  </button>
+                </div>
 
-            {/* Audits table logs */}
-            <div className="overflow-x-auto text-[11px]">
-              <table className="w-full text-right">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-zinc-550 uppercase text-[10px] font-bold bg-zinc-50">
-                    <th className="py-3 px-4">رقم التدقيق</th>
-                    <th className="py-3 px-4">اسم خط التجميع</th>
-                    <th className="py-3 px-4">المشرف المسؤول</th>
-                    <th className="py-3 px-4">محطة اللحام للنحاس</th>
-                    <th className="py-3 px-4">كثافة الفوم العازل</th>
-                    <th className="py-3 px-4">ضغط تعبئة الغاز المبرد</th>
-                    <th className="py-3 px-4">تفريغ الأنابيب (Vacuum)</th>
-                    <th className="py-3 px-4 text-center">معايرة التسريب الكهربي</th>
-                    <th className="py-3 px-4">التاريخ والوقت الموثق</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100 text-zinc-700">
-                  {processAudits.map((item) => {
-                    const lineObj = PRODUCTION_LINES.find(l => l.id === item.lineId);
-                    return (
-                      <tr key={item.id} className="hover:bg-zinc-55/35 transition-colors">
-                        <td className="py-3 px-4 font-mono font-bold text-zinc-400">
-                          {item.id}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-zinc-800 font-sans">
-                          {lineObj ? lineObj.name : item.lineId}
-                        </td>
-                        <td className="py-3 px-4 text-zinc-400">
-                          {item.auditorName}
-                        </td>
-                        <td className="py-3 px-4 font-mono font-bold">
-                          <span className={item.weldingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                            {item.weldingStationTemp} °C {item.weldingOK ? '✓' : '✗'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-bold">
-                          <span className={item.foamingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                            {item.foamingDensity} kg/m³ {item.foamingOK ? '✓' : '✗'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-bold">
-                          <span className={item.gasChargingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                            {item.gasChargingPressure} bar {item.gasChargingOK ? '✓' : '✗'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono font-bold">
-                          <span className={item.vacuumOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                            {item.vacuumLevel} mbar {item.vacuumOK ? '✓' : '✗'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${item.safetyGroundLeakageOK ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                            {item.safetyGroundLeakageOK ? 'مطابق' : 'فاشل المعايرة'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-zinc-400">
-                          {new Date(item.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
-                        </td>
+                {/* Audits table logs */}
+                <div className="overflow-x-auto text-[11px]">
+                  <table className="w-full text-right">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-zinc-550 uppercase text-[10px] font-bold bg-zinc-50">
+                        <th className="py-3 px-4">رقم التدقيق</th>
+                        <th className="py-3 px-4">اسم خط التجميع</th>
+                        <th className="py-3 px-4">المشرف المسؤول</th>
+                        <th className="py-3 px-4">محطة اللحام للنحاس</th>
+                        <th className="py-3 px-4">كثافة الفوم العازل</th>
+                        <th className="py-3 px-4">ضغط تعبئة الغاز المبرد</th>
+                        <th className="py-3 px-4">تفريغ الأنابيب (Vacuum)</th>
+                        <th className="py-3 px-4 text-center">معايرة التسريب الكهربي</th>
+                        <th className="py-3 px-4">التاريخ والوقت الموثق</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 text-zinc-700">
+                      {processAudits.map((item) => {
+                        const lineObj = PRODUCTION_LINES.find(l => l.id === item.lineId);
+                        return (
+                          <tr key={item.id} className="hover:bg-zinc-55/35 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-zinc-400">
+                              {item.id}
+                            </td>
+                            <td className="py-3 px-4 font-bold text-zinc-800 font-sans">
+                              {lineObj ? lineObj.name : item.lineId}
+                            </td>
+                            <td className="py-3 px-4 text-zinc-400">
+                              {item.auditorName}
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold">
+                              <span className={item.weldingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                {item.weldingStationTemp} °C {item.weldingOK ? '✓' : '✗'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold">
+                              <span className={item.foamingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                {item.foamingDensity} kg/m³ {item.foamingOK ? '✓' : '✗'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold">
+                              <span className={item.gasChargingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                {item.gasChargingPressure} bar {item.gasChargingOK ? '✓' : '✗'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold">
+                              <span className={item.vacuumOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                {item.vacuumLevel} mbar {item.vacuumOK ? '✓' : '✗'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${item.safetyGroundLeakageOK ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                {item.safetyGroundLeakageOK ? 'مطابق' : 'فاشل المعايرة'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-zinc-400">
+                              {new Date(item.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
