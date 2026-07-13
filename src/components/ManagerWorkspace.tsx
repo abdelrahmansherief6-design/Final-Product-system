@@ -43,6 +43,42 @@ export default function ManagerWorkspace({
   const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'USER_DIRECTORY' | 'TEST_INSTRUCTIONS'>('ANALYTICS');
   const [invSubTab, setInvSubTab] = useState<'INSPECTION' | 'OPERATIONS'>('INSPECTION');
 
+  // Load complementary data from localStorage
+  const [criticalLogs] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_critical_logs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const [syncedLogs] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_synced_critical_logs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const [trialRuns] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_trial_runs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const [ncrs] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem('elaraby_qa_ncrs');
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  // Helper to check if a date is within current month or past 30 days
+  const isCurrentMonth = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - d.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) || diffDays <= 30;
+  };
+
   // State variables for test instructions
   const [instMainTab, setInstMainTab] = useState<'SHARP' | 'TORNADO'>('SHARP');
   const [instSubTab, setInstSubTab] = useState<'PERFORMANCE' | 'CONSTRUCTION'>('PERFORMANCE');
@@ -242,63 +278,152 @@ export default function ManagerWorkspace({
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 space-y-6">
-        
-        {/* Manager KPIs panels */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Card 1: FPY */}
-          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-1.5">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase block">معدل الجودة الأولي (FPY)</span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold font-mono text-emerald-600">{fpyGeneral}%</span>
-              <span className="text-[9px] text-zinc-400 font-bold">هدف المصنع: 85%</span>
+
+        {/* Factory Production Quality Summary Grid */}
+        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 pb-4">
+            <div>
+              <h2 className="text-base font-black text-zinc-900 flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                خلاصة مؤشرات ومعدلات جودة الإنتاج الشهرية للمصانع
+              </h2>
+              <p className="text-[11px] text-zinc-500 mt-0.5">
+                تقرير شامل ومحدث يبين جودة تصنيع الثلاجات ومعدلات الـ PPM والأداء الفني لكل مصنع على حدة خلال الشهر الحالي
+              </p>
             </div>
-            <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden">
-              <div className="bg-emerald-500 h-1.5" style={{ width: `${fpyGeneral}%` }} />
+            <div className="bg-zinc-50 border border-zinc-150 px-3 py-1.5 rounded-xl text-[11px] font-bold text-zinc-500 text-center">
+              الشهر الحالي: <span className="text-zinc-855 font-mono">{new Date().toLocaleString('ar-EG', { month: 'long', year: 'numeric' })}</span>
             </div>
           </div>
 
-          {/* Card 2: Inspected */}
-          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-1.5">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase block">إجمالي المفحوص</span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold font-mono text-zinc-900">{totalInspected}</span>
-              <span className="text-[9px] text-zinc-450">وحدة ثلاجة</span>
-            </div>
-            <p className="text-[10px] text-zinc-450 font-sans leading-none">محدثة خلال النبطية الحالية</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {PRODUCTION_LINES.map((line) => {
+              // Calculate statistics
+              const lineInspections = inspections.filter(log => log.lineId === line.id && isCurrentMonth(log.timestamp));
+              const lineNcrs = ncrs.filter(ncr => ncr.lineId === line.id && isCurrentMonth(ncr.timestamp));
+              const lineTrialRuns = trialRuns.filter(tr => tr.lineId === line.id && isCurrentMonth(tr.timestamp));
+              const lineCritical = [...criticalLogs, ...syncedLogs].filter(cl => cl.lineId === line.id && isCurrentMonth(cl.timestamp));
+
+              const inspectionsCount = lineInspections.length;
+              const ncrsCount = lineNcrs.length;
+              const trialRunsCount = lineTrialRuns.length;
+              const criticalCount = lineCritical.length;
+
+              // PPM Formula: (NCR reports / inspected samples) * 1,000,000
+              const ppm = inspectionsCount > 0 ? Math.round((ncrsCount / inspectionsCount) * 1000000) : 0;
+
+              // Color configuration based on PPM level
+              let ppmColorClass = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+              let ppmStatusText = 'ممتاز ومطابق للمواصفة';
+              if (ppm > 25000) {
+                ppmColorClass = 'text-red-650 bg-red-50 border-red-200';
+                ppmStatusText = 'حرج - يتطلب معالجة فورية';
+              } else if (ppm > 0) {
+                ppmColorClass = 'text-amber-700 bg-amber-50 border-amber-200';
+                ppmStatusText = 'مقبول - قيد المتابعة';
+              }
+
+              // Color theme accent per line
+              const lineAccentColor = 
+                line.id === 'LINE_A' ? 'border-t-blue-500 bg-gradient-to-b from-blue-50/20 to-transparent' :
+                line.id === 'LINE_B' ? 'border-t-teal-500 bg-gradient-to-b from-teal-50/20 to-transparent' :
+                'border-t-purple-500 bg-gradient-to-b from-purple-50/20 to-transparent';
+
+              const badgeColor =
+                line.id === 'LINE_A' ? 'bg-blue-100 text-blue-800' :
+                line.id === 'LINE_B' ? 'bg-teal-100 text-teal-800' :
+                'bg-purple-100 text-purple-800';
+
+              return (
+                <div 
+                  key={line.id} 
+                  className={`bg-white border-t-4 ${lineAccentColor} border border-zinc-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4`}
+                >
+                  {/* Factory Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="text-right">
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${badgeColor}`}>
+                        {line.id}
+                      </span>
+                      <h3 className="text-sm font-black text-zinc-900 mt-1.5">{line.name}</h3>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">المشرف: <strong className="text-zinc-700">{line.supervisorName}</strong></p>
+                    </div>
+                    
+                    {/* PPM Badge */}
+                    <div className={`text-center p-2 border rounded-xl ${ppmColorClass}`}>
+                      <span className="text-[8px] font-bold block uppercase tracking-wider">معدل العيوب (PPM)</span>
+                      <span className="text-base font-extrabold font-mono block leading-none mt-0.5">{ppm.toLocaleString('en-US')}</span>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-zinc-100 my-2"></div>
+
+                  {/* Metrics Grid */}
+                  <div className="grid grid-cols-2 gap-3 text-right">
+                    {/* Inspected Samples */}
+                    <div className="bg-zinc-50/70 p-2.5 rounded-xl border border-zinc-100/60 space-y-1">
+                      <span className="text-[9px] text-zinc-400 font-bold block">العينات المفحوصة</span>
+                      <div className="flex items-baseline gap-1 justify-end">
+                        <span className="text-sm font-extrabold font-mono text-zinc-800">{inspectionsCount}</span>
+                        <span className="text-[9px] text-zinc-400">عينة</span>
+                      </div>
+                    </div>
+
+                    {/* NCR Reports */}
+                    <div className="bg-zinc-50/70 p-2.5 rounded-xl border border-zinc-100/60 space-y-1">
+                      <span className="text-[9px] text-zinc-400 font-bold block">تقارير عدم المطابقة</span>
+                      <div className="flex items-baseline gap-1 justify-end">
+                        <span className={`text-sm font-extrabold font-mono ${ncrsCount > 0 ? 'text-red-650' : 'text-zinc-600'}`}>{ncrsCount}</span>
+                        <span className="text-[9px] text-zinc-400">تقرير NCR</span>
+                      </div>
+                    </div>
+
+                    {/* Trial Runs */}
+                    <div className="bg-zinc-50/70 p-2.5 rounded-xl border border-zinc-100/60 space-y-1">
+                      <span className="text-[9px] text-zinc-400 font-bold block">تجارب التشغيل</span>
+                      <div className="flex items-baseline gap-1 justify-end">
+                        <span className="text-sm font-extrabold font-mono text-zinc-800">{trialRunsCount}</span>
+                        <span className="text-[9px] text-zinc-400 font-medium">تجربة</span>
+                      </div>
+                    </div>
+
+                    {/* Critical Operations Reports */}
+                    <div className="bg-zinc-50/70 p-2.5 rounded-xl border border-zinc-100/60 space-y-1">
+                      <span className="text-[9px] text-zinc-400 font-bold block">تقارير العمليات الحرجة</span>
+                      <div className="flex items-baseline gap-1 justify-end">
+                        <span className="text-sm font-extrabold font-mono text-zinc-800">{criticalCount}</span>
+                        <span className="text-[9px] text-zinc-400">تقرير حرج</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Indicator Bar */}
+                  <div className="pt-2 border-t border-zinc-100">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-zinc-450 font-medium">حالة الجودة العامة:</span>
+                      <span className={`font-bold ${ppm > 25000 ? 'text-red-600' : ppm > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                        {ppmStatusText}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Card 3: Matches */}
-          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-1.5">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase block">المطابق النهائي</span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-extrabold font-mono text-emerald-600">{currentlyPassed}</span>
-              <span className="text-[9px] text-emerald-600 font-bold">({Math.round((currentlyPassed / (totalInspected || 1)) * 100)}%)</span>
+          {/* Formula Reference */}
+          <div className="bg-zinc-50 border border-zinc-200/80 p-3 rounded-xl flex items-center justify-between flex-wrap gap-2 text-[10.5px] text-zinc-500">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span>معادلة حساب الـ PPM المعتمدة:</span>
+              <code className="bg-white px-2 py-0.5 rounded border border-zinc-150 font-mono text-zinc-700 font-bold">
+                PPM = (عدد تقارير عدم المطابقة / عدد العينات المفحوصة) × 1,000,000
+              </code>
             </div>
-            <p className="text-[10px] text-zinc-450 leading-none">تتضمن المعاد تصليحها واجتيازها</p>
-          </div>
-
-          {/* Card 4: Failed Pending */}
-          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-1.5">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase block">معلقة للإصلاح</span>
-            <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-extrabold font-mono ${currentlyPending > 0 ? 'text-amber-600 animate-pulse' : 'text-zinc-500'}`}>
-                {currentlyPending}
-              </span>
-              <span className="text-[9px] text-zinc-455">في محطة المعالجة</span>
-            </div>
-            <p className="text-[10px] text-zinc-450 leading-none">بانتظار موافقة مشرف الجودة</p>
-          </div>
-
-          {/* Card 5: Scrapped */}
-          <div className="bg-white border border-zinc-200 rounded-2xl p-4.5 shadow-sm space-y-1.5 col-span-2 lg:col-span-1">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase block">التكهين الكلي (Scrap)</span>
-            <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-extrabold font-mono ${currentlyScrapped > 0 ? 'text-red-650' : 'text-zinc-500'}`}>
-                {currentlyScrapped}
-              </span>
-              <span className="text-[9px] text-zinc-450">ثلاجة تالفة</span>
-            </div>
-            <p className="text-[10px] text-zinc-450 leading-none">فشل إصلاحها بالكامل بالصيانة</p>
+            <p className="text-[10px] text-zinc-400 italic font-medium">
+              * يتم الحساب ديناميكياً بناءً على كشوف الجودة الجارية بالمصانع الثلاثة
+            </p>
           </div>
         </div>
 
