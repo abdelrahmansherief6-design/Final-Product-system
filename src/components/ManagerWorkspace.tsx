@@ -42,6 +42,11 @@ export default function ManagerWorkspace({
 }: ManagerWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'USER_DIRECTORY' | 'TEST_INSTRUCTIONS'>('ANALYTICS');
   const [invSubTab, setInvSubTab] = useState<'INSPECTION' | 'OPERATIONS'>('INSPECTION');
+  const [factoryTabs, setFactoryTabs] = useState<Record<string, 'INSPECTION' | 'OPERATIONS'>>({
+    'LINE_A': 'INSPECTION',
+    'LINE_B': 'INSPECTION',
+    'LINE_C': 'INSPECTION',
+  });
 
   // Load complementary data from localStorage
   const [criticalLogs] = useState<any[]>(() => {
@@ -235,6 +240,68 @@ export default function ManagerWorkspace({
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     link.setAttribute("download", `elaraby_process_control_log_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadInventoryCSVForLine = (lineId: string, lineName: string) => {
+    const headers = ['Serial Number', 'Model Name', 'Production Line', 'Inspector SAP', 'Inspection Date/Time', 'Initial Status', 'Current Action Status'];
+    const rows = inspections
+      .filter(log => log.lineId === lineId)
+      .map(log => {
+        const model = models.find(m => m.id === log.modelId)?.name || log.modelId;
+        const line = PRODUCTION_LINES.find(l => l.id === log.lineId)?.name || log.lineId;
+        return [
+          log.serialNumber,
+          `"${model.replace(/"/g, '""')}"`,
+          `"${line}"`,
+          log.inspectorSap,
+          log.timestamp,
+          log.status,
+          log.recheckStatus || 'APPROVED_PASS'
+        ];
+      });
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `elaraby_${lineId}_qa_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadProcessCSVForLine = (lineId: string, lineName: string) => {
+    const headers = ['Audit ID', 'Line Name', 'Auditor Name', 'Welding Temperature (C)', 'Foaming Density (kg/m3)', 'Gas Pressure (bar)', 'Vacuum Level (mbar)', 'Date/Time', 'Status'];
+    const rows = processAudits
+      .filter(aud => aud.lineId === lineId)
+      .map(aud => {
+        const line = PRODUCTION_LINES.find(l => l.id === aud.lineId)?.name || aud.lineId;
+        const hasFail = !aud.weldingOK || !aud.foamingOK || !aud.gasChargingOK || !aud.vacuumOK || !aud.safetyGroundLeakageOK;
+        return [
+          aud.id,
+          `"${line}"`,
+          `"${aud.auditorName}"`,
+          aud.weldingStationTemp,
+          aud.foamingDensity,
+          aud.gasChargingPressure,
+          aud.vacuumLevel,
+          aud.timestamp,
+          hasFail ? 'NON_COMPLIANT' : 'COMPLIANT'
+        ];
+      });
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+      + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `elaraby_${lineId}_process_log_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -480,435 +547,230 @@ export default function ManagerWorkspace({
 
         {/* Workspace Tab Contents */}
         {activeTab === 'ANALYTICS' && (
-          <div className="space-y-6">
-            
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Pareto Chart for Defects */}
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-                <div className="flex justify-between items-start border-b border-zinc-150 pb-3">
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-900 font-sans">
-                      تحليل باريتو للعيوب الشائعة بمصنع الثلاجات (Pareto Defect Chart)
-                    </h3>
-                    <p className="text-[10px] text-zinc-500 mt-1">تحديد العيوب التي تسهم بنسبة 80% من مشاكل الجودة لإرساء أولويات الإصلاح خط الإنتاج</p>
-                  </div>
-                  <HelpCircle className="w-4 h-4 text-zinc-300 hover:text-zinc-550 cursor-help" title="مخطط باريتو يرتب العيوب تنازليًا مع منحنى تراكمي" />
-                </div>
-
-                {/* Handscrafted SVG Pareto Chart */}
-                {totalDefectsCount === 0 ? (
-                  <div className="text-center py-16 text-zinc-450 text-xs">
-                    لم يتم تسجيل أي عيوب عينات في هذه النوبة الفنية حتى الآن. خط الإنتاج سليم تمامًا.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="relative h-64 w-full bg-zinc-50/50 rounded-xl border border-zinc-150 p-2">
-                      <svg className="w-full h-full" viewBox="0 0 500 240" preserveAspectRatio="none">
-                        {/* Grid lines */}
-                        <line x1="40" y1="20" x2="460" y2="20" stroke="#f4f4f5" strokeWidth="2" />
-                        <line x1="40" y1="73" x2="460" y2="73" stroke="#e4e4e7" strokeDasharray="3" />
-                        <line x1="40" y1="126" x2="460" y2="126" stroke="#e4e4e7" strokeDasharray="3" />
-                        <line x1="40" y1="180" x2="460" y2="180" stroke="#e4e4e7" strokeDasharray="3" />
-                        <line x1="40" y1="200" x2="460" y2="200" stroke="#d4d4d8" />
-
-                        {/* Defect Bars and Dots for cumulative percent */}
-                        {paretoData.slice(0, 6).map((defect, index) => {
-                          const barWidth = 45;
-                          const spacing = (420 / 6);
-                          const x = 50 + index * spacing;
-                          
-                          // Convert frequencies to height
-                          const maxCount = Math.max(...paretoData.map(d => d.count)) || 1;
-                          const barHeight = (defect.count / maxCount) * 150;
-                          const y = 200 - barHeight;
-
-                          // Cumulative line dots coordinates
-                          const dotY = 200 - (defect.cumPercent / 100) * 180;
-                          
-                          return (
-                            <g key={defect.id} className="group cursor-pointer">
-                              {/* Transparent hover catcher */}
-                              <rect x={x - 5} y={20} width={barWidth + 10} height={180} fill="transparent" />
-                              <title>{`${defect.label}: ${defect.count} مرة (${defect.cumPercent}% تراكمي)`}</title>
-                              
-                              {/* The bar */}
-                              <rect
-                                x={x}
-                                y={y}
-                                width={barWidth}
-                                height={barHeight}
-                                fill={index < 2 ? '#b91c1c' : index < 4 ? '#d97706' : '#15803d'}
-                                rx="4"
-                                className="transition-all duration-300 hover:opacity-85"
-                              />
-
-                              {/* Label on top of bar */}
-                              <text x={x + barWidth / 2} y={y - 5} textAnchor="middle" fill="#52525b" fontSize="10" fontWeight="extrabold">
-                                {defect.count}
-                              </text>
-
-                              {/* Cumulative Dot */}
-                              <circle cx={x + barWidth / 2} cy={dotY} r="5" fill="#f59e0b" stroke="#fff" strokeWidth="2" />
-                            </g>
-                          );
-                        })}
-
-                        {/* Cumulative curve line path connector */}
-                        {(() => {
-                          const points = paretoData.slice(0, 6).map((defect, index) => {
-                            const spacing = (420 / 6);
-                            const x = 50 + index * spacing + 45 / 2;
-                            const dotY = 200 - (defect.cumPercent / 100) * 180;
-                            return `${x},${dotY}`;
-                          }).join(' ');
-
-                          return <polyline fill="none" stroke="#f59e0b" strokeWidth="2.5" points={points} />;
-                        })()}
-                      </svg>
-                    </div>
-
-                    {/* Legend descriptors */}
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-[9px] font-bold text-center text-zinc-550">
-                      {paretoData.slice(0, 6).map((defect, idx) => (
-                        <div key={defect.id} className="p-1.5 bg-zinc-50 rounded border border-zinc-200 truncate" title={defect.label}>
-                          <span className="block text-zinc-400 text-[8px]">#{idx + 1}</span>
-                          <span className="text-zinc-800">{defect.label.length > 15 ? defect.label.substring(0, 15) + '..' : defect.label}</span>
-                          <span className="block mt-1 font-mono text-red-650 font-bold">{defect.cumPercent}% تراكمي</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Line Production yield overview */}
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-                <div className="border-b border-zinc-150 pb-3 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-900 font-sans">
-                      جدول مقارنة كفاءة خطوط التجميع الثلاجات والـ FPY
-                    </h3>
-                    <p className="text-[10px] text-zinc-500 mt-1">تقييم عينات الإنتاج الأولي ومعدل تخريد الورش وإصلاح العيوب</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Line compare bars */}
-                  <div className="space-y-3 pt-1">
-                    {lineStats.map((line) => {
-                      return (
-                        <div key={line.id} className="bg-zinc-50 p-4 rounded-xl border border-zinc-150 space-y-2">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-bold text-zinc-800">{line.name}</span>
-                            <div className="flex items-center gap-2 font-mono text-[11px]">
-                              <span className="text-zinc-450">إجمالي المفحوص: <strong>{line.total}</strong></span>
-                              <span className="text-emerald-600 font-bold">• FPY: <strong>{line.fpy}%</strong></span>
-                            </div>
-                          </div>
-
-                          {/* Progress bar representing yield */}
-                          <div className="w-full bg-zinc-200 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className={`h-2 rounded-full transition-all duration-505 ${
-                                line.fpy >= 85 
-                                  ? 'bg-emerald-600' 
-                                  : line.fpy >= 70 
-                                  ? 'bg-amber-500' 
-                                  : 'bg-red-500'
-                              }`} 
-                              style={{ width: `${line.fpy}%` }} 
-                            />
-                          </div>
-
-                          {/* Mini breakdowns */}
-                          <div className="flex justify-between items-center text-[10px] text-zinc-400">
-                            <span>المشرف المسؤول: <strong className="text-zinc-700">{line.supervisorName}</strong></span>
-                            <span className="flex gap-2">
-                              <span>قيد المعالجة بالخط: <strong className="text-amber-600">{line.currentFail}</strong></span>
-                              <span>التخريد الكلي: <strong className="text-red-650">{line.scrap}</strong></span>
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Summary commentary info */}
-                  <div className="bg-blue-50/50 border border-blue-150 p-3.5 rounded-xl text-[10px] text-blue-800 leading-relaxed font-sans">
-                    💡 <strong>تقرير المشاهدة التحليلي:</strong> يعتبر خط التجميع ج أعلى الخطوط استقرارًا حاليًا لنقاء فنيات لحام الكوندنسر، بينما يتأثر الخط ب عيب في خدوش الهيكل الخارجي وصاج الأبواب مما يستدعي تدقيق عزل مكبس سحب الستيل.
-                  </div>
-                </div>
-              </div>
-
+          <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-sm text-center max-w-lg mx-auto my-12 space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-zinc-50 border border-zinc-150 flex items-center justify-center text-zinc-400">
+              <TrendingUp className="w-6 h-6" />
             </div>
-
-            {/* Downside grid: Recent Process QC limits review */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="border-b border-zinc-150 pb-3 flex justify-between items-center">
-                <div>
-                  <h3 className="text-xs font-bold text-zinc-900 font-sans">
-                    سجل المعاينات ومطابقة شاشات الفحص الفنية للعمليات (Process Parameters Status)
-                  </h3>
-                  <p className="text-[10px] text-zinc-500 mt-1">آخر تدقيق لمعايير اللحام، الشحن بالفريون، والخواص الهيدروليكية الموثقة بواسطة المشرفين</p>
-                </div>
-              </div>
-
-              {processAudits.length === 0 ? (
-                <div className="text-center py-6 text-zinc-450 text-xs">
-                  لم يسجل المشرفون أي معاينات للعمليات والخطوط حتى الآن.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {processAudits.slice(0, 3).map((aud) => {
-                    const line = PRODUCTION_LINES.find(l => l.id === aud.lineId);
-                    const isPassed = aud.weldingOK && aud.foamingOK && aud.gasChargingOK && aud.vacuumOK && aud.safetyGroundLeakageOK;
-                    return (
-                      <div key={aud.id} className={`p-4 rounded-xl border ${isPassed ? 'bg-zinc-50 border-zinc-200' : 'bg-red-50/40 border-red-200'} space-y-3 text-xs`}>
-                        <div className="flex justify-between items-center border-b border-zinc-150 pb-2">
-                          <div>
-                            <span className="text-[10px] font-sans font-bold text-zinc-700 block">{line ? line.name : aud.lineId}</span>
-                            <span className="text-[9px] font-mono text-zinc-400 block mt-0.5">#{aud.id}</span>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isPassed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                            {isPassed ? 'مطابق ومستقر' : 'تجاوز المعايير'}
-                          </span>
-                        </div>
-
-                        <div className="space-y-1.5 font-mono text-[11px] text-zinc-600">
-                          <div className="flex justify-between">
-                            <span>حرارة اللحام :</span>
-                            <span className={aud.weldingOK ? 'text-emerald-705' : 'text-red-705 font-bold'}>{aud.weldingStationTemp} °C</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>كثافة عزل الفوم :</span>
-                            <span className={aud.foamingOK ? 'text-emerald-705' : 'text-red-705 font-bold'}>{aud.foamingDensity} kg/m³</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>شحن غاز المبرد :</span>
-                            <span className={aud.gasChargingOK ? 'text-emerald-705' : 'text-red-705 font-bold'}>{aud.gasChargingPressure} bar</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>تفريغ الأنابيب :</span>
-                            <span className={aud.vacuumOK ? 'text-emerald-705' : 'text-red-705 font-bold'}>{aud.vacuumLevel} mbar</span>
-                          </div>
-                          <div className="flex justify-between border-t border-zinc-200/60 pt-1 text-[10px] text-zinc-400 font-sans">
-                            <span>المسؤول: {aud.auditorName.split(' ')[0]} {aud.auditorName.split(' ')[1]}</span>
-                            <span>{new Date(aud.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <h3 className="text-sm font-black text-zinc-900">قسم لوحة التحليلات ملغى</h3>
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              تم إفراغ قسم لوحة التحليلات بالكامل بناءً على توجيهاتكم. يمكنك تصفح سجل الفحوصات الجارية ومؤشرات الجودة لكل مصنع من علامات التبويب الأخرى المخصصة.
+            </p>
           </div>
         )}
 
         {activeTab === 'INVENTORY_REPORTS' && (
-          <div className="space-y-4 animate-fadeIn text-right">
-            {/* Sub Tabs: Inspections vs Operations */}
-            <div className="flex bg-zinc-100 p-1 rounded-xl w-fit">
-              <button
-                onClick={() => setInvSubTab('INSPECTION')}
-                className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${
-                  invSubTab === 'INSPECTION'
-                    ? 'bg-white text-amber-700 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                الفحص
-              </button>
-              <button
-                onClick={() => setInvSubTab('OPERATIONS')}
-                className={`px-5 py-2 rounded-lg text-xs font-black transition-all ${
-                  invSubTab === 'OPERATIONS'
-                    ? 'bg-white text-amber-700 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                العمليات
-              </button>
-            </div>
+          <div className="space-y-8 animate-fadeIn text-right">
+            {PRODUCTION_LINES.map((line) => {
+              const currentSubTab = factoryTabs[line.id] || 'INSPECTION';
+              const lineInspections = inspections.filter(log => log.lineId === line.id);
+              const lineAudits = processAudits.filter(aud => aud.lineId === line.id);
 
-            {invSubTab === 'INSPECTION' ? (
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-150 pb-3">
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
-                      <Printer className="w-4 h-4 text-amber-500" />
-                      بيان سجل ومواصفات الفحص الفني لجرد الثلاجات
-                    </h3>
-                    <p className="text-[10px] text-zinc-500 mt-1">كشف تفصيلي يبين جودة كافة الوحدات المغادرة لخط الإنتاج والقرار الإشرافي المتخذ بشأنها</p>
+              return (
+                <div key={line.id} className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm space-y-6">
+                  {/* Section Title and Info */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-150 pb-4">
+                    <div>
+                      <h2 className="text-sm font-black text-zinc-900 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        {line.name}
+                      </h2>
+                      <p className="text-[11px] text-zinc-500 mt-1">
+                        المشرف المسؤول: <strong className="text-zinc-700">{line.supervisorName}</strong>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* Sub-tab Selectors within the Factory */}
+                      <div className="flex bg-zinc-100 p-1 rounded-xl">
+                        <button
+                          onClick={() => setFactoryTabs(prev => ({ ...prev, [line.id]: 'INSPECTION' }))}
+                          className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all ${
+                            currentSubTab === 'INSPECTION'
+                              ? 'bg-white text-amber-700 shadow-sm'
+                              : 'text-zinc-500 hover:text-zinc-800'
+                          }`}
+                        >
+                          تقارير فحص العينات ({lineInspections.length})
+                        </button>
+                        <button
+                          onClick={() => setFactoryTabs(prev => ({ ...prev, [line.id]: 'OPERATIONS' }))}
+                          className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all ${
+                            currentSubTab === 'OPERATIONS'
+                              ? 'bg-white text-amber-700 shadow-sm'
+                              : 'text-zinc-500 hover:text-zinc-800'
+                          }`}
+                        >
+                          تقارير العمليات ({lineAudits.length})
+                        </button>
+                      </div>
+
+                      {/* Download Specific Factory CSV */}
+                      {currentSubTab === 'INSPECTION' ? (
+                        <button
+                          onClick={() => handleDownloadInventoryCSVForLine(line.id, line.name)}
+                          disabled={lineInspections.length === 0}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
+                          title="تحميل كشف اكسل للفحص"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>تصدير الفحص</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleDownloadProcessCSVForLine(line.id, line.name)}
+                          disabled={lineAudits.length === 0}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
+                          title="تحميل كشف اكسل للعمليات"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>تصدير العمليات</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <button
-                    onClick={handleDownloadInventoryCSV}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>تحميل كشف اكسل (CSV)</span>
-                  </button>
+                  {/* Table area based on current sub tab */}
+                  {currentSubTab === 'INSPECTION' ? (
+                    <div>
+                      {lineInspections.length === 0 ? (
+                        <div className="text-center py-10 bg-zinc-50/50 rounded-2xl border border-dashed border-zinc-200 text-zinc-450 text-xs">
+                          لا توجد تقارير فحص عينات مسجلة لهذا المصنع حتى الآن.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto text-[11px] rounded-2xl border border-zinc-200">
+                          <table className="w-full text-right border-collapse">
+                            <thead>
+                              <tr className="border-b border-zinc-200 text-zinc-650 uppercase text-[10px] font-bold bg-zinc-50">
+                                <th className="py-2.5 px-4">رقم السيريال (Serial)</th>
+                                <th className="py-2.5 px-4">الموديل الفني</th>
+                                <th className="py-2.5 px-4">الفاحص (الـ SAP)</th>
+                                <th className="py-2.5 px-4">التاريخ والوقت</th>
+                                <th className="py-2.5 px-4 text-center">القرار المبدئي للثلاجة</th>
+                                <th className="py-2.5 px-4 text-center">حالة معالجة العيوب لخط الإنتاج</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100 text-zinc-700">
+                              {lineInspections.map((log) => {
+                                const modelObj = models.find(m => m.id === log.modelId);
+                                return (
+                                  <tr key={log.id} className="hover:bg-zinc-50/55 transition-colors">
+                                    <td className="py-2.5 px-4 font-mono font-bold text-zinc-900 tracking-wider">
+                                      {log.serialNumber}
+                                    </td>
+                                    <td className="py-2.5 px-4 font-sans text-zinc-800">
+                                      {modelObj ? modelObj.name : log.modelId}
+                                    </td>
+                                    <td className="py-2.5 px-4 font-mono text-[10px] text-zinc-400">
+                                      {log.inspectorName.split(' ')[0]} ({log.inspectorSap})
+                                    </td>
+                                    <td className="py-2.5 px-4 text-zinc-500">
+                                      {new Date(log.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                                    </td>
+                                    <td className="py-2.5 px-4 text-center">
+                                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                        log.status === 'PASS' 
+                                          ? 'bg-emerald-50 border-emerald-250 text-emerald-700' 
+                                          : 'bg-red-50 border-red-200 text-red-700'
+                                      }`}>
+                                        {log.status === 'PASS' ? 'مطابق وممتاز' : 'به عيوب تصنيع'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-4 text-center">
+                                      {log.status === 'PASS' ? (
+                                        <span className="text-zinc-300 text-[10px]">-</span>
+                                      ) : log.recheckStatus === 'APPROVED_AFTER_REPAIR' ? (
+                                        <span className="bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                          أصلح واعتمد بنجاح
+                                        </span>
+                                      ) : log.recheckStatus === 'SCRAPPED' ? (
+                                        <span className="bg-zinc-100 text-zinc-500 border border-zinc-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                          تم تخريد الهيكل
+                                        </span>
+                                      ) : (
+                                        <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">
+                                          قيد المعالجة الميكانيكية
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      {lineAudits.length === 0 ? (
+                        <div className="text-center py-10 bg-zinc-50/50 rounded-2xl border border-dashed border-zinc-200 text-zinc-450 text-xs">
+                          لا توجد تقارير تدقيق عمليات مسجلة لهذا المصنع حتى الآن.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto text-[11px] rounded-2xl border border-zinc-200">
+                          <table className="w-full text-right border-collapse">
+                            <thead>
+                              <tr className="border-b border-zinc-200 text-zinc-650 uppercase text-[10px] font-bold bg-zinc-50">
+                                <th className="py-2.5 px-4">رقم التدقيق</th>
+                                <th className="py-2.5 px-4">المشرف المسؤول</th>
+                                <th className="py-2.5 px-4">محطة اللحام للنحاس</th>
+                                <th className="py-2.5 px-4">كثافة الفوم العازل</th>
+                                <th className="py-2.5 px-4">ضغط تعبئة الغاز المبرد</th>
+                                <th className="py-2.5 px-4">تفريغ الأنابيب (Vacuum)</th>
+                                <th className="py-2.5 px-4 text-center">معايرة التسريب الكهربي</th>
+                                <th className="py-2.5 px-4">التاريخ والوقت الموثق</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100 text-zinc-700">
+                              {lineAudits.map((item) => {
+                                return (
+                                  <tr key={item.id} className="hover:bg-zinc-50/55 transition-colors">
+                                    <td className="py-2.5 px-4 font-mono font-bold text-zinc-450">
+                                      {item.id}
+                                    </td>
+                                    <td className="py-2.5 px-4 text-zinc-550">
+                                      {item.auditorName}
+                                    </td>
+                                    <td className="py-2.5 px-4 font-mono font-bold">
+                                      <span className={item.weldingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                        {item.weldingStationTemp} °C {item.weldingOK ? '✓' : '✗'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-4 font-mono font-bold">
+                                      <span className={item.foamingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                        {item.foamingDensity} kg/m³ {item.foamingOK ? '✓' : '✗'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-4 font-mono font-bold">
+                                      <span className={item.gasChargingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                        {item.gasChargingPressure} bar {item.gasChargingOK ? '✓' : '✗'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-4 font-mono font-bold">
+                                      <span className={item.vacuumOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
+                                        {item.vacuumLevel} mbar {item.vacuumOK ? '✓' : '✗'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-4 text-center">
+                                      <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${item.safetyGroundLeakageOK ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                        {item.safetyGroundLeakageOK ? 'مطابق' : 'فاشل المعايرة'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-4 text-zinc-400">
+                                      {new Date(item.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                {/* Inventory table logs */}
-                <div className="overflow-x-auto text-[11px]">
-                  <table className="w-full text-right">
-                    <thead>
-                      <tr className="border-b border-zinc-200 text-zinc-550 uppercase text-[10px] font-bold bg-zinc-50">
-                        <th className="py-3 px-4">رقم السيريال (Serial)</th>
-                        <th className="py-3 px-4">الموديل الفني</th>
-                        <th className="py-3 px-4">خط الإنتاج</th>
-                        <th className="py-3 px-4">الفاحص (الـ SAP)</th>
-                        <th className="py-3 px-4">التاريخ والوقت</th>
-                        <th className="py-3 px-4 text-center">القرار المبدئي للثلاجة</th>
-                        <th className="py-3 px-4 text-center">حالة معالجة العيوب لخط الإنتاج</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 text-zinc-700">
-                      {inspections.map((log) => {
-                        const modelObj = models.find(m => m.id === log.modelId);
-                        const lineObj = PRODUCTION_LINES.find(l => l.id === log.lineId);
-                        return (
-                          <tr key={log.id} className="hover:bg-zinc-55/35 transition-colors">
-                            <td className="py-3 px-4 font-mono font-bold text-zinc-900 tracking-wider">
-                              {log.serialNumber}
-                            </td>
-                            <td className="py-3 px-4 font-sans text-zinc-800">
-                              {modelObj ? modelObj.name : log.modelId}
-                            </td>
-                            <td className="py-3 px-4 font-bold text-zinc-500">
-                              {lineObj ? lineObj.name : log.lineId}
-                            </td>
-                            <td className="py-3 px-4 font-mono text-[10px] text-zinc-400">
-                              {log.inspectorName.split(' ')[0]} ({log.inspectorSap})
-                            </td>
-                            <td className="py-3 px-4 text-zinc-500">
-                              {new Date(log.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                                log.status === 'PASS' 
-                                  ? 'bg-emerald-50 border-emerald-250 text-emerald-700' 
-                                  : 'bg-red-50 border-red-200 text-red-700'
-                              }`}>
-                                {log.status === 'PASS' ? 'مطابق وممتاز' : 'به عيوب تصنيع'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {log.status === 'PASS' ? (
-                                <span className="text-zinc-300 text-[10px]">-</span>
-                              ) : log.recheckStatus === 'APPROVED_AFTER_REPAIR' ? (
-                                <span className="bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                                  أصلح واعتمد بنجاح
-                                </span>
-                              ) : log.recheckStatus === 'SCRAPPED' ? (
-                                <span className="bg-zinc-100 text-zinc-500 border border-zinc-200 px-2 py-0.5 rounded text-[10px] font-bold">
-                                  تم تخريد الهيكل
-                                </span>
-                              ) : (
-                                <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">
-                                  قيد المعالجة الميكانيكية
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-150 pb-3">
-                  <div>
-                    <h3 className="text-xs font-bold text-zinc-900 flex items-center gap-2">
-                      <FileSpreadsheet className="w-4 h-4 text-amber-500" />
-                      تقارير تدقيق جودة العمليات المترولوجية لمجموعات الدعم والإنتاج
-                    </h3>
-                    <p className="text-[10px] text-zinc-500 mt-1">تتبع انحرافات اللحام، قوة وضغط قذف غاز الفريون المبرد، وكثافة مركب عزل الهيكل الخارجي</p>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <button
-                    onClick={handleDownloadProcessCSV}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>تحميل بيان العمليات الفنية (CSV)</span>
-                  </button>
-                </div>
-
-                {/* Audits table logs */}
-                <div className="overflow-x-auto text-[11px]">
-                  <table className="w-full text-right">
-                    <thead>
-                      <tr className="border-b border-zinc-200 text-zinc-550 uppercase text-[10px] font-bold bg-zinc-50">
-                        <th className="py-3 px-4">رقم التدقيق</th>
-                        <th className="py-3 px-4">اسم خط التجميع</th>
-                        <th className="py-3 px-4">المشرف المسؤول</th>
-                        <th className="py-3 px-4">محطة اللحام للنحاس</th>
-                        <th className="py-3 px-4">كثافة الفوم العازل</th>
-                        <th className="py-3 px-4">ضغط تعبئة الغاز المبرد</th>
-                        <th className="py-3 px-4">تفريغ الأنابيب (Vacuum)</th>
-                        <th className="py-3 px-4 text-center">معايرة التسريب الكهربي</th>
-                        <th className="py-3 px-4">التاريخ والوقت الموثق</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 text-zinc-700">
-                      {processAudits.map((item) => {
-                        const lineObj = PRODUCTION_LINES.find(l => l.id === item.lineId);
-                        return (
-                          <tr key={item.id} className="hover:bg-zinc-55/35 transition-colors">
-                            <td className="py-3 px-4 font-mono font-bold text-zinc-400">
-                              {item.id}
-                            </td>
-                            <td className="py-3 px-4 font-bold text-zinc-800 font-sans">
-                              {lineObj ? lineObj.name : item.lineId}
-                            </td>
-                            <td className="py-3 px-4 text-zinc-400">
-                              {item.auditorName}
-                            </td>
-                            <td className="py-3 px-4 font-mono font-bold">
-                              <span className={item.weldingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                                {item.weldingStationTemp} °C {item.weldingOK ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 font-mono font-bold">
-                              <span className={item.foamingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                                {item.foamingDensity} kg/m³ {item.foamingOK ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 font-mono font-bold">
-                              <span className={item.gasChargingOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                                {item.gasChargingPressure} bar {item.gasChargingOK ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 font-mono font-bold">
-                              <span className={item.vacuumOK ? 'text-emerald-700' : 'text-red-750 font-bold'}>
-                                {item.vacuumLevel} mbar {item.vacuumOK ? '✓' : '✗'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold ${item.safetyGroundLeakageOK ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                                {item.safetyGroundLeakageOK ? 'مطابق' : 'فاشل المعايرة'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-zinc-400">
-                              {new Date(item.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+              );
+            })}
           </div>
         )}
 
