@@ -4,12 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { User, QualityInspectionLog, ProcessAuditLog, ManagedUser, UserRole, RefrigeratorModel } from '../types';
+import { User, QualityInspectionLog, ProcessAuditLog, ManagedUser, UserRole, RefrigeratorModel, NCRReport } from '../types';
 import { PRODUCTION_LINES } from '../data';
 import { 
   BarChart3, LogOut, TrendingUp, Printer, FileSpreadsheet, Download, HelpCircle, 
   CheckCircle, ShieldAlert, Award, Users, UserPlus, Trash2, Lock, Shield, UserCheck, PlusCircle, Package,
-  BookOpen, Search, ArrowRight
+  BookOpen, Search, ArrowRight, Settings
 } from 'lucide-react';
 import { 
   SHARP_PERFORMANCE_TESTS, 
@@ -28,6 +28,9 @@ interface ManagerWorkspaceProps {
   onUpdateUsers: (users: ManagedUser[]) => void;
   models: RefrigeratorModel[];
   onUpdateModels: React.Dispatch<React.SetStateAction<RefrigeratorModel[]>>;
+  ncrs: NCRReport[];
+  onUpdateNcrs: React.Dispatch<React.SetStateAction<NCRReport[]>>;
+  onPrintNCR: (ncr: NCRReport) => void;
 }
 
 export default function ManagerWorkspace({
@@ -39,8 +42,11 @@ export default function ManagerWorkspace({
   onUpdateUsers,
   models,
   onUpdateModels,
+  ncrs,
+  onUpdateNcrs: setNcrs,
+  onPrintNCR,
 }: ManagerWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'USER_DIRECTORY' | 'TEST_INSTRUCTIONS'>('ANALYTICS');
+  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'INVENTORY_REPORTS' | 'USER_DIRECTORY' | 'TEST_INSTRUCTIONS' | 'NCR_REPORTS'>('ANALYTICS');
   const [invSubTab, setInvSubTab] = useState<'INSPECTION' | 'OPERATIONS'>('INSPECTION');
   const [factoryTabs, setFactoryTabs] = useState<Record<string, 'INSPECTION' | 'OPERATIONS'>>({
     'LINE_A': 'INSPECTION',
@@ -65,12 +71,6 @@ export default function ManagerWorkspace({
   const [trialRuns] = useState<any[]>(() => {
     try {
       const stored = localStorage.getItem('elaraby_qa_trial_runs');
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
-  const [ncrs] = useState<any[]>(() => {
-    try {
-      const stored = localStorage.getItem('elaraby_qa_ncrs');
       return stored ? JSON.parse(stored) : [];
     } catch { return []; }
   });

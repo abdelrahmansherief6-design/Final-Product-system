@@ -99,3 +99,27 @@ export interface ProcessAuditLog {
   safetyGroundLeakageOK: boolean;
   notes?: string;
 }
+
+export interface NCRReport {
+  id: string;
+  lineId: string;
+  shift: 'الاولى' | 'الثانية' | 'الثالثة';
+  date: string;
+  time: string;
+  barcode: string;
+  modelId: string;
+  defectType: 'CRITICAL_DEFECT' | 'MAJOR_DEFECT' | 'MINOR_DEFECT' | 'CRITICAL_OP' | 'PERFORMANCE_TEST';
+  description: string;
+  specification: string;
+  deviation: string;
+  rootCause: string;
+  actionRequired: string;
+  severity: 'CRITICAL' | 'MAJOR';
+  status: 'OPEN' | 'RESOLVED';
+  timestamp: string;
+  // Feedback fields
+  qcOpinion?: string;
+  productionOpinion?: string;
+  finalDecision?: string;
+  decisionMaker?: string;
+}

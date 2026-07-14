@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import XLSX from 'xlsx-js-style';
-import { User, QualityInspectionLog, ProductionLineId, RefrigeratorModel } from '../types';
+import { User, QualityInspectionLog, ProductionLineId, RefrigeratorModel, NCRReport } from '../types';
 import DailyInspectionFactoryB from './DailyInspectionFactoryB';
 import DailyInspectionPVGV from './DailyInspectionPVGV';
 import { OfficialReportModal } from './OfficialReportModal';
@@ -32,6 +32,9 @@ interface TechnicianWorkspaceProps {
   onAddInspection: (log: QualityInspectionLog) => void;
   onDeleteInspection?: (id: string) => void;
   models: RefrigeratorModel[];
+  ncrs: NCRReport[];
+  onUpdateNcrs: React.Dispatch<React.SetStateAction<NCRReport[]>>;
+  onPrintNCR: (ncr: NCRReport) => void;
 }
 
 interface CriticalLog {
@@ -362,7 +365,17 @@ const FACTORY_B_LABELS: Record<string, string> = {
   otherDefects: 'أي ملاحظات أو عيوب أخرى تم رصدها'
 };
 
-export default function TechnicianWorkspace({ user, onLogout, inspections, onAddInspection, onDeleteInspection, models }: TechnicianWorkspaceProps) {
+export default function TechnicianWorkspace({ 
+  user, 
+  onLogout, 
+  inspections, 
+  onAddInspection, 
+  onDeleteInspection, 
+  models,
+  ncrs,
+  onUpdateNcrs: setNcrs,
+  onPrintNCR
+}: TechnicianWorkspaceProps) {
   // Safe Date/Time Formatting Helpers to prevent rendering crashes due to invalid strings
   const safeDateString = (timestamp: any) => {
     if (!timestamp) return '--/--/----';
@@ -1898,17 +1911,6 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
     ];
   });
 
-  // Non-Conformance Reports (NCR) State
-  const [ncrs, setNcrs] = useState<NCRReport[]>(() => {
-    try {
-      const stored = localStorage.getItem('elaraby_qa_ncrs');
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return [
-      { id: 'NCR-1', lineId: 'LINE_A', title: 'تذبذب مادة البولي يوريثان', modelId: 'MOD_450L', description: 'انكماش مادة الحقن العازل بجوانب الكابينة الخلفية', actionRequired: 'فحص ضغط ماكينة الحقن الروتيني والحرارة', severity: 'MAJOR', status: 'OPEN', timestamp: new Date().toISOString() }
-    ];
-  });
-
   // Loading Stops State
   const [loadingStops, setLoadingStops] = useState<LoadingStop[]>(() => {
     try {
@@ -1940,10 +1942,6 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   useEffect(() => {
     localStorage.setItem('elaraby_qa_trial_runs', JSON.stringify(trialRuns));
   }, [trialRuns]);
-
-  useEffect(() => {
-    localStorage.setItem('elaraby_qa_ncrs', JSON.stringify(ncrs));
-  }, [ncrs]);
 
   useEffect(() => {
     localStorage.setItem('elaraby_qa_loading_stops', JSON.stringify(loadingStops));
@@ -2761,34 +2759,64 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
   };
 
   // State: New NCR Form
-  const [ncrTitle, setNcrTitle] = useState('');
+  const [ncrShift, setNcrShift] = useState<'الاولى' | 'الثانية' | 'الثالثة'>('الاولى');
+  const [ncrDate, setNcrDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [ncrTime, setNcrTime] = useState(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
+  const [ncrBarcode, setNcrBarcode] = useState('');
   const [ncrModel, setNcrModel] = useState(modelId || 'MOD_450L');
+  const [ncrDefectType, setNcrDefectType] = useState<'CRITICAL_DEFECT' | 'MAJOR_DEFECT' | 'MINOR_DEFECT' | 'CRITICAL_OP' | 'PERFORMANCE_TEST'>('MAJOR_DEFECT');
   const [ncrDesc, setNcrDesc] = useState('');
+  const [ncrSpecification, setNcrSpecification] = useState('');
+  const [ncrDeviation, setNcrDeviation] = useState('');
+  const [ncrRootCause, setNcrRootCause] = useState('');
   const [ncrAction, setNcrAction] = useState('');
-  const [ncrSeverity, setNcrSeverity] = useState<'CRITICAL' | 'MAJOR'>('MAJOR');
   const [ncrSuccessMsg, setNcrSuccessMsg] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+
+  const triggerMockScan = () => {
+    setIsScanning(true);
+    setTimeout(() => {
+      const randomId = Math.floor(1000 + Math.random() * 9000);
+      const randomLine = lineId === 'LINE_A' ? 'A' : lineId === 'LINE_B' ? 'B' : 'C';
+      setNcrBarcode(`AR-FR-${randomLine}-${ncrModel.replace('MOD_', '')}-${randomId}`);
+      setIsScanning(false);
+    }, 2000);
+  };
 
   const handleSubmitNCR = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ncrTitle.trim() || !ncrDesc.trim()) {
-      alert('يرجى ملء الحقول المطلوبة لتقرير عدم المطابقة.');
+    if (!ncrBarcode.trim() || !ncrDesc.trim() || !ncrAction.trim()) {
+      alert('يرجى ملء الحقول المطلوبة لتقرير عدم المطابقة (الباركود، وصف العيب، والإجراء).');
       return;
     }
     const newNcr: NCRReport = {
       id: `NCR-${Date.now()}`,
       lineId,
-      title: ncrTitle.trim(),
+      shift: ncrShift,
+      date: ncrDate,
+      time: ncrTime,
+      barcode: ncrBarcode.trim(),
       modelId: ncrModel,
+      defectType: ncrDefectType,
       description: ncrDesc.trim(),
+      specification: ncrSpecification.trim(),
+      deviation: ncrDeviation.trim(),
+      rootCause: ncrRootCause.trim(),
       actionRequired: ncrAction.trim(),
-      severity: ncrSeverity,
+      severity: ncrDefectType === 'CRITICAL_DEFECT' || ncrDefectType === 'CRITICAL_OP' ? 'CRITICAL' : 'MAJOR',
       status: 'OPEN',
       timestamp: new Date().toISOString()
     };
-    setNcrs(prev => [newNcr, ...prev]);
-    setNcrSuccessMsg('تم إصدار تقرير عدم المطابقة بنجاح وإرساله للمشرفين!');
-    setNcrTitle('');
+    setNcrs((prev: NCRReport[]) => [newNcr, ...prev]);
+    setNcrSuccessMsg('تم تسجيل تقرير عدم المطابقة الفنية (NCR) بنجاح!');
+    setNcrBarcode('');
     setNcrDesc('');
+    setNcrSpecification('');
+    setNcrDeviation('');
+    setNcrRootCause('');
     setNcrAction('');
     setTimeout(() => setNcrSuccessMsg(''), 3000);
   };
@@ -5801,13 +5829,13 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
             <div className="flex items-center gap-2 border-b border-zinc-200 pb-3">
               <button 
                 onClick={() => setCurrentSection('DASHBOARD')}
-                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors"
+                className="bg-zinc-100 hover:bg-zinc-200 p-2 rounded-lg text-zinc-650 transition-colors cursor-pointer"
               >
                 <ArrowRight className="w-4 h-4" />
               </button>
               <div>
                 <h2 className="text-sm font-black text-zinc-900">تقارير عدم المطابقة الفنية (Non-Conformance Reports)</h2>
-                <p className="text-[10px] text-zinc-400">إصدار تقارير الأعطال المكررة بالخط واتخاذ إجراءات وقائية فورية</p>
+                <p className="text-[10px] text-zinc-400">تسجيل ومتابعة تقارير عدم المطابقة الفنية وطباعة نموذج التغذية العكسية المعتمد</p>
               </div>
             </div>
 
@@ -5824,21 +5852,90 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                 <h3 className="text-xs font-bold text-zinc-900 border-b border-zinc-150 pb-2">إصدار تقرير عدم مطابقة (NCR) جديد</h3>
                 
                 <form onSubmit={handleSubmitNCR} className="space-y-4 text-xs">
+                  
+                  {/* Shift Selection */}
                   <div>
-                    <label className="block text-zinc-550 font-bold mb-1">عنوان الخلل أو العيب</label>
-                    <input 
-                      type="text" value={ncrTitle} onChange={e => setNcrTitle(e.target.value)} 
-                      placeholder="مثال: شرخ بمواسير النحاس باللحامات"
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs text-right outline-none font-bold" required 
-                    />
+                    <label className="block text-zinc-550 font-bold mb-1">الوردية</label>
+                    <select
+                      value={ncrShift}
+                      onChange={e => setNcrShift(e.target.value as any)}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs text-right outline-none font-bold"
+                    >
+                      <option value="الاولى">الوردية الأولى</option>
+                      <option value="الثانية">الوردية الثانية</option>
+                      <option value="الثالثة">الوردية الثالثة</option>
+                    </select>
                   </div>
 
+                  {/* Date & Time Grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-zinc-550 font-bold mb-1">التاريخ</label>
+                      <input 
+                        type="date" 
+                        value={ncrDate} 
+                        onChange={e => setNcrDate(e.target.value)} 
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs text-center outline-none font-bold"
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-550 font-bold mb-1">الساعة</label>
+                      <input 
+                        type="time" 
+                        value={ncrTime} 
+                        onChange={e => setNcrTime(e.target.value)} 
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs text-center outline-none font-bold"
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fridge Barcode with Mock Mobile Scanning */}
                   <div>
-                    <label className="block text-zinc-550 font-bold mb-1">الموديل المتأثر</label>
+                    <label className="block text-zinc-550 font-bold mb-1">باركود الثلاجة (يمكن مسحه بالهاتف)</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={ncrBarcode} 
+                        onChange={e => setNcrBarcode(e.target.value)} 
+                        placeholder="مثال: AR-FR-A-450L-9284"
+                        className="flex-1 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs text-right outline-none font-bold font-mono" 
+                        required 
+                      />
+                      <button
+                        type="button"
+                        onClick={triggerMockScan}
+                        disabled={isScanning}
+                        className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      >
+                        <Settings className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: isScanning ? '1.5s' : '0s' }} />
+                        اسكان بالموبايل
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Scan Animation Box */}
+                  {isScanning && (
+                    <div className="relative h-28 bg-zinc-950 rounded-xl overflow-hidden flex flex-col items-center justify-center border border-indigo-500/30">
+                      <div className="absolute top-0 left-0 w-full h-0.5 bg-red-500 animate-pulse shadow-[0_0_8px_#ef4444]"></div>
+                      <div className="z-10 text-white text-center text-[10px] space-y-1 font-bold">
+                        <div className="text-indigo-400 animate-pulse">جاري تشغيل محاكي الكاميرا الخلفية...</div>
+                        <div className="text-zinc-500 text-[9px]">ضع باركود ملصق الثلاجة داخل المربع الأخضر</div>
+                      </div>
+                      <div className="absolute border-2 border-emerald-500 w-28 h-12 rounded opacity-60 flex items-center justify-center">
+                        <span className="text-[8px] text-emerald-400 tracking-widest animate-ping font-mono">SCANNING</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Refrigerator Model */}
+                  <div>
+                    <label className="block text-zinc-550 font-bold mb-1">موديل الثلاجة</label>
                     <select
                       value={ncrModel}
                       onChange={e => setNcrModel(e.target.value)}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs text-right outline-none"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs text-right outline-none font-bold"
                     >
                       {models.filter(m => m.factoryId === lineId).map(m => (
                         <option key={m.id} value={m.id}>{m.name}</option>
@@ -5846,71 +5943,198 @@ export default function TechnicianWorkspace({ user, onLogout, inspections, onAdd
                     </select>
                   </div>
 
+                  {/* Defect Type / Check Area */}
                   <div>
-                    <label className="block text-zinc-550 font-bold mb-1">تفاصيل ومظاهر الخلل المرصود بالخط</label>
+                    <label className="block text-zinc-550 font-bold mb-1">مكان رصد العيب (عملية الفحص)</label>
+                    <select
+                      value={ncrDefectType}
+                      onChange={e => setNcrDefectType(e.target.value as any)}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-2 text-xs text-right outline-none font-bold"
+                    >
+                      <option value="PERFORMANCE_TEST">إختبار اداء</option>
+                      <option value="CRITICAL_OP">عمليات حرجة</option>
+                      <option value="CRITICAL_DEFECT">عينات عشوائية - عيب حرج</option>
+                      <option value="MAJOR_DEFECT">عينات عشوائية - عيب رئيسي</option>
+                      <option value="MINOR_DEFECT">عينات عشوائية - عيب ثانوي</option>
+                    </select>
+                  </div>
+
+                  {/* Defect Description */}
+                  <div>
+                    <label className="block text-zinc-550 font-bold mb-1">وصف العيب</label>
                     <textarea 
-                      value={ncrDesc} onChange={e => setNcrDesc(e.target.value)} 
-                      placeholder="وصف دقيق للأعداد المتكررة للمنتجات المعيبة والمنبعثة بالخط..."
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs text-right outline-none h-20 resize-none" required
+                      value={ncrDesc} 
+                      onChange={e => setNcrDesc(e.target.value)} 
+                      placeholder="وصف تفصيلي دقيق للعيب المكتشف..."
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-xs text-right outline-none h-16 resize-none font-medium" 
+                      required
                     />
                   </div>
 
+                  {/* Specification */}
                   <div>
-                    <label className="block text-zinc-550 font-bold mb-1">الإجراء التصحيحي الفوري المقترح</label>
+                    <label className="block text-zinc-550 font-bold mb-1">المواصفة (Specification)</label>
                     <input 
-                      type="text" value={ncrAction} onChange={e => setNcrAction(e.target.value)} 
-                      placeholder="تعديل زوايا اللحام أو ضبط المكبس أو حرارة الحقن..."
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs text-right outline-none" required 
+                      type="text" 
+                      value={ncrSpecification} 
+                      onChange={e => setNcrSpecification(e.target.value)} 
+                      placeholder="القيمة أو الشرط المعتمد للمواصفة الفنية"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs text-right outline-none font-medium" 
                     />
                   </div>
 
+                  {/* Deviation */}
                   <div>
-                    <label className="block text-zinc-550 font-bold mb-1">درجة الخطورة الفنية (Severity)</label>
-                    <div className="flex gap-2">
-                      <button 
-                        type="button" onClick={() => setNcrSeverity('MAJOR')} 
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${ncrSeverity === 'MAJOR' ? 'bg-amber-50 border-amber-305 text-amber-700 font-bold' : 'bg-zinc-100 text-zinc-500'}`}
-                      >
-                        كبير (Major)
-                      </button>
-                      <button 
-                        type="button" onClick={() => setNcrSeverity('CRITICAL')} 
-                        className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${ncrSeverity === 'CRITICAL' ? 'bg-red-50 border-red-305 text-red-700 font-bold' : 'bg-zinc-100 text-zinc-500'}`}
-                      >
-                        حرج جداً (Critical)
-                      </button>
-                    </div>
+                    <label className="block text-zinc-550 font-bold mb-1">الحيود (Deviation)</label>
+                    <input 
+                      type="text" 
+                      value={ncrDeviation} 
+                      onChange={e => setNcrDeviation(e.target.value)} 
+                      placeholder="القيمة المقاسة الفعيلة والفرق عن المواصفة"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs text-right outline-none font-medium" 
+                    />
                   </div>
 
-                  <button type="submit" className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-2 rounded-xl text-xs">
-                    تأكيد وإرسال تقرير الـ NCR
+                  {/* Root Cause */}
+                  <div>
+                    <label className="block text-zinc-550 font-bold mb-1">السبب الجذري المتوقع</label>
+                    <input 
+                      type="text" 
+                      value={ncrRootCause} 
+                      onChange={e => setNcrRootCause(e.target.value)} 
+                      placeholder="سبب الخلل (مثل: خلل بمعايرة الماكينة أو حرارة القالب)"
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs text-right outline-none font-medium" 
+                    />
+                  </div>
+
+                  {/* Corrective Action Taken */}
+                  <div>
+                    <label className="block text-zinc-550 font-bold mb-1">الإجراء المتخذ (Corrective Action)</label>
+                    <input 
+                      type="text" 
+                      value={ncrAction} 
+                      onChange={e => setNcrAction(e.target.value)} 
+                      placeholder="الإجراء المتخذ الفوري لمنع تكرار العيب..."
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-xs text-right outline-none font-bold" 
+                      required 
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full bg-orange-650 hover:bg-orange-700 text-white font-extrabold py-2.5 rounded-xl text-xs transition-colors cursor-pointer">
+                    تأكيد وحفظ تقرير الـ NCR
                   </button>
                 </form>
               </div>
 
               {/* NCR Reports List */}
               <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
-                <h3 className="text-xs font-bold text-zinc-900 border-b border-zinc-150 pb-2">تقارير عدم المطابقة المفتوحة والنشطة للخط</h3>
+                <h3 className="text-xs font-bold text-zinc-900 border-b border-zinc-150 pb-2">سجل تقارير عدم المطابقة (NCR) ومتابعة التغذية العكسية</h3>
                 
-                <div className="space-y-3.5 text-right">
+                <div className="space-y-4 text-right">
                   {ncrs.filter(n => n.lineId === lineId).map(ncr => (
-                    <div key={ncr.id} className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-zinc-900 text-sm">{ncr.title}</span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${ncr.severity === 'CRITICAL' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {ncr.severity === 'CRITICAL' ? 'حرج' : 'كبير'}
-                        </span>
+                    <div key={ncr.id} className="bg-zinc-50 border border-zinc-250 rounded-xl p-4 space-y-3 text-xs hover:border-zinc-350 transition-all">
+                      <div className="flex items-center justify-between border-b border-zinc-150 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-zinc-900 text-sm font-mono">#{ncr.id}</span>
+                          <span className="text-[10px] bg-zinc-200 text-zinc-700 px-2 py-0.5 rounded-md font-bold">
+                            الوردية: {ncr.shift}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${ncr.severity === 'CRITICAL' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-amber-50 border border-amber-200 text-amber-700'}`}>
+                            {ncr.severity === 'CRITICAL' ? 'خطورة حرجة' : 'خطورة متوسطة'}
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold border ${ncr.status === 'RESOLVED' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                            {ncr.status === 'RESOLVED' ? 'مغلق ومصحح' : 'مفتوح ونشط'}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-zinc-650 leading-relaxed font-medium">الموديل: {getModelName(ncr.modelId)}</p>
-                      <p className="text-zinc-500 font-medium bg-white border border-zinc-150 p-2 rounded-lg text-[11px]">{ncr.description}</p>
-                      <div className="pt-2 border-t border-zinc-150 flex items-center justify-between text-[11px] text-zinc-400">
-                        <span>الإجراء المطلق: <strong className="text-zinc-700">{ncr.actionRequired}</strong></span>
-                        <span className="font-mono">{safeDateString(ncr.timestamp)}</span>
+
+                      <div className="grid grid-cols-2 gap-4 text-[11px] bg-white border border-zinc-150 p-3 rounded-lg font-medium">
+                        <div>
+                          <p className="text-zinc-400">موديل الثلاجة:</p>
+                          <p className="text-zinc-800 font-bold">{models.find(m => m.id === ncr.modelId)?.name || ncr.modelId}</p>
+                        </div>
+                        <div>
+                          <p className="text-zinc-400">باركود الثلاجة:</p>
+                          <p className="text-zinc-800 font-bold font-mono">{ncr.barcode}</p>
+                        </div>
+                        <div>
+                          <p className="text-zinc-400">التاريخ والوقت:</p>
+                          <p className="text-zinc-800 font-bold font-mono">{ncr.date} | {ncr.time}</p>
+                        </div>
+                        <div>
+                          <p className="text-zinc-400">مكان الفحص:</p>
+                          <p className="text-zinc-800 font-bold">
+                            {ncr.defectType === 'PERFORMANCE_TEST' ? 'إختبار اداء' : 
+                             ncr.defectType === 'CRITICAL_OP' ? 'عمليات حرجة' : 
+                             ncr.defectType === 'CRITICAL_DEFECT' ? 'عينات - عيب حرج' : 
+                             ncr.defectType === 'MAJOR_DEFECT' ? 'عينات - عيب رئيسي' : 'عينات - عيب ثانوي'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-zinc-500 font-bold text-[11px]">وصف الخلل الفني:</p>
+                        <p className="text-zinc-800 bg-white border border-zinc-150 p-2.5 rounded-lg text-[11px] font-medium leading-relaxed">{ncr.description}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="bg-zinc-100/70 p-2 rounded-lg">
+                          <span className="text-zinc-400 block">المواصفة:</span>
+                          <span className="text-zinc-700 font-bold">{ncr.specification || 'غير محددة'}</span>
+                        </div>
+                        <div className="bg-zinc-100/70 p-2 rounded-lg">
+                          <span className="text-zinc-400 block">الحيود المرصود:</span>
+                          <span className="text-zinc-700 font-bold">{ncr.deviation || 'غير محدد'}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="bg-zinc-100/70 p-2 rounded-lg">
+                          <span className="text-zinc-400 block">السبب الجذري:</span>
+                          <span className="text-zinc-700 font-bold">{ncr.rootCause || 'جاري التحقق'}</span>
+                        </div>
+                        <div className="bg-zinc-100/70 p-2 rounded-lg">
+                          <span className="text-zinc-400 block">الإجراء المتخذ:</span>
+                          <span className="text-zinc-700 font-bold">{ncr.actionRequired}</span>
+                        </div>
+                      </div>
+
+                      {/* Displaying Opinions and final decisions if they have been filled */}
+                      {(ncr.qcOpinion || ncr.productionOpinion || ncr.finalDecision) && (
+                        <div className="border-t border-dashed border-zinc-200 pt-3 space-y-2 bg-indigo-50/30 p-2.5 rounded-lg">
+                          <p className="text-[10px] text-indigo-800 font-extrabold">اعتماد ومراجعة التغذية العكسية:</p>
+                          {ncr.qcOpinion && (
+                            <p className="text-[11px]"><strong className="text-zinc-700">مراقبة الجودة:</strong> {ncr.qcOpinion}</p>
+                          )}
+                          {ncr.productionOpinion && (
+                            <p className="text-[11px]"><strong className="text-zinc-700">القسم الإنتاجي:</strong> {ncr.productionOpinion}</p>
+                          )}
+                          {ncr.finalDecision && (
+                            <div className="bg-white border border-indigo-100 p-2 rounded text-[11px] font-bold text-zinc-900">
+                              <span className="text-indigo-700">القرار النهائي: </span>{ncr.finalDecision} ({ncr.decisionMaker})
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Print & Actions Row */}
+                      <div className="pt-2 border-t border-zinc-200 flex items-center justify-between">
+                        <button
+                          onClick={() => onPrintNCR(ncr)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                          title="طباعة تقرير التغذية العكسية Feed BACK الكامل"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          طباعة نموذج Feed BACK (التغذية العكسية)
+                        </button>
+                        <span className="text-[10px] text-zinc-400 font-mono">تم التسجيل: {safeDateString(ncr.timestamp)}</span>
                       </div>
                     </div>
                   ))}
                   {ncrs.filter(n => n.lineId === lineId).length === 0 && (
-                    <div className="text-center py-10 text-zinc-400 font-bold">لا توجد تقارير عدم مطابقة مفتوحة حالياً بالخط.</div>
+                    <div className="text-center py-12 text-zinc-400 font-bold bg-zinc-50 border border-zinc-150 rounded-xl">لا توجد تقارير عدم مطابقة فنية مسجلة حالياً بالخط.</div>
                   )}
                 </div>
               </div>
