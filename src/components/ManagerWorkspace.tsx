@@ -88,6 +88,12 @@ export default function ManagerWorkspace({
   const [instSubTab, setInstSubTab] = useState<'PERFORMANCE' | 'CONSTRUCTION'>('PERFORMANCE');
   const [instSearch, setInstSearch] = useState('');
 
+  // State variables for NCR reports filtering
+  const [ncrLineFilter, setNcrLineFilter] = useState<'ALL' | 'LINE_A' | 'LINE_B' | 'LINE_C'>('ALL');
+  const [ncrStatusFilter, setNcrStatusFilter] = useState<'ALL' | 'OPEN' | 'RESOLVED'>('ALL');
+  const [ncrSeverityFilter, setNcrSeverityFilter] = useState<'ALL' | 'CRITICAL' | 'MAJOR'>('ALL');
+  const [ncrSearch, setNcrSearch] = useState('');
+
   // KPI calculations
   const totalInspected = inspections.length;
   
@@ -545,6 +551,18 @@ export default function ManagerWorkspace({
           >
             <BookOpen className="w-4 h-4" />
             <span>تعليمات الاختبارات</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('NCR_REPORTS')}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all -mb-px ${
+              activeTab === 'NCR_REPORTS'
+                ? 'border-amber-500 text-amber-605 bg-white shadow-sm rounded-t-xl border-t border-x border-zinc-200'
+                : 'border-transparent text-zinc-500 hover:text-zinc-850'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4 text-red-500 animate-pulse" />
+            <span>تقارير عدم المطابقة (NCR) ({ncrs.length})</span>
           </button>
         </div>
 
@@ -1030,6 +1048,311 @@ export default function ManagerWorkspace({
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {activeTab === 'NCR_REPORTS' && (
+          <div className="space-y-6 animate-fadeIn text-right mt-6">
+            {/* Header */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-base font-black text-zinc-900">إدارة ومتابعة تقارير عدم المطابقة (NCR)</h2>
+                <p className="text-[11px] text-zinc-500 font-bold">لوحة تحكم المدير لمراجعة تقارير عدم المطابقة ومتابعة قرارات التغذية العكسية المعتمدة لخطوط إنتاج العربي</p>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-zinc-400 font-bold block">إجمالي التقارير المسجلة</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-2xl font-extrabold font-mono text-zinc-900">{ncrs.length}</span>
+                  <span className="text-[10px] bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full font-bold">تقرير</span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-zinc-400 font-bold block">التقارير المفتوحة (نشط)</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-2xl font-extrabold font-mono text-red-650">{ncrs.filter(n => n.status === 'OPEN').length}</span>
+                  <span className="text-[10px] bg-red-50 text-red-655 px-2 py-0.5 rounded-full font-bold">جاري العمل</span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-zinc-400 font-bold block">التقارير المغلقة (تم الحل)</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-2xl font-extrabold font-mono text-emerald-650">{ncrs.filter(n => n.status === 'RESOLVED').length}</span>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-655 px-2 py-0.5 rounded-full font-bold">مغلق</span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                <span className="text-[10px] text-zinc-400 font-bold block">تقارير شديدة الخطورة (Critical)</span>
+                <div className="flex items-baseline justify-between mt-2">
+                  <span className="text-2xl font-extrabold font-mono text-amber-655">{ncrs.filter(n => n.severity === 'CRITICAL').length}</span>
+                  <span className="text-[10px] bg-amber-50 text-amber-655 px-2 py-0.5 rounded-full font-bold">حرج</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters Row */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Search */}
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-bold text-zinc-450 mb-1.5">البحث بالباركود أو الوصف</label>
+                  <input
+                    type="text"
+                    value={ncrSearch}
+                    onChange={e => setNcrSearch(e.target.value)}
+                    placeholder="ابحث بالباركود، رقم التقرير..."
+                    className="w-full bg-zinc-50 border border-zinc-250 focus:border-amber-500 focus:bg-white rounded-xl px-3 py-2 text-xs outline-none transition-all text-right"
+                  />
+                </div>
+
+                {/* Line Filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-450 mb-1.5">تصفية حسب المصنع</label>
+                  <select
+                    value={ncrLineFilter}
+                    onChange={e => setNcrLineFilter(e.target.value as any)}
+                    className="w-full bg-zinc-50 border border-zinc-250 focus:border-amber-500 focus:bg-white rounded-xl px-2.5 py-2 text-xs outline-none transition-all text-right"
+                  >
+                    <option value="ALL">كل المصانع</option>
+                    <option value="LINE_A">مصنع A</option>
+                    <option value="LINE_B">مصنع B</option>
+                    <option value="LINE_C">مصنع C</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-450 mb-1.5">حالة التقرير</label>
+                  <select
+                    value={ncrStatusFilter}
+                    onChange={e => setNcrStatusFilter(e.target.value as any)}
+                    className="w-full bg-zinc-50 border border-zinc-250 focus:border-amber-500 focus:bg-white rounded-xl px-2.5 py-2 text-xs outline-none transition-all text-right"
+                  >
+                    <option value="ALL">كل الحالات</option>
+                    <option value="OPEN">مفتوح (جاري المراجعة)</option>
+                    <option value="RESOLVED">مغلق (تم اعتماد القرار)</option>
+                  </select>
+                </div>
+
+                {/* Severity Filter */}
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-450 mb-1.5">درجة الخطورة</label>
+                  <select
+                    value={ncrSeverityFilter}
+                    onChange={e => setNcrSeverityFilter(e.target.value as any)}
+                    className="w-full bg-zinc-50 border border-zinc-250 focus:border-amber-500 focus:bg-white rounded-xl px-2.5 py-2 text-xs outline-none transition-all text-right"
+                  >
+                    <option value="ALL">كل الدرجات</option>
+                    <option value="CRITICAL">حرج (Critical)</option>
+                    <option value="MAJOR">رئيسي (Major)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Reports Cards */}
+            <div className="space-y-4">
+              {(() => {
+                const filteredNcrs = ncrs.filter(n => {
+                  const matchesLine = ncrLineFilter === 'ALL' || n.lineId === ncrLineFilter;
+                  const matchesStatus = ncrStatusFilter === 'ALL' || n.status === ncrStatusFilter;
+                  const matchesSeverity = ncrSeverityFilter === 'ALL' || n.severity === ncrSeverityFilter;
+                  const matchesSearch = !ncrSearch.trim() || 
+                    n.barcode.includes(ncrSearch) || 
+                    n.id.toLowerCase().includes(ncrSearch.toLowerCase()) ||
+                    n.description.includes(ncrSearch) ||
+                    (n.specification && n.specification.includes(ncrSearch));
+                  return matchesLine && matchesStatus && matchesSeverity && matchesSearch;
+                });
+
+                if (filteredNcrs.length === 0) {
+                  return (
+                    <div className="bg-white border border-zinc-200 rounded-2xl p-12 text-center text-zinc-450 space-y-2">
+                      <ShieldAlert className="w-8 h-8 text-zinc-300 mx-auto" />
+                      <p className="font-bold text-sm">لا توجد تقارير عدم مطابقة (NCR) تطابق معايير البحث والفرز.</p>
+                      <p className="text-xs">يرجى تعديل خيارات التصفية أو التأكد من قيام فنيي ومشرّفي الجودة بتسجيل تقارير الـ NCR.</p>
+                    </div>
+                  );
+                }
+
+                const getLineFriendlyName = (lineId: string) => {
+                  switch (lineId) {
+                    case 'LINE_A': return 'مصنع A';
+                    case 'LINE_B': return 'مصنع B';
+                    case 'LINE_C': return 'مصنع C';
+                    default: return lineId;
+                  }
+                };
+
+                return (
+                  <div className="grid grid-cols-1 gap-4">
+                    {filteredNcrs.map(ncr => {
+                      const modelName = models.find(m => m.id === ncr.modelId)?.name || ncr.modelId;
+                      return (
+                        <div key={ncr.id} className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm space-y-4 hover:shadow-md transition-all text-right">
+                          {/* Card Header */}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-150 pb-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-mono font-black text-zinc-900 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-lg">
+                                {ncr.id}
+                              </span>
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                                ncr.status === 'OPEN' 
+                                  ? 'bg-red-50 text-red-650 border border-red-150' 
+                                  : 'bg-emerald-50 text-emerald-650 border border-emerald-150'
+                              }`}>
+                                {ncr.status === 'OPEN' ? 'مفتوح / جاري الحل' : 'مغلق ومصحح'}
+                              </span>
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                                ncr.severity === 'CRITICAL' 
+                                  ? 'bg-red-600 text-white' 
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {ncr.severity === 'CRITICAL' ? 'حرج (Critical)' : 'رئيسي (Major)'}
+                              </span>
+                              <span className="text-[10px] font-black bg-zinc-100 text-zinc-650 px-2 py-0.5 rounded-full">
+                                {getLineFriendlyName(ncr.lineId)}
+                              </span>
+                            </div>
+                            <div className="text-[10.5px] text-zinc-500 font-bold flex items-center gap-1.5 justify-end">
+                              <span>الوردية: {ncr.shift}</span>
+                              <span>•</span>
+                              <span>{ncr.date} {ncr.time}</span>
+                            </div>
+                          </div>
+
+                          {/* Refrigerator Info */}
+                          <div className="bg-zinc-50/75 p-3.5 rounded-xl border border-zinc-200/60 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-[10px] text-zinc-405 font-bold block">موديل الثلاجة</span>
+                              <span className="text-xs font-extrabold text-zinc-900">{modelName}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-zinc-405 font-bold block">باركود الثلاجة الفريد</span>
+                              <span className="text-xs font-bold font-mono text-zinc-900">{ncr.barcode}</span>
+                            </div>
+                          </div>
+
+                          {/* Technical Details */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <div className="space-y-2">
+                              <div>
+                                <span className="text-[10px] text-zinc-405 font-bold block">طبيعة ومكان رصد عدم المطابقة</span>
+                                <span className="text-zinc-800 font-bold">
+                                  {ncr.defectType === 'CRITICAL_DEFECT' && 'عطل حرج بالمنتج النهائي'}
+                                  {ncr.defectType === 'MAJOR_DEFECT' && 'عيب رئيسي بمظهر ومكونات المنتج'}
+                                  {ncr.defectType === 'MINOR_DEFECT' && 'عيب بسيط / مظهر سطحي'}
+                                  {ncr.defectType === 'CRITICAL_OP' && 'حيود في بارامترات العمليات الحرجة'}
+                                  {ncr.defectType === 'PERFORMANCE_TEST' && 'فشل اختبارات الأداء (غرف التبريد)'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-450 font-bold block">وصف العيب والحيود بالتفصيل</span>
+                                <p className="text-zinc-700 bg-zinc-50/40 p-2.5 rounded-lg border border-zinc-150/60 leading-relaxed font-semibold">
+                                  {ncr.description}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <span className="text-[10px] text-zinc-405 font-bold block">المواصفة المعتمدة (Spec)</span>
+                                  <span className="text-zinc-700 font-bold">{ncr.specification || 'غير محدد'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-zinc-405 font-bold block">الحيود المرصود (Deviation)</span>
+                                  <span className="text-zinc-700 font-bold">{ncr.deviation || 'غير محدد'}</span>
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-450 font-bold block">السبب الجذري المتوقع والتحليل</span>
+                                <p className="text-zinc-700 bg-zinc-50/40 p-2.5 rounded-lg border border-zinc-150/60 leading-relaxed">
+                                  {ncr.rootCause || 'لم يتم كتابة سبب جذري'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action taken by QC */}
+                          <div>
+                            <span className="text-[10px] text-zinc-405 font-bold block">الإجراء الفوري المتخذ بواسطة الجودة (Action Taken)</span>
+                            <p className="text-zinc-700 font-bold bg-amber-50/35 border border-amber-200/50 p-2.5 rounded-xl text-xs">
+                              {ncr.actionRequired}
+                            </p>
+                          </div>
+
+                          {/* Feedback loop from Supervisor */}
+                          <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+                            <h4 className="text-[11px] font-extrabold text-zinc-900 border-b border-zinc-200 pb-1.5 flex items-center justify-between">
+                              <span className="text-blue-750 bg-blue-50 px-2 py-0.5 rounded text-[9px] font-bold">نموذج FEEDBACK للتغذية العكسية</span>
+                              <span>ملاحظات وإجراءات القسم والاعتماد</span>
+                            </h4>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                              <div>
+                                <span className="text-[10px] text-zinc-405 font-bold block">رأي وقرار مراقبة الجودة (QC Opinion)</span>
+                                <p className="text-zinc-700 mt-1 italic font-semibold">
+                                  {ncr.qcOpinion || 'بانتظار تدوين ملاحظات مراقبة الجودة...'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-405 font-bold block">رأي وقرار القسم الإنتاجي (Production Opinion)</span>
+                                <p className="text-zinc-700 mt-1 italic font-semibold">
+                                  {ncr.productionOpinion || 'بانتظار تدوين ملاحظات وإجراءات الإنتاج...'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-zinc-405 font-bold block">القرار النهائي لـ اعتماده</span>
+                                <div className="font-extrabold text-zinc-900 mt-1">
+                                  {ncr.finalDecision ? (
+                                    <div className="space-y-1">
+                                      <span className="inline-block text-emerald-650 bg-emerald-50 px-2 py-0.5 rounded text-[9px] font-bold">{ncr.finalDecision}</span>
+                                      <p className="text-[10px] text-zinc-450 font-normal">معتمد القرار: {ncr.decisionMaker || 'مشرف الجودة'}</p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-zinc-400 font-medium italic">بانتظار اتخاذ القرار النهائي المعتمد...</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Print and Delete Actions */}
+                          <div className="flex items-center justify-between pt-3 border-t border-zinc-150">
+                            <button
+                              onClick={() => {
+                                if (confirm('هل أنت متأكد من رغبتك في حذف تقرير الـ NCR هذا نهائياً من قاعدة البيانات؟')) {
+                                  setNcrs(prev => prev.filter(n => n.id !== ncr.id));
+                                }
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-650 hover:bg-red-50 text-xs font-bold transition-all"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>حذف التقرير نهائياً</span>
+                            </button>
+
+                            <button
+                              onClick={() => onPrintNCR(ncr)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 text-xs font-bold transition-all shadow-sm"
+                            >
+                              <Printer className="w-4 h-4" />
+                              <span>طباعة نموذج Feed BACK (التغذية العكسية)</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         )}
 

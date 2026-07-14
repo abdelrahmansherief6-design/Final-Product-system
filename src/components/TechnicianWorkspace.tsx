@@ -256,18 +256,6 @@ interface TrialRun {
   timestamp: string;
 }
 
-interface NCRReport {
-  id: string;
-  lineId: string;
-  title: string;
-  modelId: string;
-  description: string;
-  actionRequired: string;
-  severity: 'CRITICAL' | 'MAJOR';
-  status: 'OPEN' | 'RESOLVED';
-  timestamp: string;
-}
-
 interface LoadingStop {
   id: string;
   lineId: string;
